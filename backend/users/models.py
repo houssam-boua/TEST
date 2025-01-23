@@ -1,9 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-from django.contrib.auth.models import AbstractUser
-from django.db import models
-
 class Departement(models.Model):
     dep_name = models.CharField(max_length=100)
     dep_type = models.CharField(max_length=100)
