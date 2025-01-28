@@ -5,10 +5,11 @@
 docarea/
 ├── backend/
 │   ├── backend/
-│   ├── manage.py
-│   └── README.md
+│   ├── documents/
+│   ├── users/
+│   ├── workflows/
+│   └── manage.py
 ├── frontend/
-│   └── README.md
 ├── requirements.txt
 └── .env
 └── .gitignore 
@@ -28,6 +29,9 @@ backend/
 │   ├── settings.py
 │   ├── urls.py
 │   └── wsgi.py
+├── documents/
+├── users/
+├── workflows/
 └── manage.py
 ```
 
