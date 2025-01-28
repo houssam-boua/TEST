@@ -94,6 +94,14 @@ python manage.py runserver
 
 Visit [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin) to access the admin panel.
 
+### 8. Example Routes (Users)
+
+- **Create User (POST):** `POST localhost/api/users/`
+- **Get All Users (GET):** `GET localhost/api/users/`
+- **Get User by ID (GET):** `GET localhost/api/users/{id}/`
+- **Get User by Specific Attribute (GET):** `GET localhost/api/users/?username=test`
+- **Update User (PUT):** `PUT localhost/api/users/{id}/`
+- **Delete User (DELETE):** `DELETE localhost/api/users/{id}/`
 
 
 ## .gitignore
