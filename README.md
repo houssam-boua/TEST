@@ -9,12 +9,18 @@ docarea/
 │   ├── users/
 │   ├── workflows/
 │   └── manage.py
-├── frontend/
 ├── requirements.txt
 └── .env
 └── .gitignore 
-└── README.md
 └── LICENCE
+
+├── frontend/             # Application React
+│    ├── src/
+│    │   ├── components/   # Composants React
+│    │   ├── pages/        #  │l'application
+│    │   └── services/     # Services API
+│    └── package.json      #                
+└── README.md
 
 ```
 
@@ -33,11 +39,15 @@ backend/
 ├── users/
 ├── workflows/
 └── manage.py
+
+
 ```
 
 ### 2. Prerequisites
 - Python 3.9+
 - PostgreSQL 12+
+- node.js > 18
+
 
 
 ### 3. Environment Setup
@@ -116,3 +126,7 @@ The `.gitignore` file tells Git which files and directories to ignore when track
    - Contains Python packages specific to your local setup
    - Large in size and should be recreated using requirements.txt
    - Different across operating systems
+
+
+
+### Frontend 
