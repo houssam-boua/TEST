@@ -2,6 +2,12 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from .models import User, Role, Departement
 from .serializers import UserSerializer, RoleSerializer, DepartementSerializer
+from django.contrib.auth import authenticate
+from rest_framework import status
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -30,3 +36,37 @@ class DepartementViewSet(viewsets.ModelViewSet):
     filterset_fields = ['dep_name', 'dep_type']
     #  GET /departements/?dep_name=test 
     #  GET /departements/?dep_type=test
+
+class LoginView(APIView):
+    """
+    Accepts POST requests with 'username' and 'password' in the request body.
+    Returns the token if authentication is successful.
+    """
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        username = request.data.get("username")
+        password = request.data.get("password")
+
+        # Authenticate the user
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            # Get or create the token for this user
+            token, created = Token.objects.get_or_create(user=user)
+            return Response({"token": token.key}, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+
+class LogoutView(APIView):
+    """
+    Accepts POST requests from an authenticated user and deletes their token.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        # Delete the token to log the user out
+        try:
+            request.user.auth_token.delete()
+            return Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
+        except Exception:
+            return Response({"error": "Something went wrong during logout."}, status=status.HTTP_400_BAD_REQUEST)
