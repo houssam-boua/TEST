@@ -53,11 +53,15 @@ backend/
 ### 3. Environment Setup
 
 1. Create a virtual environment in the project root:
+
 ```bash
 python -m venv env
 
 # Activate on Windows
 env\Scripts\activate
+
+# or use this for 3.10+
+.\env\bin\activate
 
 # Activate on macOS/Linux
 source env/bin/activate
