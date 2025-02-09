@@ -38,17 +38,21 @@ class Command(BaseCommand):
 
         # Create fake Users
         self.stdout.write("Creating fake Users...")
-        for _ in range(20):
+        for _ in range(10):
             # Pick a random departement and role
             dep = random.choice(departements)
             role = random.choice(roles)
+            first_name = fake.first_name()
+            last_name = fake.last_name()
             username = fake.user_name()
             email = fake.email()
-            # Create the user using the built-in create_user method which hashes the password.
+
             user = User.objects.create_user(
+                first_name=first_name,
+                last_name=last_name,
                 username=username,
                 email=email,
-                password="password123",  # Use a default password or generate one with fake.password()
+                password="password123", 
                 role=role,
                 departement=dep,
             )
