@@ -2,6 +2,7 @@ from django.db import models
 
 
 class Workflow(models.Model):
+    '''This is the workflow model'''
     nom = models.CharField(max_length=100)
     description = models.TextField()
     etat = models.CharField(max_length=50)
@@ -9,6 +10,7 @@ class Workflow(models.Model):
 
 
 class Task(models.Model):
+    '''This is the task model'''
     PRIORITY_CHOICES = [
         ("urgent", "Urgent"),
         ("high", "High"),

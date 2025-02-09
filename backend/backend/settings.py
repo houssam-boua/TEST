@@ -96,7 +96,6 @@ WSGI_APPLICATION = "backend.wsgi.application"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 DATABASES = {
-<<<<<<< HEAD
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "docareadb",  # Replace with your PostgreSQL database name
@@ -104,15 +103,6 @@ DATABASES = {
         "PASSWORD": "elhouari",  # Replace with your PostgreSQL password
         "HOST": "localhost",  # Replace if using a remote database
         "PORT": "5432",  # Default PostgreSQL port
-=======
-     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'docareadb',  # Replace with your PostgreSQL database name
-        'USER': 'postgres',  # Replace with your PostgreSQL username
-        'PASSWORD': 'Mypsql1337',  # Replace with your PostgreSQL password
-        'HOST': 'localhost',  # Replace if using a remote database
-        'PORT': '5432',  # Default PostgreSQL port
->>>>>>> 5c55ccde41c81449ad228d2ffbffdf21f2c1a71d
     }
 }
 

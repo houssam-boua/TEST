@@ -5,6 +5,7 @@ from .serializers import DocumentSerializer
 
 
 class DocumentViewSet(viewsets.ModelViewSet):
+    '''Document viewset for CRUD operations'''
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
 

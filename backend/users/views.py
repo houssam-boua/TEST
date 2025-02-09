@@ -9,6 +9,7 @@ from .models import User, Role, Departement
 from .serializers import UserSerializer, RoleSerializer, DepartementSerializer
 
 class UserViewSet(viewsets.ModelViewSet):
+    '''User viewset for CRUD operations'''
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
@@ -19,6 +20,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class RoleViewSet(viewsets.ModelViewSet):
+    '''Role viewset for CRUD operations'''
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
 
@@ -29,6 +31,7 @@ class RoleViewSet(viewsets.ModelViewSet):
 
 
 class DepartementViewSet(viewsets.ModelViewSet):
+    '''Departement viewset for CRUD operations'''
     queryset = Departement.objects.all()
     serializer_class = DepartementSerializer
 

@@ -6,6 +6,7 @@ from .serializers import WorkflowSerializer, TaskSerializer
 
 # Create your views here.
 class WorkflowViewSet(viewsets.ModelViewSet):
+    """Workflow viewset for CRUD operations"""
     queryset = Workflow.objects.all()
     serializer_class = WorkflowSerializer
 
@@ -25,6 +26,7 @@ class WorkflowViewSet(viewsets.ModelViewSet):
 
 
 class TaskViewSet(viewsets.ModelViewSet):
+    """Task viewset for CRUD operations"""
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
 
