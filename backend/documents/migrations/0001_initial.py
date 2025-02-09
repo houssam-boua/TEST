@@ -7,25 +7,32 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Document',
+            name="Document",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('doc_title', models.CharField(max_length=255)),
-                ('doc_type', models.CharField(max_length=50)),
-                ('doc_creation_date', models.DateTimeField(auto_now_add=True)),
-                ('doc_modification_date', models.DateTimeField(auto_now=True)),
-                ('doc_path', models.FileField(upload_to='documents/')),
-                ('doc_status', models.CharField(max_length=50)),
-                ('doc_size', models.FloatField()),
-                ('doc_format', models.CharField(max_length=20)),
-                ('doc_category', models.CharField(max_length=50)),
-                ('doc_description', models.TextField()),
-                ('doc_comment', models.TextField(blank=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("doc_title", models.CharField(max_length=255)),
+                ("doc_type", models.CharField(max_length=50)),
+                ("doc_creation_date", models.DateTimeField(auto_now_add=True)),
+                ("doc_modification_date", models.DateTimeField(auto_now=True)),
+                ("doc_path", models.FileField(upload_to="documents/")),
+                ("doc_status", models.CharField(max_length=50)),
+                ("doc_size", models.FloatField()),
+                ("doc_format", models.CharField(max_length=20)),
+                ("doc_category", models.CharField(max_length=50)),
+                ("doc_description", models.TextField()),
+                ("doc_comment", models.TextField(blank=True)),
             ],
         ),
     ]

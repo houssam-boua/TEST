@@ -10,31 +10,86 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('documents', '0001_initial'),
+        ("documents", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Workflow',
+            name="Workflow",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('nom', models.CharField(max_length=100)),
-                ('description', models.TextField()),
-                ('etat', models.CharField(max_length=50)),
-                ('document', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='documents.document')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("nom", models.CharField(max_length=100)),
+                ("description", models.TextField()),
+                ("etat", models.CharField(max_length=50)),
+                (
+                    "document",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="documents.document",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Task',
+            name="Task",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('task_name', models.CharField(max_length=100)),
-                ('task_date_echeance', models.DateTimeField()),
-                ('task_priorite', models.CharField(choices=[('urgent', 'Urgent'), ('high', 'High'), ('normal', 'Normal'), ('low', 'Low')], max_length=20)),
-                ('task_statut', models.CharField(choices=[('not_started', 'Not started'), ('in_progress', 'In progress'), ('completed', 'Completed')], max_length=20)),
-                ('task_assigned_to', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
-                ('task_workflow', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='workflows.workflow')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("task_name", models.CharField(max_length=100)),
+                ("task_date_echeance", models.DateTimeField()),
+                (
+                    "task_priorite",
+                    models.CharField(
+                        choices=[
+                            ("urgent", "Urgent"),
+                            ("high", "High"),
+                            ("normal", "Normal"),
+                            ("low", "Low"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "task_statut",
+                    models.CharField(
+                        choices=[
+                            ("not_started", "Not started"),
+                            ("in_progress", "In progress"),
+                            ("completed", "Completed"),
+                        ],
+                        max_length=20,
+                    ),
+                ),
+                (
+                    "task_assigned_to",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "task_workflow",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="workflows.workflow",
+                    ),
+                ),
             ],
         ),
     ]

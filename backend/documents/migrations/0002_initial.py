@@ -10,20 +10,24 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('documents', '0001_initial'),
-        ('users', '0001_initial'),
+        ("documents", "0001_initial"),
+        ("users", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='document',
-            name='doc_departement',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='users.departement'),
+            model_name="document",
+            name="doc_departement",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to="users.departement"
+            ),
         ),
         migrations.AddField(
-            model_name='document',
-            name='doc_owner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL),
+            model_name="document",
+            name="doc_owner",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL
+            ),
         ),
     ]

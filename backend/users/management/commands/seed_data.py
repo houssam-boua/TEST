@@ -3,7 +3,12 @@ from django.core.management.base import BaseCommand
 from faker import Faker
 import random
 
-from users.models import Departement, Role, User  # Adjust the import to your app structure
+from users.models import (
+    Departement,
+    Role,
+    User,
+)  # Adjust the import to your app structure
+
 
 class Command(BaseCommand):
     help = "Seed the database with fake data for Departement, Role, and User models."
@@ -16,8 +21,7 @@ class Command(BaseCommand):
         departements = []
         for _ in range(10):
             dep = Departement.objects.create(
-                dep_name=fake.word().capitalize(),
-                dep_type=fake.word().capitalize()
+                dep_name=fake.word().capitalize(), dep_type=fake.word().capitalize()
             )
             departements.append(dep)
         self.stdout.write(self.style.SUCCESS("Successfully created Departements."))
@@ -27,8 +31,7 @@ class Command(BaseCommand):
         roles = []
         for _ in range(5):
             role = Role.objects.create(
-                role_name=fake.job(),
-                role_type=fake.catch_phrase()
+                role_name=fake.job(), role_type=fake.catch_phrase()
             )
             roles.append(role)
         self.stdout.write(self.style.SUCCESS("Successfully created Roles."))
@@ -47,7 +50,7 @@ class Command(BaseCommand):
                 email=email,
                 password="password123",  # Use a default password or generate one with fake.password()
                 role=role,
-                departement=dep
+                departement=dep,
             )
             self.stdout.write(self.style.SUCCESS(f"Created user {username}"))
         self.stdout.write(self.style.SUCCESS("Database seeding completed."))

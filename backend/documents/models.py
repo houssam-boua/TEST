@@ -8,7 +8,7 @@ class Document(models.Model):
     doc_creation_date = models.DateTimeField(auto_now_add=True)
     doc_modification_date = models.DateTimeField(auto_now=True)
     # doc_deletion_date = models.DateTimeField(null=True, blank=True)
-    doc_path = models.FileField(upload_to='documents/')
+    doc_path = models.FileField(upload_to="documents/")
     doc_status = models.CharField(max_length=50)
     doc_size = models.FloatField()
     doc_format = models.CharField(max_length=20)
@@ -21,5 +21,3 @@ class Document(models.Model):
 
     def __str__(self):
         return f"{self.doc_title} ({self.doc_type})"
-
-    

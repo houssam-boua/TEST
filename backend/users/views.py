@@ -9,22 +9,24 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    
+
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['username', 'email', 'first_name', 'last_name']
-    #  GET /users/?username=John 
+    filterset_fields = ["username", "email", "first_name", "last_name"]
+    #  GET /users/?username=John
     #  GET /users/?email=John@exemple.com
+
 
 class RoleViewSet(viewsets.ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
 
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['role_name', 'role_type']
-    #  GET /roles/?role_name=John 
+    filterset_fields = ["role_name", "role_type"]
+    #  GET /roles/?role_name=John
     #  GET /roles/?role_type=test
 
 
@@ -33,15 +35,17 @@ class DepartementViewSet(viewsets.ModelViewSet):
     serializer_class = DepartementSerializer
 
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['dep_name', 'dep_type']
-    #  GET /departements/?dep_name=test 
+    filterset_fields = ["dep_name", "dep_type"]
+    #  GET /departements/?dep_name=test
     #  GET /departements/?dep_type=test
+
 
 class LoginView(APIView):
     """
     Accepts POST requests with 'username' and 'password' in the request body.
     Returns the token if authentication is successful.
     """
+
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
@@ -55,18 +59,27 @@ class LoginView(APIView):
             token, created = Token.objects.get_or_create(user=user)
             return Response({"token": token.key}, status=status.HTTP_200_OK)
         else:
-            return Response({"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
 
 class LogoutView(APIView):
     """
     Accepts POST requests from an authenticated user and deletes their token.
     """
+
     permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         # Delete the token to log the user out
         try:
             request.user.auth_token.delete()
-            return Response({"message": "Successfully logged out."}, status=status.HTTP_200_OK)
+            return Response(
+                {"message": "Successfully logged out."}, status=status.HTTP_200_OK
+            )
         except Exception:
-            return Response({"error": "Something went wrong during logout."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Something went wrong during logout."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

@@ -4,9 +4,9 @@ from .views import WorkflowViewSet, TaskViewSet
 
 
 router = DefaultRouter()
-router.register(r'workflows', WorkflowViewSet, basename='workflow')
-router.register(r'tasks', TaskViewSet, basename='task')
+router.register(r"workflows", WorkflowViewSet, basename="workflow")
+router.register(r"tasks", TaskViewSet, basename="task")
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path("", include(router.urls)),
 ]

@@ -4,8 +4,8 @@ from .views import DocumentViewSet
 
 router = DefaultRouter()
 
-router.register(r'documents', DocumentViewSet, basename='user')
+router.register(r"documents", DocumentViewSet, basename="user")
 
 urlpatterns = [
-    path('', include(router.urls)),
+    path("", include(router.urls)),
 ]
