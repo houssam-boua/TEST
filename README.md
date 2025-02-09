@@ -74,7 +74,6 @@ DATABASES = {
 }
 ```
 
-
 ### 5. Create and Apply Initial Migrations
 
 ```bash
@@ -98,7 +97,17 @@ python manage.py runserver
 
 Visit [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin) to access the admin panel.
 
-### 8. Example Routes (Users)
+### 8. Token for API Authentication:
+Include the token in your HTTP headers for API requests:
+`Authorization: Token <your-token-key> `
+
+### 9. Seed data
+
+```bash
+python manage.py seed_data
+```
+
+### 9. Example Routes (Users)
 
 - **Create User (POST):** `POST localhost/api/users/`
 - **Get All Users (GET):** `GET localhost/api/users/`
@@ -107,6 +116,10 @@ Visit [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin) to access the a
 - **Update User (PUT):** `PUT localhost/api/users/{id}/`
 - **Delete User (DELETE):** `DELETE localhost/api/users/{id}/`
 
+### Login & Logout Routes
+
+- **Login (username and password) (POST):** `localhost/api/auth/login`
+- **Logout :** `localhost/api/auth/logout`
 
 ## .gitignore
 
