@@ -7,7 +7,7 @@ from users.models import (
     Departement,
     Role,
     User,
-)  # Adjust the import to your app structure
+)  
 
 
 class Command(BaseCommand):
