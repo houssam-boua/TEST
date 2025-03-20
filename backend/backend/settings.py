@@ -100,7 +100,7 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": "docareadb",  # Replace with your PostgreSQL database name
         "USER": "postgres",  # Replace with your PostgreSQL username
-        "PASSWORD": "elhouari",  # Replace with your PostgreSQL password
+        "PASSWORD": "ELHOUARI",  # Replace with your PostgreSQL password
         "HOST": "localhost",  # Replace if using a remote database
         "PORT": "5432",  # Default PostgreSQL port
     }
