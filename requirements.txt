@@ -1,23 +1,11 @@
 asgiref==3.8.1
-<<<<<<< HEAD:backend/requirements.txt
-Django==5.1.4
-django-allauth==65.4.1
-=======
 Django==5.1.5
->>>>>>> 5c55ccde41c81449ad228d2ffbffdf21f2c1a71d:requirements.txt
 django-filter==24.3
 djangorestframework==3.15.2
 djangorestframework_simplejwt==5.4.0
 Faker==35.2.0
 psycopg==3.2.3
-<<<<<<< HEAD:backend/requirements.txt
-psycopg2-binary==2.9.10
-PyJWT==2.10.1
-python-dateutil==2.9.0.post0
-six==1.17.0
-=======
 # psycopg2-binary==2.9.10
->>>>>>> 5c55ccde41c81449ad228d2ffbffdf21f2c1a71d:requirements.txt
 sqlparse==0.5.3
 toposort==1.10
 typing_extensions==4.12.2
