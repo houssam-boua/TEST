@@ -1,11 +1,11 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @plugin "daisyui";
 
 @plugin "daisyui/theme" {
-  name: "mytheme";
+  name: 'mytheme';
   default: false;
   prefersdark: false;
-  color-scheme: "light";
+  color-scheme: 'light';
   --color-base-100: oklch(100% 0 0);
   --color-base-200: oklch(93% 0 0);
   --color-base-300: oklch(86% 0 0);
@@ -35,13 +35,12 @@
   --depth: 1;
   --noise: 0;
 
-  --font-family-sans: "Open", sans-serif;
-  --font-family-serif: "Merriweather", serif;
-  --font-family-mono: "Roboto Mono", monospace;
-  --font-family-logo: "Bungee", cursive;
-  --font-family-inter: "Inter", sans-serif;
-  --font-family-lato: "Lato", sans-serif;
+  --font-family-sans: 'Open', sans-serif;
+  --font-family-serif: 'Merriweather', serif;
+  --font-family-mono: 'Roboto Mono', monospace;
+  --font-family-logo: 'Bungee', cursive;
+  --font-family-inter: 'Inter', sans-serif;
+  --font-family-lato: 'Lato', sans-serif;
 
   font-family: var(--font-family-lato);
-} 
-
+}

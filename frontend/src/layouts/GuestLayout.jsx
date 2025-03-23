@@ -1,7 +1,7 @@
 import React from 'react'
 import { Outlet } from 'react-router-dom'
 
-const DefaultLayout = () => {
+const GuestLayout = () => {
   return (
     <div className='mx-auto max-w-7xl'>
       <Outlet/>
@@ -9,4 +9,4 @@ const DefaultLayout = () => {
   )
 }
 
-export default DefaultLayout
+export default GuestLayout
