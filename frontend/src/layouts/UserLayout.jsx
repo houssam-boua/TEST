@@ -3,6 +3,8 @@ import { Link, Outlet } from 'react-router-dom';
 import Sidebar from '../component/Sidebar';
 import Header from '../component/Header';
 import Breadcrumbs from '../component/Breadcrumbs';
+import DefaultLayout from './DefaultLayout';
+import Acceuil from '../pages/Acceuil';
 
 const UserLayout = () => {
   const [breadcrumbs, setBreadcrumbs] = useState(['/']);
@@ -68,14 +70,15 @@ const UserLayout = () => {
   ];
 
   return (
-    <div>
-      <Sidebar sidebarContent={sidebarContent}>
-        <Header />
-        <Breadcrumbs crumbs={breadcrumbs} />
-        <Outlet />
-      </Sidebar>
-    </div>
+    <>
+      <DefaultLayout
+        sidebarContent={sidebarContent}
+        breadcrumbs={breadcrumbs}
+        username={'Utilisateur'}
+      ></DefaultLayout>
+    </>
   );
 };
 
 export default UserLayout;
+

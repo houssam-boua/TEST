@@ -1,6 +1,6 @@
 import React from 'react';
 
-const Header = () => {
+const Header = ({ username }) => {
   return (
     <div className='navbar pt-5'>
       <div className='flex-1 inline-flex items-center'>
@@ -27,7 +27,7 @@ const Header = () => {
         </div>
 
         <div className='join'>
-          <label className='input p-3 bg-base-200/30 border border-base-300/10 rounded-lg flex items-center'>
+          <label className='input p-3 bg-base-200/30 border border-base-300/10 rounded-lg flex items-center focus:border-amber-100'>
             <svg
               xmlns='http://www.w3.org/2000/svg'
               fill='none'
@@ -48,7 +48,7 @@ const Header = () => {
               className='grow join-item'
               placeholder='Chercher des documents'
             />
-            <button className='btn bg-base-100 text-base-content/50 font-normal btn-sm join-item rounded-xl '>
+            <button className='btn bg-base-100 text-base-content/50 font-normal btn-sm join-item rounded-xl hover:bg-neutral/90 hover:text-neutral-content hover:transition-colors duration-300'>
               Chercher
             </button>
           </label>
@@ -75,7 +75,7 @@ const Header = () => {
         </div>
         <div className='flex justify-center items-center mx-3'>
           <span className='text-sm text-base-content/70 font-stretch-90% '>
-            Utilisateur
+            {username}
           </span>
         </div>
 

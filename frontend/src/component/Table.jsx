@@ -81,10 +81,10 @@ const Table = ({ headers, rows, onSelect }) => {
                     <span
                       className={`badge-sm rounded-lg ${
                         cell === 'success'
-                          ? 'badge badge-success badge-soft'
+                          ? 'badge badge-success badge-dash'
                           : cell === 'error'
-                            ? 'badge badge-error badge-soft'
-                            : 'badge badge-neutral badge-soft'
+                            ? 'badge badge-error badge-dash'
+                            : 'badge badge-neutral badge-dash'
                       }`}
                     >
                       {cell}

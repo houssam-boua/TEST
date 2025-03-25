@@ -3,7 +3,7 @@ import React from 'react';
 const Toolbar = ({ toolBarItems }) => {
   return (
     <>
-      <div className='pl-6 toolbar w-full bg-secondary/80 text-primary border-b border-primary/10'>
+      <div className='pl-6 toolbar w-full bg-secondary/30 text-primary border-b border-base-content/5'>
         <ul className='menu menu-xs menu-horizontal'>
           {toolBarItems ? (
             toolBarItems

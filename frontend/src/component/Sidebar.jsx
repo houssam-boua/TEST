@@ -5,7 +5,6 @@ const Sidebar = ({ children, sidebarContent }) => {
     <div className='drawer lg:drawer-open '>
       <input id='my-drawer-2' type='checkbox' className='drawer-toggle' />
       <div className='drawer-content flex flex-col items-start justify-start'>
-        
         {children}
       </div>
       <div className='drawer-side font-lato'>
@@ -22,8 +21,7 @@ const Sidebar = ({ children, sidebarContent }) => {
           ) : (
             <>
               {/* Default Sidebar content */}
-                <li>
-                  
+              <li>
                 <a>Sidebar Item 1</a>
               </li>
               <li>

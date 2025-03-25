@@ -4,7 +4,9 @@ import React from 'react';
 import UserLayout from './layouts/UserLayout';
 import GuestLayout from './layouts/GuestLayout';
 import Consultedocuments from './pages/Consultedocuments';
-import Uploadocuments from './pages/Uploadocuments';
+import Creationdocuments from './pages/Creationdocuments';
+import Acceuil from './pages/Acceuil';
+import AdminLayout from './layouts/AdminLayout';
 
 // const PrivateRoute = ({element})=>{
 //     return <Route element={element} />;
@@ -31,14 +33,24 @@ const router = createBrowserRouter([
       },
       {
         path: "acceuil",
-        element: <div>Acceuil</div>
+        element: <Acceuil/>
       },
       {
         path: "upload-doc",
-        element: <Uploadocuments/>
+        element: <Creationdocuments/>
       }
     ],
   },
+  {
+    path: 'a',
+    element: <AdminLayout />,
+    children: [
+      {
+        path: 'acceuil',
+        element: <Acceuil />,
+      },
+    ]
+  }
 ]);
 
 export default router;
