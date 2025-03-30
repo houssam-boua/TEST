@@ -44,7 +44,7 @@ const Creationdocuments = () => {
     <div className='container mx-auto p-4'>
       <div className='flex flex-col lg:flex-row gap-1.5'>
         {/* Left side: File Uploader - Full width on mobile, 1/3 on desktop */}
-        <div className='w-full lg:w-2/5 border border-base-300/50 p-4 flex flex-col rounded-xl'>
+        <div className='w-full lg:w-2/5 border border-base-300/50 p-4 flex flex-col rounded-md'>
           <h2 className='text-lg font-semibold text-base-content pb-3'>
             Télécharger un fichier
           </h2>
@@ -146,7 +146,7 @@ const Creationdocuments = () => {
         </div>
 
         {/* Right side: Preview Field - Full width on mobile, 2/3 on desktop */}
-        <div className='w-full lg:w-4/5 border border-base-300/50  p-4 flex items-center justify-center min-h-[650px] rounded-xl'>
+        <div className='w-full lg:w-4/5 border border-base-300/50  p-2 flex items-center justify-center min-h-[650px] rounded-md'>
           {preview ? (
             preview.type === 'image' ? (
               <img

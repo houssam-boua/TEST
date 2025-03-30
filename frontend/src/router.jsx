@@ -7,6 +7,7 @@ import Consultedocuments from './pages/Consultedocuments';
 import Creationdocuments from './pages/Creationdocuments';
 import Acceuil from './pages/Acceuil';
 import AdminLayout from './layouts/AdminLayout';
+import ConsulteFolders from './pages/ConsulteFolders';
 
 // const PrivateRoute = ({element})=>{
 //     return <Route element={element} />;
@@ -32,13 +33,13 @@ const router = createBrowserRouter([
         element: <Consultedocuments />,
       },
       {
-        path: "acceuil",
-        element: <Acceuil/>
+        path: 'acceuil',
+        element: <Acceuil />,
       },
       {
-        path: "upload-doc",
-        element: <Creationdocuments/>
-      }
+        path: 'upload-doc',
+        element: <Creationdocuments />,
+      },
     ],
   },
   {
@@ -49,8 +50,16 @@ const router = createBrowserRouter([
         path: 'acceuil',
         element: <Acceuil />,
       },
-    ]
-  }
+      {
+        path: 'upload-doc',
+        element: <Creationdocuments />,
+      },
+      {
+        path: 'consulte-docs',
+        element: <ConsulteFolders />,
+      },
+    ],
+  },
 ]);
 
 export default router;

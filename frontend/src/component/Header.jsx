@@ -4,7 +4,7 @@ const Header = ({ username }) => {
   return (
     <div className='navbar pt-5'>
       <div className='flex-1 inline-flex items-center'>
-        <div className='mr-10 lg:mr-0'>
+        <div className='mr-10 lg:mr-3'>
           <label
             htmlFor='my-drawer-2'
             className='btn btn-primary p-3 shadow-none drawer-button items-center lg:hidden'
