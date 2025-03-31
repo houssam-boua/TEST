@@ -9,7 +9,7 @@ const RootIcon = () => (
     viewBox='0 0 24 24'
     strokeWidth={1.5}
     stroke='currentColor'
-    className='size-5 text-primary'
+        className='size-4 text-primary'
   >
     <path
       strokeLinecap='round'
@@ -26,7 +26,7 @@ const FolderIcon = () => (
     viewBox='0 0 24 24'
     strokeWidth={1.5}
     stroke='currentColor'
-    className='size-5'
+    className='size-4 text-base-content/80'
   >
     <path
       strokeLinecap='round'
@@ -43,7 +43,7 @@ const FileIcon = () => (
     viewBox='0 0 24 24'
     strokeWidth={1.5}
     stroke='currentColor'
-    className='size-5'
+    className='size-4 opacity-50'
   >
     <path
       strokeLinecap='round'
@@ -87,7 +87,7 @@ const TreeNode = ({ node, pathname, isRoot = false }) => {
 
 const Arborescence = ({ data, pathname }) => {
   return (
-    <div className='w-full border border-base-300/50 p-4 flex flex-col rounded-md'>
+    <div className='w-full h-full border border-base-300/50 p-4 flex flex-col rounded-md'>
       {data.map((node) => (
         <TreeNode
           key={node.path || node.name}
