@@ -1,0 +1,46 @@
+@import 'tailwindcss';
+@plugin "daisyui";
+
+@plugin "daisyui/theme" {
+  name: 'mytheme';
+  default: false;
+  prefersdark: false;
+  color-scheme: 'light';
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(93% 0 0);
+  --color-base-300: oklch(86% 0 0);
+  --color-base-content: oklch(27.807% 0.029 256.847);
+  --color-primary: oklch(59.32% 0.1126 225.9);
+  --color-primary-content: oklch(98% 0.003 247.858);
+  --color-secondary: oklch(91.78% 0.0315 211.55);
+  --color-secondary-content: oklch(30.59% 0.0445 224.42);
+  --color-accent: oklch(75.98% 0.204 56.72);
+  --color-accent-content: oklch(15.196% 0.04 56.72);
+  --color-neutral: oklch(30.59% 0.0445 224.42);
+  --color-neutral-content: oklch(100% 0 0);
+  --color-info: oklch(60.5% 0.1542 251.68);
+  --color-info-content: oklch(0% 0 0);
+  --color-success: oklch(63.83% 0.1899 137.04);
+  --color-success-content: oklch(0% 0 0);
+  --color-warning: oklch(82.78% 0.1573 82.02);
+  --color-warning-content: oklch(0% 0 0);
+  --color-error: oklch(59.24% 0.2059 27.19);
+  --color-error-content: oklch(0% 0 0);
+  --radius-selector: 0rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 0.5px;
+  --depth: 1;
+  --noise: 0;
+
+  --font-family-sans: 'Open', sans-serif;
+  --font-family-serif: 'Merriweather', serif;
+  --font-family-mono: 'Roboto Mono', monospace;
+  --font-family-logo: 'Bungee', cursive;
+  --font-family-inter: 'Inter', sans-serif;
+  --font-family-lato: 'Lato', sans-serif;
+
+  font-family: var(--font-family-lato);
+}
