@@ -1,72 +1,78 @@
+// pages/ConsulteFolders.jsx
 import { useLocation } from 'react-router-dom';
-import Arborescence from '../component/Arboresence';
 import React from 'react';
+import { useState } from 'react';
+import Arborescence from '../component/Arboresence';
+import FileViewer from '../component/FileViewer';
+import FileBrowserTabs from '../component/FileBrowserTabs';
+import FileProperties from '../component/FileProperties';
 
-const ConsulteFolders = () => {
-  const treeData = [
-    {
-      name: 'Veille reglementaire',
-      children: [
-        {
-          name: 'Applicabilite',
-          path: '/applicabilite',
-          children: [
-            { name: 'Sub-item 1', path: '/applicabilite/sub1' },
-            { name: 'Sub-item 2', path: '/applicabilite/sub2' },
-          ],
-        },
-        { name: 'Conformite', path: '/conformite' },
-        { name: 'Actions', path: '/actions' },
-      ],
-    },
-  ];
+const DEFAULT_TREE_DATA = [
+  {
+    name: 'Root',
+    children: [
+      {
+        name: 'Applicabilite',
+        path: '/docs',
+        children: [
+          {
+            name: 'CHD_SOM_Technical',
+            path: '/docs/CHD_SOM_Technical_Note_Flood_Risk.pdf',
+            size: '1024',
+            type: 'application/pdf',
+            createdAt: Date.now(),
+          },
+          {
+            name: 'Sub-item 2',
+            path: '/docs/Microsoft Word - 1147-S AMH LIIA MITC 367.docx',
+            size: '2048',
+            type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            createdAt: Date.now(),
+          },
+        ],
+      },
+      { name: 'Conformite', path: '/conformite' },
+      { name: 'Actions', path: '/actions' },
+    ],
+  },
+];
+
+const ConsulteFolders = ({ treeData = DEFAULT_TREE_DATA }) => {
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [error, setError] = useState(null);
   const location = useLocation();
+
+  const handleFileClick = (file) => {
+    setSelectedFile(file);
+    setError(null);
+  };
+
+  const handleError = (errorMessage) => {
+    setError(errorMessage);
+  };
 
   return (
     <div className='container mx-auto p-4'>
       <div className='flex flex-col lg:flex-row gap-1.5'>
-        <div className='w-full h-full lg:w-1/5 lg:h-full'>
-          <Arborescence data={treeData} pathname={location.pathname} />
+        <div className='w-full min-h-[450px] lg:w-1/5'>
+          <Arborescence
+            data={treeData}
+            pathname={location.pathname}
+            onFileClick={handleFileClick}
+          />
         </div>
 
         <div className='flex flex-col w-full lg:w-4/5 min-h-[650px] rounded-md'>
-          <div className='w-full h-fit'>
-            <Arborescence data={treeData} pathname={location.pathname} />
+          <div className='w-full border border-base-300/50 p-2 flex items-center justify-center min-h-[450px] rounded-md'>
+            <FileViewer file={selectedFile} onError={handleError} />
           </div>
-          {/* name of each tab group should be unique */}
-          <div className='flex-1'>
-            <div className=' mt-3 tabs gap-1.5  '>
-              <input
-                type='radio'
-                name='my_tabs_6'
-                className='tab checked:bg-primary checked:text-primary-content rounded-xs mb-2 p-1.5 '
-                aria-label='Proprietes'
-              />
-              <div className='tab-content bg-base-100 p-3 border border-base-300/50 rounded-md '>
-                Tab content 1
-              </div>
 
-              <input
-                type='radio'
-                name='my_tabs_6'
-                className='tab checked:bg-primary checked:text-primary-content rounded-xs mb-2 p-1.5 '
-                aria-label='Commentaires'
-                defaultChecked
-              />
-              <div className='tab-content bg-base-100 p-3 border border-base-300/50 rounded-md '>
-                Tab content 2
-              </div>
-
-              <input
-                type='radio'
-                name='my_tabs_6'
-                className='tab checked:bg-primary checked:text-primary-content rounded-xs mb-2 p-1.5 '
-                aria-label='Historiques'
-              />
-              <div className='tab-content bg-base-100 p-3 border border-base-300/50 rounded-md '>
-                Tab content 3
-              </div>
-            </div>
+          <div className='flex-1 h-full'>
+            <FileBrowserTabs selectedFile={selectedFile}>
+              <FileProperties file={selectedFile} />
+              <div>Comments section</div>
+              <div>History section</div>
+            </FileBrowserTabs>
           </div>
         </div>
       </div>
