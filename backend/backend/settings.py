@@ -11,6 +11,8 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import os
+from dotenv import load_dotenv
 
 
 # Define the custom user model
@@ -95,14 +97,17 @@ WSGI_APPLICATION = "backend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+# Load environment variables from .env file
+load_dotenv()
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": "docareadb",  # Replace with your PostgreSQL database name
-        "USER": "postgres",  # Replace with your PostgreSQL username
-        "PASSWORD": "ELHOUARI",  # Replace with your PostgreSQL password
-        "HOST": "localhost",  # Replace if using a remote database
-        "PORT": "5432",  # Default PostgreSQL port
+        "NAME": os.getenv("DB_NAME"),  # PostgreSQL database name from .env
+        "USER": os.getenv("DB_USER"),  # PostgreSQL username from .env
+        "PASSWORD": os.getenv("DB_PASSWORD"),  # PostgreSQL password from .env
+        "HOST": os.getenv("DB_HOST", "localhost"),  # Default to localhost if not set
+        "PORT": os.getenv("DB_PORT", "5432"),  # Default PostgreSQL port if not set
     }
 }
 
