@@ -2,10 +2,10 @@
 import React from 'react';
 
 const FileProperties = ({ file }) => {
-  if (!file) return <p>No file selected</p>;
+  if (!file) return <p>Aucune fichier</p>;
 
   return (
-    <div className='text-sm'>
+    <div className='text-sm  text-base-content/60 truncate'>
       <p>
         <span className='font-bold'>Nom :</span> {file.name}
       </p>

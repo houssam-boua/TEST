@@ -3,9 +3,10 @@ import { useLocation } from 'react-router-dom';
 import React from 'react';
 import { useState } from 'react';
 import Arborescence from '../component/Arboresence';
-import FileViewer from '../component/FileViewer';
 import FileBrowserTabs from '../component/FileBrowserTabs';
 import FileProperties from '../component/FileProperties';
+import FilePreview from '../component/FilePreview';
+import FileViewer from '../component/FileViewer';
 
 const DEFAULT_TREE_DATA = [
   {
@@ -16,7 +17,7 @@ const DEFAULT_TREE_DATA = [
         path: '/docs',
         children: [
           {
-            name: 'CHD_SOM_Technical',
+            name: 'Microsoft Word - 1147-S AMH LIIA MITC 367.docx',
             path: '/docs/CHD_SOM_Technical_Note_Flood_Risk.pdf',
             size: '1024',
             type: 'application/pdf',
@@ -54,7 +55,7 @@ const ConsulteFolders = ({ treeData = DEFAULT_TREE_DATA }) => {
   return (
     <div className='container mx-auto p-4'>
       <div className='flex flex-col lg:flex-row gap-1.5'>
-        <div className='w-full min-h-[450px] lg:w-1/5'>
+        <div className=' min-h-[450px] '>
           <Arborescence
             data={treeData}
             pathname={location.pathname}
@@ -62,8 +63,8 @@ const ConsulteFolders = ({ treeData = DEFAULT_TREE_DATA }) => {
           />
         </div>
 
-        <div className='flex flex-col w-full lg:w-4/5 min-h-[650px] rounded-md'>
-          <div className='w-full border border-base-300/50 p-2 flex items-center justify-center min-h-[450px] rounded-md'>
+        <div className='flex flex-col w-full min-h-[650px] rounded-md'>
+          <div className='w-auto border border-base-300/50 p-2 flex items-center justify-center h-auto resize-y cursor-s-resize min-h-[450px] rounded-md'>
             <FileViewer file={selectedFile} onError={handleError} />
           </div>
 

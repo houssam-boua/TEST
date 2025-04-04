@@ -1,4 +1,3 @@
-// components/file-previews/PDFPreview.jsx
 import React from 'react';
 
 const PDFPreview = ({ url, fileName }) => {

@@ -10,13 +10,13 @@ const Toolbar = ({ toolBarItems }) => {
           ) : (
             <>
               <li>
-                <a>Item 1</a>
+                <a>Titre 1 par defaut </a>
               </li>
               <li>
-                <a>Item 2</a>
+                <a>Titre 1 par defaut </a>
               </li>
               <li>
-                <a>Item 3</a>
+                <a>Titre 1 par defaut </a>
               </li>
             </>
           )}

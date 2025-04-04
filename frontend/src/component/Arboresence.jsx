@@ -67,19 +67,23 @@ const TreeNode = ({ node, pathname, isRoot = false, onFileClick }) => {
   return (
     <div
       onClick={() => onFileClick(node)}
-      className={`flex items-center gap-1 rounded-md cursor-pointer ${
+      className={`block rounded-md cursor-pointer ${
         pathname === node.path ? 'bg-primary/15 text-primary' : ''
       }`}
     >
-      <FileIcon />
-      {node.name}
+      <div className='flex gap-1'>
+        <div className='flex-shrink-0 pt-0.5'>
+          <FileIcon />
+        </div>
+        <span className='whitespace-normal break-words'>{node.name}</span>
+      </div>
     </div>
-  );
+  ); 
 };
 
 const Arborescence = ({ data, pathname, onFileClick }) => {
   return (
-    <div className='w-full h-full border border-base-300/50 p-4 flex flex-col rounded-md'>
+    <div className='w-full h-full border border-base-300/50 p-4 flex flex-col rounded-md resize-x overflow-auto cursor-e-resize '>
       {data.map((node) => (
         <TreeNode
           key={node.path || node.name}

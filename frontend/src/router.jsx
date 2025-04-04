@@ -8,6 +8,8 @@ import Creationdocuments from './pages/Creationdocuments';
 import Acceuil from './pages/Acceuil';
 import AdminLayout from './layouts/AdminLayout';
 import ConsulteFolders from './pages/ConsulteFolders';
+import GestionUtilisateurs from './pages/GestionUtilisateurs';
+import FluxTravail from './pages/FluxTravail';
 
 // const PrivateRoute = ({element})=>{
 //     return <Route element={element} />;
@@ -57,6 +59,14 @@ const router = createBrowserRouter([
       {
         path: 'consulte-docs',
         element: <ConsulteFolders />,
+      },
+      {
+        path: 'user-management',
+        element: <GestionUtilisateurs />,
+      },
+      {
+        path: 'workflow-config',
+        element: <FluxTravail />,
       },
     ],
   },
