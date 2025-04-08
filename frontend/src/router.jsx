@@ -9,8 +9,9 @@ import Acceuil from './pages/Acceuil';
 import AdminLayout from './layouts/AdminLayout';
 import ConsulteFolders from './pages/ConsulteFolders';
 import GestionUtilisateurs from './pages/GestionUtilisateurs';
+import HierarchieVue from './pages/HierarchieVue';
 import FluxTravail from './pages/FluxTravail';
-
+import HistoriqueVue from './pages/HistoriqueVue';
 // const PrivateRoute = ({element})=>{
 //     return <Route element={element} />;
 // }
@@ -61,13 +62,22 @@ const router = createBrowserRouter([
         element: <ConsulteFolders />,
       },
       {
+        path: 'tree-vue',
+        element: <HierarchieVue />,
+      },
+
+      {
         path: 'user-management',
         element: <GestionUtilisateurs />,
       },
       {
-        path: 'workflow-config',
+        path: 'workflow-list',
         element: <FluxTravail />,
       },
+      {
+        path: 'history',
+        element: <HistoriqueVue/>,
+    }
     ],
   },
 ]);

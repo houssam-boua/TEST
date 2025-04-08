@@ -25,6 +25,10 @@ const FileProperties = ({ file }) => {
         <span className='font-bold'>Date de creation : </span>
         {new Date(file.createdAt).toLocaleString()}
       </p>
+
+      <p>
+        <span className='font-bold'>Tags: </span>
+      </p>
     </div>
   );
 };

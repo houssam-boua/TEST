@@ -165,10 +165,7 @@ function AdminLayout() {
       className='hover:bg-secondary/40 rounded transition duration-200 ease-in-out'
       onClick={() => handleSidebarClick('Configuration de workflow')}
     >
-      <Link
-        className='text-inherit flex items-center p-2'
-        to={'workflow-config'}
-      >
+      <Link className='text-inherit flex items-center p-2' to={'workflow-list'}>
         <svg
           xmlns='http://www.w3.org/2000/svg'
           fill='none'
@@ -187,7 +184,23 @@ function AdminLayout() {
       </Link>
     </li>,
 
-  
+    // <li
+    //   key='7'
+    //   className='hover:bg-secondary/40 rounded transition duration-200 ease-in-out'
+    //   onClick={() => handleSidebarClick('Configuration de workflow')}
+    // >
+    //   <details open className=''>
+    //     <summary>Parent</summary>
+    //     <ul>
+    //       <li>
+    //         <a>Submenu 1</a>
+    //       </li>
+    //       <li>
+    //         <a>Submenu 2</a>
+    //       </li>
+    //     </ul>
+    //   </details>
+    // </li>,
   ];
 
   return (

@@ -83,7 +83,7 @@ const TreeNode = ({ node, pathname, isRoot = false, onFileClick }) => {
 
 const Arborescence = ({ data, pathname, onFileClick }) => {
   return (
-    <div className='w-full h-full border border-base-300/50 p-4 flex flex-col rounded-md resize-x overflow-auto cursor-e-resize '>
+  <div className='w-72 h-[90%] overflow-y-scroll  p-4 flex flex-col rounded-md resize-x overflow-auto cursor-e-resize '>
       {data.map((node) => (
         <TreeNode
           key={node.path || node.name}

@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
+import CheckboxSelect from '../component/CheckboxSelect';
 
 const Creationdocuments = () => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
+   const [selectedTags, setSelectedTags] = useState([]);
+   const availableTags = ['Urgent', 'Review', 'Archive', 'Confidential'];
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -122,6 +125,15 @@ const Creationdocuments = () => {
                 <textarea className='textarea h-24 w-full'></textarea>
               </fieldset>
             </fieldset>
+
+            <CheckboxSelect
+              options={availableTags}
+              selectedValues={selectedTags}
+              onChange={setSelectedTags}
+              label='Tags'
+              required
+              placeholder='Select tags'
+            />
 
             {/* File details */}
           </div>

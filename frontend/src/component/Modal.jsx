@@ -8,8 +8,8 @@ const Modal = ({
   title,
   children,
   onConfirm,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel',
+  confirmText = 'Confirmer',
+  cancelText = 'Annuler',
   confirmColor = 'btn-primary',
 }) => {
   // Close the modal when ESC is pressed or backdrop is clicked
@@ -33,7 +33,7 @@ const Modal = ({
       open={isOpen}
     >
       <div className='modal-box'>
-        <h3 className='font-bold text-lg'>{title}</h3>
+        <h3 className='font-bold'>{title}</h3>
         <div className='py-4'>{children}</div>
         <div className='modal-action'>
           <form method='dialog' className='flex gap-2'>

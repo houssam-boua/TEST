@@ -177,6 +177,8 @@ const GestionUtilisateurs = () => {
     },
   ];
 
+  
+
   return (
     <>
       <Toolbar toolBarItems={sidebarContent.map((item) => item.content)} />

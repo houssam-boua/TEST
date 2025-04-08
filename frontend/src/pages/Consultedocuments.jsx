@@ -138,6 +138,7 @@ const Consultedocuments = () => {
   const handleSelectedRows = (selectedRows) => {
     console.log('Selected Rows:', selectedRows);
   };
+  
 
   return (
     <>

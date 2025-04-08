@@ -1,21 +1,67 @@
 import React, { useState } from 'react';
-import {
- 
-  FiChevronDown,
-  FiChevronRight,
-} from 'react-icons/fi';
-import { HiFolder, HiOutlineDocument, HiOutlineFolder } from 'react-icons/hi2';
 
-const NestedTable = ({ data, columns }) => {
+const NestedTable = ({
+  data,
+  columns,
+  icons = {},
+  rowClassName = '',
+  headerClassName = '',
+  tableClassName = '',
+  containerClassName = '',
+  onRowSelect,
+  onRowExpand,
+  indentSize = 20,
+  showCheckboxes = true,
+}) => {
+  // Default icons if none provided
+  const defaultIcons = {
+    folder: (
+      <svg className='w-4 h-4 fill-current text-primary' viewBox='0 0 20 20'>
+        <path d='M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z' />
+      </svg>
+    ),
+    file: (
+      <svg className='w-4 h-4 fill-current text-gray-400' viewBox='0 0 20 20'>
+        <path
+          fillRule='evenodd'
+          d='M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z'
+          clipRule='evenodd'
+        />
+      </svg>
+    ),
+    expand: (
+      <svg className='w-4 h-4 fill-current' viewBox='0 0 20 20'>
+        <path
+          fillRule='evenodd'
+          d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z'
+          clipRule='evenodd'
+        />
+      </svg>
+    ),
+    collapse: (
+      <svg className='w-4 h-4 fill-current' viewBox='0 0 20 20'>
+        <path
+          fillRule='evenodd'
+          d='M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z'
+          clipRule='evenodd'
+        />
+      </svg>
+    ),
+  };
+
+  // Merge default icons with custom ones
+  const mergedIcons = { ...defaultIcons, ...icons };
+
   const [expandedRows, setExpandedRows] = useState([]);
   const [selectedRows, setSelectedRows] = useState([]);
 
   const toggleExpand = (rowId) => {
-    setExpandedRows((prev) =>
-      prev.includes(rowId)
-        ? prev.filter((id) => id !== rowId)
-        : [...prev, rowId],
-    );
+    const newExpandedRows = expandedRows.includes(rowId)
+      ? expandedRows.filter((id) => id !== rowId)
+      : [...expandedRows, rowId];
+
+    setExpandedRows(newExpandedRows);
+    if (onRowExpand) onRowExpand(rowId, !expandedRows.includes(rowId));
   };
 
   const handleRowSelect = (rowId, isParent, childrenIds) => {
@@ -24,7 +70,6 @@ const NestedTable = ({ data, columns }) => {
 
       if (newSelection.includes(rowId)) {
         newSelection = newSelection.filter((id) => id !== rowId);
-
         if (isParent) {
           newSelection = newSelection.filter((id) => !childrenIds.includes(id));
         }
@@ -39,14 +84,15 @@ const NestedTable = ({ data, columns }) => {
         }
       }
 
+      if (onRowSelect) onRowSelect(newSelection);
       return newSelection;
     });
   };
 
   const someChildrenSelected = (children) => {
     return (
-      children.some((child) => selectedRows.includes(child.id)) &&
-      !children.every((child) => selectedRows.includes(child.id))
+      children?.some((child) => selectedRows.includes(child.id)) &&
+      !children?.every((child) => selectedRows.includes(child.id))
     );
   };
 
@@ -59,46 +105,54 @@ const NestedTable = ({ data, columns }) => {
     const isSelected = selectedRows.includes(row.id);
     const isIndeterminate = hasChildren && someChildrenSelected(row.children);
 
+    const rowClasses = [
+      rowClassName,
+      isSelected ? 'bg-neutral/10' : '',
+      row.rowClassName || '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
     return (
       <React.Fragment key={row.id}>
-        <tr className={`${isSelected ? 'bg-neutral/10' : ''}`}>
+        <tr className={rowClasses}>
           <td
-            style={{ paddingLeft: `${depth * 20}px` }}
+            style={{ paddingLeft: `${depth * indentSize}px` }}
             className='flex items-center'
           >
-            <input
-              type='checkbox'
-              checked={isSelected}
-              ref={(el) => el && (el.indeterminate = isIndeterminate)}
-              onChange={() => handleRowSelect(row.id, isParent, childrenIds)}
-              className='checkbox checkbox-sm checkbox-neutral w-3 h-3 transition duration-150 ease-in-out mx-3'
-            />
+            {showCheckboxes && (
+              <input
+                type='checkbox'
+                checked={isSelected}
+                ref={(el) => el && (el.indeterminate = isIndeterminate)}
+                onChange={() => handleRowSelect(row.id, isParent, childrenIds)}
+                className='checkbox checkbox-sm checkbox-neutral w-3 h-3 transition duration-150 ease-in-out mx-3'
+              />
+            )}
+
             {hasChildren ? (
               <button
                 onClick={() => toggleExpand(row.id)}
                 className='flex items-center focus:outline-none'
+                aria-label={isExpanded ? 'Collapse' : 'Expand'}
               >
-                {isExpanded ? (
-                  <FiChevronDown className='mr-1' />
-                ) : (
-                  <FiChevronRight className='mr-1' />
-                )}
-                <HiFolder className='mr-2 fill-primary' />
+                {isExpanded ? mergedIcons.collapse : mergedIcons.expand}
+                {mergedIcons.folder}
               </button>
             ) : (
-              <HiOutlineDocument className='text-primary ml-3 mr-2' />
+              mergedIcons.file
             )}
-            {row.name}
+
+            <span className='ml-2'>{row.name}</span>
           </td>
 
           {columns.map((column) => (
-            <td key={column.key} className='py-2 px-4'>
-              {row[column.key]}
+            <td key={`${row.id}-${column.key}`} className='py-2 px-4'>
+              {column.render ? column.render(row) : row[column.key]}
             </td>
           ))}
         </tr>
 
-        {/* Child Rows */}
         {hasChildren &&
           isExpanded &&
           row.children.map((child) => renderRow(child, depth + 1))}
@@ -107,9 +161,11 @@ const NestedTable = ({ data, columns }) => {
   };
 
   return (
-    <div className='w-full overflow-x-auto border border-base-content/5 bg-base-100'>
-      <table className='table'>
-        <thead className='bg-secondary/30'>
+    <div
+      className={`w-full overflow-x-auto border border-base-content/5 bg-base-100 ${containerClassName}`}
+    >
+      <table className={`table ${tableClassName}`}>
+        <thead className={`bg-secondary/30 ${headerClassName}`}>
           <tr>
             <th className='px-6 py-2 text-left text-xs font-medium tracking-wider'>
               Name
