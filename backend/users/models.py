@@ -6,6 +6,9 @@ from rest_framework.authtoken.models import Token
 
 
 class Departement(models.Model):
+    """
+    Represents a department within the organization.
+    """
     dep_name = models.CharField(max_length=100)
     dep_type = models.CharField(max_length=100)
 
@@ -14,6 +17,9 @@ class Departement(models.Model):
 
 
 class Role(models.Model):
+    """
+    Represents a role assigned to a user.
+    """
     role_name = models.CharField(max_length=100)
     role_type = models.TextField(max_length=100)
 
@@ -22,6 +28,10 @@ class Role(models.Model):
 
 
 class User(AbstractUser):
+    """
+    Custom user model extending Django's AbstractUser.
+    Includes additional fields for role and department.
+    """
     # Note: The groups and user_permissions fields are already provided by AbstractUser.
     role = models.ForeignKey(Role, on_delete=models.CASCADE)
     departement = models.ForeignKey(Departement, on_delete=models.CASCADE)
