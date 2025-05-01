@@ -126,7 +126,7 @@ const NestedTable = ({
                 checked={isSelected}
                 ref={(el) => el && (el.indeterminate = isIndeterminate)}
                 onChange={() => handleRowSelect(row.id, isParent, childrenIds)}
-                className='checkbox checkbox-sm checkbox-neutral w-3 h-3 transition duration-150 ease-in-out mx-3'
+                className='checkbox checkbox-sm w-3 h-3 transition duration-150 ease-in-out mx-3'
               />
             )}
 

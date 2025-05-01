@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import CheckboxSelect from '../component/CheckboxSelect';
+import { HiArrowUpTray } from 'react-icons/hi2';
 
 const Creationdocuments = () => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-   const [selectedTags, setSelectedTags] = useState([]);
-   const availableTags = ['Urgent', 'Review', 'Archive', 'Confidential'];
+  const [selectedTags, setSelectedTags] = useState([]);
+  const availableTags = ['Urgent', 'Review', 'Archive', 'Confidential'];
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
@@ -47,43 +48,22 @@ const Creationdocuments = () => {
     <div className='container mx-auto p-4'>
       <div className='flex flex-col lg:flex-row gap-1.5'>
         {/* Left side: File Uploader - Full width on mobile, 1/3 on desktop */}
-        <div className='w-full lg:w-3/12 border border-base-300/50 p-4 flex flex-col rounded-md'>
-          <h2 className='text-lg font-semibold text-base-content pb-3'>
-            Télécharger un fichier
-          </h2>
-
+        <div className='w-full lg:w-3/12 border h-full border-base-300/50 p-4 flex flex-col rounded-md'>
           <div className='flex-1'>
-            <div className='flex items-center justify-center w-full'>
+            <div className='flex items-center justify-center w-full gap-x-2'>
               <label
                 htmlFor='dropzone-file'
-                className='flex flex-col items-center justify-center w-full h-48 md:h-64 border-2 border-neutral/40 border-dashed rounded-lg cursor-pointer bg-base-200/10 hover:border-neutral/60 hover:bg-base-200/40 transition-colors duration-300'
+                className='flex flex-col items-center justify-center w-full h-fit border-2 border-neutral/20 border-dashed rounded-lg cursor-pointer bg-base-200/10 hover:border-neutral/60 hover:bg-base-200/40 transition-colors duration-300'
               >
                 <div className='flex flex-col items-center justify-center pt-5 pb-6'>
-                  <svg
-                    className='w-8 h-8 mb-4 text-primary/60'
-                    aria-hidden='true'
-                    xmlns='http://www.w3.org/2000/svg'
-                    fill='none'
-                    viewBox='0 0 20 16'
-                  >
-                    <path
-                      stroke='currentColor'
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth='2'
-                      d='M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2'
-                    />
-                  </svg>
-                  <p className='mb-2 text-sm text-base-500 text-center'>
+                  <HiArrowUpTray className='w-8 h-8 text-neutral' />
+                  <p className='my-2 text-sm text-base-500 text-center '>
                     <span className='font-semibold'>
-                      Cliquez pour télécharger ou {''}
+                      Cliquez pour télécharger
                     </span>
-                    glisser-déposer
-                  </p>
-                  <p className='text-xs text-base-500 text-center'>
-                    SVG, PNG, JPG, GIF, PDF, DOC, XLS (MAX. 10MB)
                   </p>
                 </div>
+
                 <input
                   id='dropzone-file'
                   type='file'
@@ -158,13 +138,13 @@ const Creationdocuments = () => {
         </div>
 
         {/* Right side: Preview Field - Full width on mobile, 2/3 on desktop */}
-        <div className='w-full lg:w-4/5 border border-base-300/50  p-2 flex items-center justify-center min-h-[650px] rounded-md'>
+        <div className='w-full lg:w-4/5 border border-base-300/50  p-2 flex h-full rounded-md'>
           {preview ? (
             preview.type === 'image' ? (
               <img
                 src={preview.url}
                 alt='File preview'
-                className='max-w-full max-h-[70vh] object-contain'
+                className='max-w-fit max-h-[70vh] object-contain'
               />
             ) : preview.type === 'document' ? (
               <iframe

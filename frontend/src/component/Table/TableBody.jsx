@@ -1,7 +1,12 @@
 import React from 'react';
 import TableRow from './TableRow';
 
-const TableBody = ({ rows, selectedRows, onCheckboxChange }) => {
+const TableBody = ({
+  rows,
+  selectedRows,
+  onCheckboxChange,
+  statusColumnIndex,
+}) => {
   return (
     <tbody className='divide-y divide-base-200'>
       {rows.map((row, rowIndex) => (
@@ -11,6 +16,7 @@ const TableBody = ({ rows, selectedRows, onCheckboxChange }) => {
           rowIndex={rowIndex}
           isSelected={selectedRows.includes(rowIndex)}
           onCheckboxChange={onCheckboxChange}
+          statusColumnIndex={statusColumnIndex}
         />
       ))}
     </tbody>
