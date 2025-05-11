@@ -9,7 +9,10 @@ from .models import User, Role, Departement
 from .serializers import UserSerializer, RoleSerializer, DepartementSerializer
 
 class UserViewSet(viewsets.ModelViewSet):
-    '''User viewset for CRUD operations'''
+    """
+    ViewSet for managing User objects.
+    Provides CRUD operations for User model.
+    """
     queryset = User.objects.all()
     serializer_class = UserSerializer
 

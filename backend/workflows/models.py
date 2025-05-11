@@ -2,7 +2,10 @@ from django.db import models
 
 
 class Workflow(models.Model):
-    '''This is the workflow model'''
+    """
+    Represents a workflow in the system.
+    Workflows are associated with documents and have a status.
+    """
     nom = models.CharField(max_length=100)
     description = models.TextField()
     etat = models.CharField(max_length=50)
@@ -10,7 +13,10 @@ class Workflow(models.Model):
 
 
 class Task(models.Model):
-    '''This is the task model'''
+    """
+    Represents a task within a workflow.
+    Tasks have deadlines, priorities, and assigned users.
+    """
     PRIORITY_CHOICES = [
         ("urgent", "Urgent"),
         ("high", "High"),

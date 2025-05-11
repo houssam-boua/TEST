@@ -3,12 +3,16 @@ from users.models import User, Departement
 
 
 class Document(models.Model):
+    """
+    Represents a document in the system.
+    Includes metadata such as title, type, status, and owner.
+    """
     doc_title = models.CharField(max_length=255)
     doc_type = models.CharField(max_length=50)
     doc_creation_date = models.DateTimeField(auto_now_add=True)
     doc_modification_date = models.DateTimeField(auto_now=True)
     # doc_deletion_date = models.DateTimeField(null=True, blank=True)
-    doc_path = models.FileField(upload_to="documents/")
+    doc_path = models.FileField(upload_to="media/")
     doc_status = models.CharField(max_length=50)
     doc_size = models.FloatField()
     doc_format = models.CharField(max_length=20)

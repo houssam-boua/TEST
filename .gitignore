@@ -2,3 +2,41 @@
 env/
 myenv/
 venv/
+screenshots/
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+# Ignore Python bytecode files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Ignore log files
+*.log
+# Ignore data files
+*.csv
+*.json
+*.xlsx
+*.xls
+# Ignore model files
+*.h5
+*.pkl
+*.pt
+# Ignore configuration files
+*.yaml
+*.yml
+*.ini
+# Ignore temporary files
+*.tmp
+*.temp
+# Ignore IDE specific files
+*.idea/
+*.vscode/
+# Ignore macOS specific files
+.DS_Store
+# Ignore Windows specific files
+Thumbs.db
+# Ignore backup files
+*~
+*.bak
+# Ignore environment files
+environment.yml
+
