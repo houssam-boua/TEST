@@ -16,6 +16,7 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+BACKEND_DIR = "backend/media/"
 
 # Define the custom user model
 AUTH_USER_MODEL = "users.User"
