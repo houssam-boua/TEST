@@ -15,12 +15,11 @@ class DocumentListCreateView(APIView):
     def post(self, request):
         # Extract file and custom path
         file = request.FILES.get('file')
-        path = request.data.get('doc_path')  # e.g., "projects/Alpha"
+        path = request.data.get('doc_path')  
 
         # Validate required fields
         required_fields = [
-            "doc_title", "doc_type", "doc_category", "doc_status", "doc_path",
-            "doc_owner", "doc_departement", "doc_description"
+           "file", "doc_category", "doc_status", "doc_path", "doc_owner", "doc_departement", "doc_description"
         ]
         for field in required_fields:
             if not request.data.get(field):
@@ -30,6 +29,7 @@ class DocumentListCreateView(APIView):
 
         # Create custom folder
         full_dir = os.path.join(settings.MEDIA_ROOT, path)
+        relative_dir = os.path.join(settings.BACKEND_DIR, path)
 
         if not os.path.exists(full_dir):
             try:
@@ -39,6 +39,8 @@ class DocumentListCreateView(APIView):
 
         # Save file manually
         file_path = os.path.join(full_dir, file.name)
+        file_relative_path = os.path.join(relative_dir, file.name)
+
         with open(file_path, 'wb+') as destination:
             for chunk in file.chunks():
                 destination.write(chunk)
@@ -57,14 +59,15 @@ class DocumentListCreateView(APIView):
             return Response({'error': 'Invalid departement ID'}, status=400)
 
         doc_size = file.size
-        doc_format = os.path.splitext(file.name)[1].lstrip('.')  # e.g., 'pdf'
+        doc_format = file.name.split('.')[-1] if '.' in file.name else ''
+        doc_title = file.name
 
         document = Document.objects.create(
-            doc_title=request.data['doc_title'],
-            doc_type=request.data['doc_type'],
+            doc_title=doc_title,
+            doc_type=doc_format,
             doc_category=request.data['doc_category'],
             doc_status=request.data['doc_status'],
-            doc_path=file_path,
+            doc_path=file_relative_path,
             doc_owner=owner,
             doc_departement=departement,
             doc_format=doc_format,
@@ -73,10 +76,10 @@ class DocumentListCreateView(APIView):
             doc_comment=request.data['doc_comment'],
         )
 
+        serializer = DocumentSerializer(document)
         return Response({
-            'status': 'uploaded',
-            'document_id': document.id,
-            'file_path': f'{path}/{file.name}'
+            'message': 'document uploaded',
+            'document': serializer.data
         }, status=201)
 
     def get(self, request):
@@ -103,7 +106,6 @@ class DocumentDetailView(APIView):
         document.delete()
         return Response({'status': 'deleted'}, status=204)
 
-
 @csrf_exempt
 def create_folder(request):
     if request.method == 'POST':
@@ -113,4 +115,4 @@ def create_folder(request):
 
         full_path = os.path.join(settings.MEDIA_ROOT, folder_path)
         os.makedirs(full_path, exist_ok=True)
-        return JsonResponse({'status': 'created', 'path': folder_path})
+        return Response({'status': 'created', 'path': folder_path}, status=201)
