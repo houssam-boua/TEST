@@ -55,7 +55,12 @@ function AdminLayout() {
           </li>
 
           <li>
-            <a>Submenu 2</a>
+            <Link
+              className='text-inherit flex items-center p-2'
+              to={'tree-vue'}
+            >
+              Visualiser
+            </Link>
           </li>
         </ul>
       </details>

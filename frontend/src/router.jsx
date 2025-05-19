@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, Route } from 'react-router-dom';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import React from 'react';
 import UserLayout from './layouts/UserLayout';
@@ -12,9 +12,30 @@ import GestionUtilisateurs from './pages/GestionUtilisateurs';
 import HierarchieVue from './pages/HierarchieVue';
 import FluxTravail from './pages/FluxTravail';
 import HistoriqueVue from './pages/HistoriqueVue';
-// const PrivateRoute = ({element})=>{
-//     return <Route element={element} />;
-// }
+import { getToken } from './services/apiConnection';
+
+// Private Route component
+const PrivateRoute = ({ children }) => {
+  const isAuthenticated = !!getToken();
+  return isAuthenticated ? children : <Navigate to='/login' replace />;
+};
+
+// Admin Route component (extends PrivateRoute with role check)
+const AdminRoute = ({ children }) => {
+  return getToken() === 'admin' ? (
+    <PrivateRoute>{children}</PrivateRoute>
+  ) : (
+    <Navigate to='/login' replace />
+  );
+};
+
+const UserRoute = ({ children }) => {
+  return getToken() === 'user' ? (
+    <PrivateRoute>{children}</PrivateRoute>
+  ) : (
+    <Navigate to='/login' replace />
+  );
+};
 
 const router = createBrowserRouter([
   {
@@ -29,7 +50,11 @@ const router = createBrowserRouter([
   },
   {
     path: '/u',
-    element: <UserLayout />,
+    element: (
+      <UserRoute>
+        <UserLayout />
+      </UserRoute>
+    ),
     children: [
       {
         path: 'list-docs',
@@ -46,8 +71,12 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: 'a',
-    element: <AdminLayout />,
+    path: '/a',
+    element: (
+      <AdminRoute>
+        <AdminLayout />
+      </AdminRoute>
+    ),
     children: [
       {
         path: 'acceuil',
@@ -65,7 +94,6 @@ const router = createBrowserRouter([
         path: 'tree-vue',
         element: <HierarchieVue />,
       },
-
       {
         path: 'user-management',
         element: <GestionUtilisateurs />,
@@ -76,9 +104,14 @@ const router = createBrowserRouter([
       },
       {
         path: 'history',
-        element: <HistoriqueVue/>,
-    }
+        element: <HistoriqueVue />,
+      },
     ],
+  },
+  // Fallback route for unmatched paths
+  {
+    path: '*',
+    element: <Navigate to='/login' replace />,
   },
 ]);
 

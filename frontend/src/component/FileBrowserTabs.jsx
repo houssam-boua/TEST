@@ -3,7 +3,7 @@ import React from 'react';
 
 const FileBrowserTabs = ({ selectedFile, children }) => {
   return (
-    <div className='text-sm mt-3 tabs gap-1.5 '>
+    <div className='text-sm mt-1 tabs gap-1.5 '>
       <input
         type='radio'
         name='file_browser_tabs'

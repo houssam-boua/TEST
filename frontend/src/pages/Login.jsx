@@ -1,6 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { login } from '../services/userServices';
+import { getUserData } from '../services/apiConnection';
 
 const Login = () => {
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const navigate = useNavigate();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const reponse = await login(email, password);
+      console.log('reponse', reponse);
+    } catch (err) {
+      console.error('Login failed:', err);
+    }
+  };
+
+  
+
+  
   return (
     <div className='p-3 space-y-3 md:mt-0 sm:max-w-md xl:p-0 xl:mt-10 xl:max-w-none xl:w-96 mx-auto md:h-screen px-6 py-8'>
       <div className='w-full card'>
@@ -14,7 +34,11 @@ const Login = () => {
               Connexion
             </h1>
           </div>
-          <form className='space-y-4 md:space-y-4 card-body ' action='#'>
+          {/* {error && <div className='error'>{error}</div>} */}
+          <form
+            className='space-y-4 md:space-y-4 card-body '
+            onSubmit={handleSubmit}
+          >
             <div>
               <label
                 htmlFor='username'
@@ -26,6 +50,9 @@ const Login = () => {
                 name='username'
                 id='username'
                 type='text'
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
                 placeholder=''
                 className='bg-base-200/10 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5'
               />
@@ -42,7 +69,10 @@ const Login = () => {
                 id='password'
                 type='password'
                 placeholder=''
+                onChange={(e) => setPassword(e.target.value)}
+                value={password}
                 className='bg-base-200/10 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5'
+                required
               />
             </div>
 
@@ -50,7 +80,10 @@ const Login = () => {
               <span id='forgetpasswordlink' className='text-base text-primary'>
                 Mot de passe oublie?
               </span>
-              <button className='w-full rounded bg-neutral text-base text-neutral-content p-1.5 '>
+              <button
+                type='submit'
+                className='w-full rounded bg-neutral text-base text-neutral-content p-1.5 '
+              >
                 Se connecter
               </button>
             </div>
