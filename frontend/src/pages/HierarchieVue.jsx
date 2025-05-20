@@ -5,11 +5,12 @@ import { useState } from 'react';
 import Arborescence from '../component/Arboresence';
 import FileBrowserTabs from '../component/FileBrowserTabs';
 import FileProperties from '../component/FileProperties';
+import FilePreview from '../component/FilePreview';
 import FileViewer from '../component/FileViewer';
 import Filters from '../component/Filters';
 import Toolbar from '../component/Toolbar';
 import { HiArrowSmallLeft, HiCube } from 'react-icons/hi2';
- 
+
 const DEFAULT_TREE_DATA = [
   {
     name: 'Root',
@@ -94,7 +95,7 @@ const ConsulteFolders = ({ treeData = DEFAULT_TREE_DATA }) => {
 
   return (
     <>
-      {/* <Toolbar toolBarItems={sidebarContent.map((item) => item.content)} /> */}
+      <Toolbar toolBarItems={sidebarContent.map((item) => item.content)} />
 
       <div className='container mx-auto p-4'>
         <div className='flex flex-col lg:flex-row gap-1.5'>

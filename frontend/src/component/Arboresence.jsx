@@ -44,7 +44,7 @@ const FileIcon = () => (
 const TreeNode = ({ node, pathname, isRoot = false, onFileClick }) => {
   if (node.children) {
     return (
-      <details >
+      <details open>
         <summary className='text-sm flex items-center gap-2 cursor-pointer hover:underline'>
           {isRoot ? <RootIcon /> : <FolderIcon />}
           {node.name}
@@ -83,7 +83,7 @@ const TreeNode = ({ node, pathname, isRoot = false, onFileClick }) => {
 
 const Arborescence = ({ data, pathname, onFileClick }) => {
   return (
-  <div className='w-xs h-fit max-h-96 overflow-y-scroll  p-4 flex flex-col rounded-md resize-x overflow-auto cursor-e-resize bg-base-300'> 
+  <div className='w-72 h-[90%] overflow-y-scroll  p-4 flex flex-col rounded-md resize-x overflow-auto cursor-e-resize '>
       {data.map((node) => (
         <TreeNode
           key={node.path || node.name}

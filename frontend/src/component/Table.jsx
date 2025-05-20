@@ -1,15 +1,8 @@
-import React, { useState } from 'react';
+import React,{ useState } from 'react';
 import TableBody from './Table/TableBody';
 import TableHeader from './Table/TableHeader';
 
-const Table = ({
-  headers,
-  rows,
-  onSelect,
-  statusColumnIndex = 2, // Default to 2 (backward compatible)
-  type = 'default', // 'default' | 'collapsible'
-  collapseContent, // Optional: Only used when type='collapsible'
-}) => {
+const Table = ({ headers, rows, onSelect }) => {
   const [selectedRows, setSelectedRows] = useState([]);
 
   const handleCheckboxChange = (rowIndex) => {
@@ -42,7 +35,6 @@ const Table = ({
           rows={rows}
           selectedRows={selectedRows}
           onCheckboxChange={handleCheckboxChange}
-          statusColumnIndex={statusColumnIndex}
         />
       </table>
     </div>

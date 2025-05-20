@@ -1,7 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { login } from '../services/userServices';
-import { getUserData } from '../services/apiConnection';
+import React from 'react';
 
 const Login = () => {
 
@@ -33,11 +30,7 @@ const Login = () => {
               Connexion
             </h1>
           </div>
-          {/* {error && <div className='error'>{error}</div>} */}
-          <form
-            className='space-y-4 md:space-y-4 card-body '
-            onSubmit={handleSubmit}
-          >
+          <form className='space-y-4 md:space-y-4 card-body ' action='#'>
             <div>
               <label
                 htmlFor='username'
@@ -49,9 +42,6 @@ const Login = () => {
                 name='username'
                 id='username'
                 type='text'
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
                 placeholder=''
                 className='bg-base-200/10 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5'
               />
@@ -68,10 +58,7 @@ const Login = () => {
                 id='password'
                 type='password'
                 placeholder=''
-                onChange={(e) => setPassword(e.target.value)}
-                value={password}
                 className='bg-base-200/10 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5'
-                required
               />
             </div>
 
@@ -79,10 +66,7 @@ const Login = () => {
               <span id='forgetpasswordlink' className='text-base text-primary'>
                 Mot de passe oublie?
               </span>
-              <button
-                type='submit'
-                className='w-full rounded bg-neutral text-base text-neutral-content p-1.5 '
-              >
+              <button className='w-full rounded bg-neutral text-base text-neutral-content p-1.5 '>
                 Se connecter
               </button>
             </div>

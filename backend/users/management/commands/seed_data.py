@@ -31,9 +31,10 @@ class Command(BaseCommand):
         # Create fake Roles
         self.stdout.write("Creating fake Roles...")
         roles = []
-        for _ in range(5):
+        role_names = ["admin", "validator", "user"]
+        for name in role_names:
             role = Role.objects.create(
-                role_name=fake.job(), role_type=fake.catch_phrase()
+            role_name=name, role_type=fake.catch_phrase()
             )
             roles.append(role)
         self.stdout.write(self.style.SUCCESS("Successfully created Roles."))

@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Route } from 'react-router-dom';
 import Login from './pages/Login';
 import React from 'react';
 import UserLayout from './layouts/UserLayout';
@@ -33,9 +33,9 @@ const router = createBrowserRouter([
   {
     path: '/u',
     element: (
-      <ProtectedRoute allowedRoles={['user']}>
+      <UserRoute>
         <UserLayout />
-      </ProtectedRoute>
+      </UserRoute>
     ),
     children: [
       {
@@ -59,9 +59,9 @@ const router = createBrowserRouter([
   {
     path: '/a',
     element: (
-      <ProtectedRoute allowedRoles={['admin']}>
+      <AdminRoute>
         <AdminLayout />
-      </ProtectedRoute>
+      </AdminRoute>
     ),
     children: [
       {
@@ -84,6 +84,7 @@ const router = createBrowserRouter([
         path: 'tree-vue',
         element: <HierarchieVue />,
       },
+
       {
         path: 'user-management',
         element: <GestionUtilisateurs />,
@@ -94,27 +95,8 @@ const router = createBrowserRouter([
       },
       {
         path: 'history',
-        element: <HistoriqueVue />,
-      },
-    ],
-  },
-  {
-    path: '/v',
-    element: (
-      <ProtectedRoute allowedRoles={['validator']}>
-        <ValidatorLayout />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <Navigate to="/v/acceuil" replace />,
-      },
-      {
-        path: 'acceuil',
-        element: <Acceuil />,
-      },
-      // Add more validator-specific routes here
+        element: <HistoriqueVue/>,
+    }
     ],
   },
   // Fallback route for unmatched paths

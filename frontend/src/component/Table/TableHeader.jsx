@@ -3,7 +3,7 @@ import TableCheckbox from './TableCheckbox';
 
 const TableHeader = ({ headers, selectedCount, totalRows, onSelectAll }) => {
   return (
-    <thead className={`bg-secondary/30`}>
+    <thead className='bg-secondary/30'>
       <tr>
         <th className='px-6 py-2 text-left text-xs font-medium tracking-wider'>
           <TableCheckbox

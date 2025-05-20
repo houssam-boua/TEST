@@ -1,8 +1,8 @@
 import React from 'react';
 
-const TableCell = ({ cell, index, statusColumnIndex }) => {
-  // Apply badge styling only if this is the status column
-  if (index === statusColumnIndex) {
+const TableCell = ({ cell, index }) => {
+  if (index === 2) {
+    // Status column
     return (
       <span
         className={`badge-sm rounded-lg ${

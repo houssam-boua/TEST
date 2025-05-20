@@ -9,17 +9,19 @@ const CheckboxSelect = ({
   placeholder = 'Select options',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [displayValues, setDisplayValues] = useState('');
+  const [displayValue, setDisplayValue] = useState('');
   const selectRef = useRef(null);
 
   // Update display value based on selections
   useEffect(() => {
     if (selectedValues.length === 0) {
-      setDisplayValues(placeholder);
+      setDisplayValue(placeholder);
+    } else if (selectedValues.length === 1) {
+      setDisplayValue(selectedValues[0]);
     } else {
-
-      setDisplayValues(selectedValues);
-  }}, [selectedValues, placeholder]);
+      setDisplayValue(`${selectedValues.length} selected`);
+    }
+  }, [selectedValues, placeholder]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -41,11 +43,11 @@ const CheckboxSelect = ({
   };
 
   return (
-    <fieldset className='fieldset w-full '>
-      <legend className='fieldset-legend'>
-        <span className='label-text '>{label}</span>
+    <fieldset className='fieldset w-full'>
+        <label className='label'>
+          <span className='label-text '>{label}</span>
         {required && <span className='fieldset-label text-error'>(*)</span>}
-      </legend>
+        </label>
 
       <div className='' ref={selectRef}>
         {/* Fake select that triggers the dropdown */}
@@ -56,13 +58,13 @@ const CheckboxSelect = ({
           <span
             className={`${selectedValues.length === 0 ? 'text-gray-400' : ''}`}
           >
-            {displayValues}
+            {displayValue}
           </span>
         </div>
 
         {/* Dropdown with checkboxes */}
         {isOpen && (
-          <div className=' min-w-fit bg-white border border-gray-300 rounded-lg shadow-lg p-2 absolute '>
+          <div className=' z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg p-2  '>
             {options.map((option) => (
               <label
                 key={option}
@@ -72,7 +74,7 @@ const CheckboxSelect = ({
                   type='checkbox'
                   checked={selectedValues.includes(option)}
                   onChange={() => toggleOption(option)}
-                  className='checkbox checkbox-xs'
+                  className='checkbox checkbox-sm'
                 />
                 <span>{option}</span>
               </label>
