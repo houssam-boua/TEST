@@ -10,11 +10,13 @@ export const login = async (email, password) => {
   try {
     const response = await api.post('/auth/login/', { username:email, password });
     const userData = response.data.data;
-    const token = userData.token;
-    const role = response.data.role;
+    const token = response.data.token;
+    const role = userData.role;
 
+    console.log('userData', response);
     storeAuthData(token, userData, role);
-    setAuthToken(token);
+      setAuthToken(token);
+      console.log('userData', response);
     return userData;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Login failed.');

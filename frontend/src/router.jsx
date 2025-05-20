@@ -12,36 +12,18 @@ import GestionUtilisateurs from './pages/GestionUtilisateurs';
 import HierarchieVue from './pages/HierarchieVue';
 import FluxTravail from './pages/FluxTravail';
 import HistoriqueVue from './pages/HistoriqueVue';
-import { getToken } from './services/apiConnection';
-
-// Private Route component
-const PrivateRoute = ({ children }) => {
-  const isAuthenticated = !!getToken();
-  return isAuthenticated ? children : <Navigate to='/login' replace />;
-};
-
-// Admin Route component (extends PrivateRoute with role check)
-const AdminRoute = ({ children }) => {
-  return getToken() === 'admin' ? (
-    <PrivateRoute>{children}</PrivateRoute>
-  ) : (
-    <Navigate to='/login' replace />
-  );
-};
-
-const UserRoute = ({ children }) => {
-  return getToken() === 'user' ? (
-    <PrivateRoute>{children}</PrivateRoute>
-  ) : (
-    <Navigate to='/login' replace />
-  );
-};
+import ProtectedRoute from './component/ProtectedRoute';
+import ValidatorLayout from './layouts/ValidatorLayout'; // You may need to create this
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <GuestLayout />,
     children: [
+      {
+        index: true,
+        element: <Navigate to="/login" replace />,
+      },
       {
         path: 'login',
         element: <Login />,
@@ -51,11 +33,15 @@ const router = createBrowserRouter([
   {
     path: '/u',
     element: (
-      <UserRoute>
+      <ProtectedRoute allowedRoles={['user']}>
         <UserLayout />
-      </UserRoute>
+      </ProtectedRoute>
     ),
     children: [
+      {
+        index: true,
+        element: <Navigate to="/u/acceuil" replace />,
+      },
       {
         path: 'list-docs',
         element: <Consultedocuments />,
@@ -73,11 +59,15 @@ const router = createBrowserRouter([
   {
     path: '/a',
     element: (
-      <AdminRoute>
+      <ProtectedRoute allowedRoles={['admin']}>
         <AdminLayout />
-      </AdminRoute>
+      </ProtectedRoute>
     ),
     children: [
+      {
+        index: true,
+        element: <Navigate to="/a/acceuil" replace />,
+      },
       {
         path: 'acceuil',
         element: <Acceuil />,
@@ -106,6 +96,25 @@ const router = createBrowserRouter([
         path: 'history',
         element: <HistoriqueVue />,
       },
+    ],
+  },
+  {
+    path: '/v',
+    element: (
+      <ProtectedRoute allowedRoles={['validator']}>
+        <ValidatorLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/v/acceuil" replace />,
+      },
+      {
+        path: 'acceuil',
+        element: <Acceuil />,
+      },
+      // Add more validator-specific routes here
     ],
   },
   // Fallback route for unmatched paths

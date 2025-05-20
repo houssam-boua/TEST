@@ -37,7 +37,7 @@ const Consultedocuments = () => {
       key='2'
       className='hover:bg-secondary/40 rounded transition duration-200 ease-in-out'
     >
-      <Link className='text-inherit flex items-center '>
+      <Link className='text-inherit flex items-center ' to={`/u/upload-doc`}>
         <svg
           xmlns='http://www.w3.org/2000/svg'
           fill='none'
@@ -128,11 +128,24 @@ const Consultedocuments = () => {
   const headers = ['Nom du document', "Date d'ajout", 'Statut'];
 
   // Dynamic rows (data)
-  const rows = [
-    ['John Doe', '12/02/2002', 'success'],
-    ['Jane Smith', 34, 'error'],
-    ['Sam Green', 22, 'en attente'],
-  ];
+  
+const rows = [
+  ['Rapport financier T1 2025', '15/05/2025', 'success'],
+  ['Plan d\'architecture - Projet Horizon', '02/05/2025', 'en attente'],
+  ['Cahier des charges - Application mobile', '28/04/2025', 'error'],
+  ['Étude d\'impact environnemental', '20/04/2025', 'success'],
+  ['Contrat de sous-traitance - Équipements', '15/04/2025', 'error'],
+  ['Spécifications techniques - Bâtiment C', '10/04/2025', 'success'],
+  ['Analyse structurelle - Phase 2', '05/04/2025', 'error'],
+  ['Budget prévisionnel 2025-2026', '01/04/2025', 'En attente'],
+  ['Procès-verbal - Réunion mensuelle', '28/03/2025', 'success'],
+  ['Documentation technique - Système HVAC', '22/03/2025', 'Archivé'],
+  ['Plan d\'évacuation - Étage 3', '18/03/2025', 'success'],
+  ['Rapport d\'inspection - Sécurité incendie', '15/03/2025', 'success'],
+  ['Calendrier de projet - Phase finale', '10/03/2025', 'En attente'],
+  ['Manuel d\'utilisation - Nouvelle plateforme', '05/03/2025', 'error'],
+  ['Devis - Matériaux de construction', '01/03/2025', 'Approuvé']
+];
 
   // Handle selected rows
   const handleSelectedRows = (selectedRows) => {
