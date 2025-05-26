@@ -1,6 +1,22 @@
 import React from 'react';
 
 const Login = () => {
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const reponse = await login(email, password);
+      console.log('reponse', reponse);
+    } catch (err) {
+      console.error('Login failed:', err);
+    }
+  };
+
+  
+
+  
   return (
     <div className='p-3 space-y-3 md:mt-0 sm:max-w-md xl:p-0 xl:mt-10 xl:max-w-none xl:w-96 mx-auto md:h-screen px-6 py-8'>
       <div className='w-full card'>

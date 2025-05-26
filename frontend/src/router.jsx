@@ -12,15 +12,18 @@ import GestionUtilisateurs from './pages/GestionUtilisateurs';
 import HierarchieVue from './pages/HierarchieVue';
 import FluxTravail from './pages/FluxTravail';
 import HistoriqueVue from './pages/HistoriqueVue';
-// const PrivateRoute = ({element})=>{
-//     return <Route element={element} />;
-// }
+import ProtectedRoute from './component/ProtectedRoute';
+import ValidatorLayout from './layouts/ValidatorLayout'; // You may need to create this
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <GuestLayout />,
     children: [
+      {
+        index: true,
+        element: <Navigate to="/login" replace />,
+      },
       {
         path: 'login',
         element: <Login />,
@@ -29,8 +32,16 @@ const router = createBrowserRouter([
   },
   {
     path: '/u',
-    element: <UserLayout />,
+    element: (
+      <UserRoute>
+        <UserLayout />
+      </UserRoute>
+    ),
     children: [
+      {
+        index: true,
+        element: <Navigate to="/u/acceuil" replace />,
+      },
       {
         path: 'list-docs',
         element: <Consultedocuments />,
@@ -46,9 +57,17 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: 'a',
-    element: <AdminLayout />,
+    path: '/a',
+    element: (
+      <AdminRoute>
+        <AdminLayout />
+      </AdminRoute>
+    ),
     children: [
+      {
+        index: true,
+        element: <Navigate to="/a/acceuil" replace />,
+      },
       {
         path: 'acceuil',
         element: <Acceuil />,
@@ -79,6 +98,11 @@ const router = createBrowserRouter([
         element: <HistoriqueVue/>,
     }
     ],
+  },
+  // Fallback route for unmatched paths
+  {
+    path: '*',
+    element: <Navigate to='/login' replace />,
   },
 ]);
 
