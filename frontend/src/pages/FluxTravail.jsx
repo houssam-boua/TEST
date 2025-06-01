@@ -5,6 +5,7 @@ import Table from '../component/Table';
 import { HiMiniPlus } from 'react-icons/hi2';
 import Modal from '../component/Modal';
 import AddFluxForm from '../component/Forms/AddFluxForm';
+import TableHeader from '../component/Table/TableHeader';
 
 const FluxTravail = () => {
   const [modalState, setModalState] = useState({
@@ -19,8 +20,13 @@ const FluxTravail = () => {
   const headers = ['Titre de flux', 'Validatuer', 'Date de creation', 'Statut'];
 
   const rows = [
-    { id: 1, titre: '', validateur: 'Utilisateur', datecreation: '',status: 'success' },
-    
+    {
+      id: 1,
+      titre: '',
+      validateur: 'Utilisateur',
+      datecreation: '',
+      status: 'success',
+    },
   ];
 
   const handleSelectedRows = (selectedRows) => {
@@ -66,8 +72,14 @@ const FluxTravail = () => {
       <Toolbar toolBarItems={sidebarContent.map((item) => item.content)} />
       <Table
         headers={headers}
-        rows={rows.map((row) => [row.username, row.role, row.status])}
+        rows={rows.map((row) => [
+          row.id,
+          row.validateur,
+          row.datecreationm,
+          row.status,
+        ])}
         onSelect={handleSelectedRows}
+        statusColumnIndex={3} // "Status" column (3rd column)
       />
 
       <Modal

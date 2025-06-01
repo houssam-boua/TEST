@@ -1,22 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { login } from '../services/userServices';
+import { useNavigate } from 'react-router-dom';
+import useRedirecter from '../Hooks/useRedirecter';
 
 const Login = () => {
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     try {
-      const reponse = await login(email, password);
-      console.log('reponse', reponse);
+      const userData = await login(email, password);
+      console.log(userData)
+      const role = userData.role;
+      const redirection = useRedirecter({ role });
+      navigate(redirection);
     } catch (err) {
-      console.error('Login failed:', err);
+      setError('Login échoué : ' + (err.message || 'Erreur inconnue'));
+      console.error('Échec de la connexion :', err);
     }
   };
 
-  
-
-  
   return (
     <div className='p-3 space-y-3 md:mt-0 sm:max-w-md xl:p-0 xl:mt-10 xl:max-w-none xl:w-96 mx-auto md:h-screen px-6 py-8'>
       <div className='w-full card'>
@@ -30,7 +36,10 @@ const Login = () => {
               Connexion
             </h1>
           </div>
-          <form className='space-y-4 md:space-y-4 card-body ' action='#'>
+          <form
+            className='space-y-4 md:space-y-4 card-body '
+            onSubmit={handleSubmit}
+          >
             <div>
               <label
                 htmlFor='username'
@@ -44,6 +53,9 @@ const Login = () => {
                 type='text'
                 placeholder=''
                 className='bg-base-200/10 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5'
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
               />
             </div>
             <div>
@@ -59,14 +71,17 @@ const Login = () => {
                 type='password'
                 placeholder=''
                 className='bg-base-200/10 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5'
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
               />
             </div>
-
+            {error && <div className='error-message'>{error}</div>}
             <div className='flex flex-col items-center gap-2'>
               <span id='forgetpasswordlink' className='text-base text-primary'>
                 Mot de passe oublie?
               </span>
-              <button className='w-full rounded bg-neutral text-base text-neutral-content p-1.5 '>
+              <button className='w-full btn rounded bg-neutral text-base font-medium text-neutral-content p-1.5 hover:bg-neutral/90 cursor:pointer'>
                 Se connecter
               </button>
             </div>

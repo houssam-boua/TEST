@@ -4,33 +4,37 @@ import { getRole, getToken } from '../services/apiConnection';
 
 const ProtectedRoute = ({
   children,
-  allowedRoles,
+  allowedRoles = [],
   redirectPath = '/login',
 }) => {
   const location = useLocation();
   const token = getToken();
+  const userRole = getRole();
+
+  console.log('userRole', userRole);
+  console.log('token', token);  
 
   // Check if user is authenticated
   if (!token) {
     return <Navigate to={redirectPath} state={{ from: location }} replace />;
   }
 
-  // Get user role from token (assuming token contains role information)
-  // You may need to modify this based on how your token stores role information
-  const userRole = getRole();
-
-  // Check if user has permission
-  if (allowedRoles) {
-    // Redirect based on role even if authenticated
+  // Check if user has permission for this route
+  if (allowedRoles && !allowedRoles.includes(userRole)) {
+    // User doesn't have permission for this route, redirect to their appropriate dashboard
     if (userRole === 'admin') {
       return <Navigate to='/a/acceuil' replace />;
     } else if (userRole === 'validator') {
       return <Navigate to='/v/acceuil' replace />;
-    } else {
+    } else if (userRole === 'user') {
       return <Navigate to='/u/acceuil' replace />;
+    } else {
+      // Fallback if role is unknown
+      return <Navigate to={redirectPath} replace />;
     }
   }
 
+  // User is authenticated and has permission, show the protected content
   return children;
 };
 

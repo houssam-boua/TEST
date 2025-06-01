@@ -9,11 +9,11 @@ import {
 export const login = async (email, password) => {
   try {
     const response = await api.post('/auth/login/', { username:email, password });
+    console.log('userData', response);
     const userData = response.data.data;
     const token = response.data.token;
     const role = userData.role;
 
-    console.log('userData', response);
     storeAuthData(token, userData, role);
       setAuthToken(token);
       console.log('userData', response);
