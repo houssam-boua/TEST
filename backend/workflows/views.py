@@ -12,15 +12,10 @@ class WorkflowViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = [
-        "workflow_name",
-        "workflow_type",
-        "workflow_status",
-        "workflow_owner",
-        "workflow_departement",
-        "workflow_creation_date",
-        "workflow_modification_date",
-        "workflow_description",
-        "workflow_comment",
+        "nom",
+        "description",
+        "etat",
+        "document",
     ]
     #  GET /workflows/?workflow_name=test
 
@@ -33,13 +28,10 @@ class TaskViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = [
         "task_name",
-        "task_type",
-        "task_status",
-        "task_owner",
+        "task_date_echeance",
+        "task_priorite",
+        "task_statut",
         "task_workflow",
-        "task_creation_date",
-        "task_modification_date",
-        "task_description",
-        "task_comment",
+        "task_assigned_to",
     ]
     #  GET /tasks/?task_name=test
