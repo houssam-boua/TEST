@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { login } from '../services/userServices';
+import { login } from '../services/authServices';
 import { useNavigate } from 'react-router-dom';
 import useRedirecter from '../Hooks/useRedirecter';
 

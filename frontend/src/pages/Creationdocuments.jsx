@@ -3,6 +3,18 @@ import CheckboxSelect from '../component/CheckboxSelect';
 import { HiArrowUpTray } from 'react-icons/hi2';
 
 const Creationdocuments = () => {
+  const [formData, setFormData] = useState({
+    file: null,
+    doc_category: "",
+    doc_status: "",
+    doc_path: "",
+    doc_owner: "",
+    doc_departement: "",
+    doc_description: "",
+    doc_comment: "",
+  });
+
+
   const [file, setFile] = useState(null);
   const [selectedTags, setSelectedTags] = useState([]);
   const availableTags = ['Urgent', 'Review', 'Archive', 'Confidential'];
@@ -11,8 +23,8 @@ const Creationdocuments = () => {
     const selectedFile = e.target.files[0];
   };
 
-  const handleSubmit = () => {
-    console.log('File submitted:', file);
+  const handleSubmit = async () => {
+    
   };
 
   const handleDelete = () => {
@@ -77,20 +89,52 @@ const Creationdocuments = () => {
               )}
             </div>
 
-            <fieldset className='fieldset mt-2'>
-              <legend className='fieldset-legend'>
-                Dossier <span className='fieldset-label text-error'>(*)</span>
-              </legend>
-              <select
-                defaultValue='Choisir un dossier'
-                className='select w-full'
-              >
-                <option disabled={true}>----</option>
-                <option>Stagiaires</option>
-                <option>Young engineering</option>
-                <option>Factures</option>
-              </select>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4'>
+              <fieldset className='fieldset'>
+                <legend className='fieldset-legend'>Category</legend>
+                <input
+                  type='text'
+                  className='input w-full'
+                  defaultValue='Technical'
+                  name='doc_category'
+                />
+              </fieldset>
+
+              <fieldset className='fieldset'>
+                <legend className='fieldset-legend'>Status</legend>
+                <input
+                  type='text'
+                  className='input w-full'
+                  defaultValue='Draft'
+                  name='doc_status'
+                />
+              </fieldset>
+            </div>
+
+            
+
+            
+
+           
+
+            <fieldset className='fieldset'>
+              <legend className='fieldset-legend'>Description</legend>
+              <textarea
+                className='textarea h-24 w-full'
+                defaultValue='This is a test document'
+                name='doc_description'
+              ></textarea>
             </fieldset>
+
+            <fieldset className='fieldset'>
+              <legend className='fieldset-legend'>Comment</legend>
+              <textarea
+                className='textarea h-24 w-full'
+                defaultValue='Initial upload'
+                name='doc_comment'
+              ></textarea>
+            </fieldset>
+
             <CheckboxSelect
               options={availableTags}
               selectedValues={selectedTags}
@@ -99,10 +143,6 @@ const Creationdocuments = () => {
               required
               placeholder='Select tags'
             />
-            <fieldset className='fieldset'>
-              <legend className='fieldset-legend'>Description</legend>
-              <textarea className='textarea h-24 w-full'></textarea>
-            </fieldset>
 
             {/* File details */}
           </div>
@@ -110,7 +150,7 @@ const Creationdocuments = () => {
           {/* Buttons at the bottom */}
           <div className='mt-4 flex flex-col sm:flex-row gap-2 '>
             <button
-              onClick={handleSubmit}
+              type='submit'
               disabled={!file}
               className='btn btn-primary flex-1/2 shadow-none disabled:opacity-50 font-medium'
             >

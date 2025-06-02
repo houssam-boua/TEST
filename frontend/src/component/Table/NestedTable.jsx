@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { HiFolder, HiOutlineDocument } from 'react-icons/hi2';
 
 const NestedTable = ({
   data,
@@ -16,18 +17,10 @@ const NestedTable = ({
   // Default icons if none provided
   const defaultIcons = {
     folder: (
-      <svg className='w-4 h-4 fill-current text-primary' viewBox='0 0 20 20'>
-        <path d='M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z' />
-      </svg>
+     <HiFolder size={12}/>
     ),
     file: (
-      <svg className='w-4 h-4 fill-current text-gray-400' viewBox='0 0 20 20'>
-        <path
-          fillRule='evenodd'
-          d='M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z'
-          clipRule='evenodd'
-        />
-      </svg>
+      <></>
     ),
     expand: (
       <svg className='w-4 h-4 fill-current' viewBox='0 0 20 20'>
@@ -118,7 +111,7 @@ const NestedTable = ({
         <tr className={rowClasses}>
           <td
             style={{ paddingLeft: `${depth * indentSize}px` }}
-            className='flex items-center'
+            className='ml-2 flex items-center'
           >
             {showCheckboxes && (
               <input
@@ -168,7 +161,7 @@ const NestedTable = ({
         <thead className={`bg-secondary/30 ${headerClassName}`}>
           <tr>
             <th className='px-6 py-2 text-left text-xs font-medium tracking-wider'>
-              Name
+              Titre
             </th>
             {columns.map((column) => (
               <th

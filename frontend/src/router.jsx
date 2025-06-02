@@ -7,13 +7,14 @@ import Consultedocuments from './pages/Consultedocuments';
 import Creationdocuments from './pages/Creationdocuments';
 import Acceuil from './pages/Acceuil';
 import AdminLayout from './layouts/AdminLayout';
-import ConsulteFolders from './pages/ConsulteFolders';
 import GestionUtilisateurs from './pages/GestionUtilisateurs';
 import HierarchieVue from './pages/HierarchieVue';
 import FluxTravail from './pages/FluxTravail';
 import HistoriqueVue from './pages/HistoriqueVue';
 import ProtectedRoute from './component/ProtectedRoute';
 import ValidatorLayout from './layouts/ValidatorLayout';
+import CreateUsers from './pages/CreateUsers';
+import ConsulteDocs from './pages/ConsulteDocs';
 
 const router = createBrowserRouter([
   {
@@ -78,12 +79,13 @@ const router = createBrowserRouter([
       },
       {
         path: 'consulte-docs',
-        element: <ConsulteFolders />,
+        element: <ConsulteDocs />,
       },
       {
         path: 'tree-vue',
         element: <HierarchieVue />,
       },
+     
       {
         path: 'user-management',
         element: <GestionUtilisateurs />,

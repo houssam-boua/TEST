@@ -16,7 +16,7 @@ const TableRow = ({ row, rowIndex, isSelected, onCheckboxChange }) => {
           key={cellIndex}
           className='px-3 py-2 whitespace-nowrap text-sm text-gray-900'
         >
-          <TableCell cell={cell} index={cellIndex} />
+          <TableCell cell={cell}  />
         </td>
       ))}
     </tr>
