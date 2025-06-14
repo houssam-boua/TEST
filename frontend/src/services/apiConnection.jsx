@@ -27,6 +27,14 @@ export const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
+    // Do NOT send Authorization header for login or register endpoints
+    if (
+      config.url &&
+      (config.url.endsWith('/auth/login/') ||
+        config.url.endsWith('/auth/register/'))
+    ) {
+      return config;
+    }
     const token = getToken();
     if (token) {
       config.headers.Authorization = `Token ${token}`;

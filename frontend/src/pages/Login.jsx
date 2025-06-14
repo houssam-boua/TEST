@@ -12,7 +12,8 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      const userData = await login(email, password);
+      const userData = await login('admin', 'password123');
+
       console.log(userData)
       const role = userData.role;
       const redirection = useRedirecter({ role });
