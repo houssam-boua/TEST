@@ -73,6 +73,7 @@ class LoginView(APIView):
                 }, status=status.HTTP_200_OK)
         else:
             return Response( {
+            
                     "error": "Invalid credentials"
                 }, status=status.HTTP_400_BAD_REQUEST
             )
