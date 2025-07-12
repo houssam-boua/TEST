@@ -53,30 +53,40 @@ class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
+        
         username = request.data.get("username")
         password = request.data.get("password")
 
+        print(f"Login attempt for username: {username}")  # Debug log
+
+        if not username or not password:
+            return Response({
+                "error": "Username and password are required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         # Authenticate the user
         user = authenticate(username=username, password=password)
+        print(f"Authentication result for {username}: {'Success' if user else 'Failed'}")  # Debug log
+
         if user is not None:
             # Get or create the token for this user
             token, created = Token.objects.get_or_create(user=user)
-
+            
             # Serialize the user data
-            user_data = UserSerializer(user).data
+            user_data = UserSerializer(user).data  # Added .data here
+            print(f"User data serialized: {user_data}")  # Debug log
 
             return Response({
-                    "success": True,
-                    "message": "User authenticated successfully",
-                    "token": token.key,
-                    "data": user_data,
-                }, status=status.HTTP_200_OK)
+                "success": True,
+                "message": "User authenticated successfully",
+                "token": token.key,
+                "data": user_data,
+            }, status=status.HTTP_200_OK)
         else:
-            return Response( {
-            
-                    "error": "Invalid credentials"
-                }, status=status.HTTP_400_BAD_REQUEST
-            )
+            print(f"Authentication failed for username: {username}")  # Debug log
+            return Response({
+                "error": "Invalid credentials"
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LogoutView(APIView):
