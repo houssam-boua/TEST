@@ -2,7 +2,7 @@ import { api } from "./apiConnection";
 
 export const getDocuments = async () => {
     try {
-        const response = await api.get('/api/documents');
+        const response = await api.get('/api/documents/');
         console.log('getDocuments response', response);
         return response.data;
     } catch (error) {
@@ -11,13 +11,23 @@ export const getDocuments = async () => {
     }
 }
 
+export const getDocumentById = async (id) => {
+    try {
+        const response = await api.get(`/api/documents/${id}/`);
+        console.log('getDocumentById response', response);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching document by ID:', error);
+        throw new Error(error.response?.data?.message || 'Failed to fetch document by ID.');
+    }
+}
 export const createDocument = async (documentData) => {
     try {
         const formData = new FormData();
         for (const key in documentData) {
             formData.append(key, documentData[key]);
         }
-        const response = await api.post('/api/documents', formData, {
+        const response = await api.post('/api/documents/', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data'
             }

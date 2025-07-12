@@ -1,41 +1,75 @@
 import React, { useState } from 'react';
 import CheckboxSelect from '../component/CheckboxSelect';
 import { HiArrowUpTray } from 'react-icons/hi2';
+import { createDocument } from '../services/documentsServices';
 
 const Creationdocuments = () => {
   const [formData, setFormData] = useState({
     file: null,
-    doc_category: "",
-    doc_status: "",
-    doc_path: "",
-    doc_owner: "",
-    doc_departement: "",
-    doc_description: "",
-    doc_comment: "",
+    doc_category: 'Technical',
+    doc_status: 'Draft',
+    doc_path: 'test_folder',
+    doc_owner: '6',
+    doc_departement: '3',
+    doc_description: 'This is a test document',
+    doc_comment: 'Initial upload',
   });
-
-
   const [file, setFile] = useState(null);
   const [selectedTags, setSelectedTags] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
   const availableTags = ['Urgent', 'Review', 'Archive', 'Confidential'];
 
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
+    setFile(selectedFile);
+    setFormData((prev) => ({ ...prev, file: selectedFile }));
   };
 
-  const handleSubmit = async () => {
-    
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setSuccess('');
+    setError('');
+    try {
+      const payload = { ...formData };
+      // Optionally add tags if your backend supports them
+      // payload.tags = selectedTags;
+      await createDocument(payload);
+      setSuccess('Document created successfully!');
+      setFile(null);
+      setFormData({
+        file: null,
+        doc_category: 'Technical',
+        doc_status: 'Draft',
+        doc_path: 'test_folder',
+        doc_owner: '6',
+        doc_departement: '3',
+        doc_description: 'This is a test document',
+        doc_comment: 'Initial upload',
+      });
+    } catch (err) {
+      setError(err.message || 'Failed to create document.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = () => {
     setFile(null);
+    setFormData((prev) => ({ ...prev, file: null }));
     const fileInput = document.getElementById('dropzone-file');
     if (fileInput) fileInput.value = '';
   };
 
   return (
     <div className='container mx-auto p-4'>
-      {/* Left side: File Uploader - Full width on mobile, 1/3 on desktop */}
       <form onSubmit={handleSubmit}>
         <div className='max-w-xl space-y-12 mx-auto h-full border-base-300/50 p-4 flex flex-col rounded-md'>
           <div className='mb-0'>
@@ -49,7 +83,7 @@ const Creationdocuments = () => {
                   <p className='text-sm text-base-content/80'>
                     <span className='font-medium text-primary'>
                       Click to upload
-                    </span>{' '}
+                    </span>
                     or drag and drop
                   </p>
                   <p className='text-xs text-base-content/50 mt-1'>
@@ -88,15 +122,16 @@ const Creationdocuments = () => {
                 </div>
               )}
             </div>
-
             <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4'>
               <fieldset className='fieldset'>
                 <legend className='fieldset-legend'>Category</legend>
                 <input
                   type='text'
                   className='input w-full'
-                  defaultValue='Technical'
                   name='doc_category'
+                  value={formData.doc_category}
+                  onChange={handleChange}
+                  required
                 />
               </fieldset>
 
@@ -105,36 +140,67 @@ const Creationdocuments = () => {
                 <input
                   type='text'
                   className='input w-full'
-                  defaultValue='Draft'
                   name='doc_status'
+                  value={formData.doc_status}
+                  onChange={handleChange}
+                  required
                 />
               </fieldset>
             </div>
-
-            
-
-            
-
-           
-
+            <fieldset className='fieldset mt-2'>
+              <legend className='fieldset-legend'>Path</legend>
+              <input
+                type='text'
+                className='input w-full'
+                name='doc_path'
+                value={formData.doc_path}
+                onChange={handleChange}
+                required
+              />
+            </fieldset>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4'>
+              <fieldset className='fieldset'>
+                <legend className='fieldset-legend'>Owner</legend>
+                <input
+                  type='number'
+                  className='input w-full'
+                  name='doc_owner'
+                  value={formData.doc_owner}
+                  onChange={handleChange}
+                  required
+                />
+              </fieldset>
+              <fieldset className='fieldset'>
+                <legend className='fieldset-legend'>Departement</legend>
+                <input
+                  type='number'
+                  className='input w-full'
+                  name='doc_departement'
+                  value={formData.doc_departement}
+                  onChange={handleChange}
+                  required
+                />
+              </fieldset>
+            </div>
             <fieldset className='fieldset'>
               <legend className='fieldset-legend'>Description</legend>
               <textarea
                 className='textarea h-24 w-full'
-                defaultValue='This is a test document'
                 name='doc_description'
+                value={formData.doc_description}
+                onChange={handleChange}
+                required
               ></textarea>
             </fieldset>
-
             <fieldset className='fieldset'>
               <legend className='fieldset-legend'>Comment</legend>
               <textarea
                 className='textarea h-24 w-full'
-                defaultValue='Initial upload'
                 name='doc_comment'
+                value={formData.doc_comment}
+                onChange={handleChange}
               ></textarea>
             </fieldset>
-
             <CheckboxSelect
               options={availableTags}
               selectedValues={selectedTags}
@@ -143,22 +209,22 @@ const Creationdocuments = () => {
               required
               placeholder='Select tags'
             />
-
-            {/* File details */}
+            {success && <div className='alert alert-success'>{success}</div>}
+            {error && <div className='alert alert-error'>{error}</div>}
+            {loading && <div className='alert alert-info'>Uploading...</div>}
           </div>
-
-          {/* Buttons at the bottom */}
           <div className='mt-4 flex flex-col sm:flex-row gap-2 '>
             <button
               type='submit'
-              disabled={!file}
+              disabled={!file || loading}
               className='btn btn-primary flex-1/2 shadow-none disabled:opacity-50 font-medium'
             >
-              Submit
+              {loading ? 'Submitting...' : 'Submit'}
             </button>
             <button
+              type='button'
               onClick={handleDelete}
-              disabled={!file}
+              disabled={!file || loading}
               className='btn flex-1 shadow-none disabled:opacity-50 font-medium'
             >
               Delete

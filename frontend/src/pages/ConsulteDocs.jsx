@@ -11,6 +11,7 @@ const ConsulteDocs = () => {
   const [documents, setDocuments] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [selectedDoc, setSelectedDoc] = useState(null);
 
   useEffect(() => {
     const fetchDocs = async () => {
@@ -25,6 +26,11 @@ const ConsulteDocs = () => {
 
     fetchDocs();
   }, []);
+
+  const handleViewDoc = (doc) => {
+    setSelectedDoc(doc);
+    document.getElementById('doc_view_modal').showModal();
+  };
 
   // Pagination logic
   const totalPages = Math.ceil(documents.length / pageSize);
@@ -82,8 +88,11 @@ const ConsulteDocs = () => {
       key: 'actions',
       label: 'Actions',
       render: (row) => (
-        <button className='btn btn-xs btn-secondary '>
-          <HiOutlineEye />{' '}
+        <button
+          className='btn btn-xs btn-secondary'
+          onClick={() => handleViewDoc(row)}
+        >
+          <HiOutlineEye />
         </button>
       ),
     },
@@ -102,8 +111,135 @@ const ConsulteDocs = () => {
         columns={columns}
         containerClassName='rounded-lg'
         showCheckboxes={false}
-        // Optionally pass icons if you want custom icons
       />
+      {/* Modal for document view */}
+      <dialog id='doc_view_modal' className='modal'>
+        <div className='modal-box'>
+          {selectedDoc ? (
+            <>
+              <h3 className='font-bold text-lg mb-2'>
+                {selectedDoc.doc_title}
+              </h3>
+              <div className='mb-2'>
+                <span className='font-semibold'>Type:</span>{' '}
+                {selectedDoc.doc_format}
+              </div>
+              <div className='mb-2'>
+                <span className='font-semibold'>Categorie:</span>{' '}
+                {selectedDoc.doc_category}
+              </div>
+              <div className='mb-2'>
+                <span className='font-semibold'>Description:</span>{' '}
+                {selectedDoc.doc_description}
+              </div>
+              <div className='mb-2'>
+                <span className='font-semibold'>Status:</span>{' '}
+                {selectedDoc.doc_status}
+              </div>
+              <div className='mb-2'>
+                <span className='font-semibold'>Owner:</span>{' '}
+                {selectedDoc.doc_owner}
+              </div>
+              <div className='mb-2'>
+                <span className='font-semibold'>Departement:</span>{' '}
+                {selectedDoc.doc_departement}
+              </div>
+              <div className='mb-2'>
+                <span className='font-semibold'>Taille:</span>{' '}
+                {selectedDoc.doc_size}
+              </div>
+              {/* File preview */}
+              {(selectedDoc.file || selectedDoc.doc_path) && (
+                <div className='mt-4'>
+                  <span className='font-semibold'>Aperçu du fichier:</span>
+                  <div className='mt-2'>
+                    {(() => {
+                      const ext = (selectedDoc.doc_format || '').toLowerCase();
+                      const fileUrl = (selectedDoc.file && typeof selectedDoc.file === 'string')
+                        ? (selectedDoc.file.startsWith('http')
+                            ? selectedDoc.file
+                            : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/${selectedDoc.file}`)
+                        : (selectedDoc.doc_path && typeof selectedDoc.doc_path === 'string'
+                            ? (selectedDoc.doc_path.startsWith('http')
+                                ? selectedDoc.doc_path
+                                : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/${selectedDoc.doc_path}`)
+                            : null);
+                      if (!fileUrl) return <span>Fichier non disponible</span>;
+                      const imageExts = [
+                        'jpg',
+                        'jpeg',
+                        'png',
+                        'gif',
+                        'bmp',
+                        'webp',
+                        'tiff',
+                        'svg',
+                      ];
+                      if (imageExts.includes(ext)) {
+                        return (
+                          <img
+                            src={fileUrl}
+                            alt={selectedDoc.doc_title}
+                            className='max-w-full max-h-64 rounded shadow'
+                          />
+                        );
+                      }
+                      if (ext === 'pdf') {
+                        return (
+                          <iframe
+                            src={fileUrl}
+                            title='PDF Preview'
+                            className='w-full h-64 rounded shadow'
+                          />
+                        );
+                      }
+                      if (ext === 'doc' || ext === 'docx') {
+                        return (
+                          <a
+                            href={fileUrl}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='link text-primary'
+                          >
+                            Ouvrir le document Word
+                          </a>
+                        );
+                      }
+                      if (ext === 'xls' || ext === 'xlsx') {
+                        return (
+                          <a
+                            href={fileUrl}
+                            target='_blank'
+                            rel='noopener noreferrer'
+                            className='link text-primary'
+                          >
+                            Ouvrir le document Excel
+                          </a>
+                        );
+                      }
+                      return (
+                        <a
+                          href={fileUrl}
+                          target='_blank'
+                          rel='noopener noreferrer'
+                          className='link text-primary'
+                        >
+                          Télécharger / Voir le fichier
+                        </a>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <div>Chargement...</div>
+          )}
+        </div>
+        <form method='dialog' className='modal-backdrop'>
+          <button>close</button>
+        </form>
+      </dialog>
 
       <div className='join m-4 display-flex justify-center'>
         <button
