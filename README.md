@@ -1,6 +1,7 @@
 # Docarea - Document Management System
 
 ## Project Structure
+
 ```
 docarea/
 ├── backend/
@@ -11,7 +12,7 @@ docarea/
 │   └── manage.py
 ├── requirements.txt
 └── .env
-└── .gitignore 
+└── .gitignore
 └── LICENCE
 
 ├── frontend/             # Application React
@@ -19,7 +20,7 @@ docarea/
 │    │   ├── components/   # Composants React
 │    │   ├── pages/        #  │l'application
 │    │   └── services/     # Services API
-│    └── package.json      #                
+│    └── package.json      #
 └── README.md
 
 ```
@@ -27,6 +28,7 @@ docarea/
 ## Backend Setup (Django)
 
 ### 1. Project Structure (Backend)
+
 ```
 backend/
 ├── backend/
@@ -44,11 +46,11 @@ backend/
 ```
 
 ### 2. Prerequisites
+
 - Python 3.9+
 - PostgreSQL 12+
 - node.js > 18
-
-
+- npm or yarn package manager
 
 ### 3. Environment Setup
 
@@ -68,11 +70,13 @@ source env/bin/activate
 ```
 
 2. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 ### 4. Database Setup
+
 Update the `DATABASES` section in `backend/settings.py` to:
 
 ```python
@@ -112,6 +116,7 @@ python manage.py runserver
 Visit [http://127.0.0.1:8000/admin](http://127.0.0.1:8000/admin) to access the admin panel.
 
 ### 8. Token for API Authentication:
+
 Include the token in your HTTP headers for API requests:
 `Authorization: Token <your-token-key> `
 
@@ -140,10 +145,45 @@ python manage.py seed_data
 The `.gitignore` file tells Git which files and directories to ignore when tracking changes. Here's why we ignore certain files:
 
 **Virtual Environment (`env/`, `venv/`)**:
-   - Contains Python packages specific to your local setup
-   - Large in size and should be recreated using requirements.txt
-   - Different across operating systems
 
+- Contains Python packages specific to your local setup
+- Large in size and should be recreated using requirements.txt
+- Different across operating systems
 
+### Frontend Setup
 
-### Frontend 
+# 1. Installation
+
+1. Navigate to the frontend directory:
+
+```bash
+cd frontend
+```
+
+2. Install dependencies:
+
+# 2. Environment Configuration
+
+1. Create a .env file in the frontend directory:
+
+touch .env
+
+# or create manually in your editor
+
+2. Add the following configuration:
+
+```
+VITE_API_URL=http://127.0.0.1:8000
+```
+
+3. Development Server
+
+Start the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+```
+
+The application will be available at `http://localhost:5173` by default.

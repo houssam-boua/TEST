@@ -12,7 +12,7 @@ const Login = () => {
     e.preventDefault();
     setError('');
     try {
-      const userData = await login('admin', 'password123');
+      const userData = await login(email, password);
 
       console.log(userData)
       const role = userData.role;
