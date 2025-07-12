@@ -155,15 +155,17 @@ const ConsulteDocs = () => {
                   <div className='mt-2'>
                     {(() => {
                       const ext = (selectedDoc.doc_format || '').toLowerCase();
-                      const fileUrl = (selectedDoc.file && typeof selectedDoc.file === 'string')
-                        ? (selectedDoc.file.startsWith('http')
+                      const fileUrl =
+                        selectedDoc.file && typeof selectedDoc.file === 'string'
+                          ? selectedDoc.file.startsWith('http')
                             ? selectedDoc.file
-                            : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/${selectedDoc.file}`)
-                        : (selectedDoc.doc_path && typeof selectedDoc.doc_path === 'string'
-                            ? (selectedDoc.doc_path.startsWith('http')
-                                ? selectedDoc.doc_path
-                                : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/${selectedDoc.doc_path}`)
-                            : null);
+                            : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/${selectedDoc.file}`
+                          : selectedDoc.doc_path &&
+                              typeof selectedDoc.doc_path === 'string'
+                            ? selectedDoc.doc_path.startsWith('http')
+                              ? selectedDoc.doc_path
+                              : `${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/${selectedDoc.doc_path}`
+                            : null;
                       if (!fileUrl) return <span>Fichier non disponible</span>;
                       const imageExts = [
                         'jpg',
