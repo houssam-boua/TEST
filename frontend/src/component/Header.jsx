@@ -1,13 +1,17 @@
 import React from 'react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 
 const Header = ({ username }) => {
   return (
-    <div className='navbar pt-5'>
+    <div className='flex items-center justify-between pt-5 px-4'>
       <div className='flex-1 inline-flex items-center'>
         <div className='mr-10 lg:mr-3'>
-          <label
-            htmlFor='my-drawer-2'
-            className='btn btn-primary p-3 shadow-none drawer-button items-center lg:hidden'
+          <Button
+            variant='default'
+            size='sm'
+            className='p-3 shadow-none items-center lg:hidden'
+            onClick={() => document.getElementById('my-drawer-2')?.click()}
           >
             <svg
               xmlns='http://www.w3.org/2000/svg'
@@ -23,18 +27,18 @@ const Header = ({ username }) => {
                 d='M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5'
               />
             </svg>
-          </label>
+          </Button>
         </div>
 
-        <div className='join'>
-          <label className='input p-3 bg-base-200/30 border border-base-300/10 rounded-lg flex items-center focus:border-amber-100'>
+        <div className='flex items-center gap-2'>
+          <div className='relative flex items-center'>
             <svg
               xmlns='http://www.w3.org/2000/svg'
               fill='none'
               viewBox='0 0 24 24'
               strokeWidth={1.5}
               stroke='currentColor'
-              className='size-6 opacity-70'
+              className='absolute left-3 size-4 text-muted-foreground'
             >
               <path
                 strokeLinecap='round'
@@ -42,29 +46,28 @@ const Header = ({ username }) => {
                 d='m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z'
               />
             </svg>
-
-            <input
+            <Input
               type='search'
-              className='grow join-item'
+              className='pl-10 pr-4'
               placeholder='Chercher des documents'
             />
-            <button className='btn bg-base-100 text-base-content/50 font-normal btn-sm join-item rounded-xl hover:bg-neutral/90 hover:text-neutral-content hover:transition-colors duration-300'>
-              Chercher
-            </button>
-          </label>
+          </div>
+          <Button variant='secondary' size='sm'>
+            Chercher
+          </Button>
         </div>
       </div>
 
       <div className='flex gap-2 items-center'>
-        <div className='indicator'>
-          <span className='indicator-item status status-accent rounded-full'></span>
+        <div className='relative'>
+          <span className='absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full'></span>
           <svg
             xmlns='http://www.w3.org/2000/svg'
             fill='none'
             viewBox='0 0 24 24'
             strokeWidth={1.5}
             stroke='currentColor'
-            className='size-5 text-base-content/70'
+            className='size-5 text-muted-foreground'
           >
             <path
               strokeLinecap='round'
@@ -74,41 +77,38 @@ const Header = ({ username }) => {
           </svg>
         </div>
         <div className='flex justify-center items-center mx-3'>
-          <span className='text-sm text-base-content/70 font-stretch-90% '>
-            {username}
-          </span>
+          <span className='text-sm text-muted-foreground'>{username}</span>
         </div>
 
-        <div className='dropdown dropdown-end'>
-          <div
-            tabIndex={0}
-            role='button'
-            className='btn btn-ghost btn-circle avatar'
-          >
-            <div className='w-10 rounded-full'>
+        <div className='relative group'>
+          <Button variant='ghost' size='sm' className='rounded-full p-2'>
+            <div className='w-8 h-8 rounded-full overflow-hidden'>
               <img
-                alt='Tailwind CSS Navbar component'
+                alt='Avatar'
                 src='https://img.daisyui.com/images/stock/photo-1534528741775-53994a69daeb.webp'
+                className='w-full h-full object-cover'
               />
             </div>
-          </div>
-          <ul
-            tabIndex={0}
-            className='menu menu-sm dropdown-content bg-base-100 rounded-box z-1 mt-3 w-52 p-2 shadow'
-          >
-            <li>
-              <a className='justify-between'>
+          </Button>
+          <div className='absolute right-0 mt-2 w-52 bg-white rounded-md shadow-lg border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50'>
+            <div className='py-2'>
+              <a
+                href='#'
+                className='flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-100'
+              >
                 Profile
-                <span className='badge'>New</span>
+                <span className='bg-primary text-primary-foreground text-xs px-2 py-1 rounded'>
+                  New
+                </span>
               </a>
-            </li>
-            <li>
-              <a>Settings</a>
-            </li>
-            <li>
-              <a>Logout</a>
-            </li>
-          </ul>
+              <a href='#' className='block px-4 py-2 text-sm hover:bg-gray-100'>
+                Settings
+              </a>
+              <a href='#' className='block px-4 py-2 text-sm hover:bg-gray-100'>
+                Logout
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </div>
