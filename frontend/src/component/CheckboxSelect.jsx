@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Checkbox } from '../components/ui/checkbox';
 
 const CheckboxSelect = ({
   options = [],
@@ -43,46 +44,57 @@ const CheckboxSelect = ({
   };
 
   return (
-    <fieldset className='fieldset w-full'>
-        <label className='label'>
-          <span className='label-text '>{label}</span>
-        {required && <span className='fieldset-label text-error'>(*)</span>}
-        </label>
+    <div className='w-full'>
+      <label className='block text-sm font-medium text-gray-700 mb-2'>
+        {label}
+        {required && <span className='text-red-500 ml-1'>*</span>}
+      </label>
 
-      <div className='' ref={selectRef}>
+      <div className='relative' ref={selectRef}>
         {/* Fake select that triggers the dropdown */}
         <div
-          className='select select-bordered w-full cursor-pointer flex items-center'
+          className='w-full cursor-pointer flex items-center h-10 px-3 py-2 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2'
           onClick={() => setIsOpen(!isOpen)}
         >
           <span
-            className={`${selectedValues.length === 0 ? 'text-gray-400' : ''}`}
+            className={`${selectedValues.length === 0 ? 'text-muted-foreground' : ''}`}
           >
             {displayValue}
           </span>
+          <svg
+            className={`ml-auto h-4 w-4 transform transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            fill='none'
+            stroke='currentColor'
+            viewBox='0 0 24 24'
+          >
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              strokeWidth={2}
+              d='M19 9l-7 7-7-7'
+            />
+          </svg>
         </div>
 
         {/* Dropdown with checkboxes */}
         {isOpen && (
-          <div className=' z-10 mt-1 w-full bg-white border border-gray-300 rounded-lg shadow-lg p-2  '>
+          <div className='absolute z-10 mt-1 w-full bg-background border border-border rounded-lg shadow-lg p-2 max-h-60 overflow-auto'>
             {options.map((option) => (
               <label
                 key={option}
-                className='flex items-center gap-2 p-2 hover:bg-gray-100 rounded cursor-pointer'
+                className='flex items-center gap-3 p-2 hover:bg-accent hover:text-accent-foreground rounded cursor-pointer'
               >
-                <input
-                  type='checkbox'
+                <Checkbox
                   checked={selectedValues.includes(option)}
                   onChange={() => toggleOption(option)}
-                  className='checkbox checkbox-sm'
                 />
-                <span>{option}</span>
+                <span className='text-sm'>{option}</span>
               </label>
             ))}
           </div>
         )}
       </div>
-    </fieldset>
+    </div>
   );
 };
 

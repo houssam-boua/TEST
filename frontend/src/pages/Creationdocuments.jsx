@@ -209,15 +209,27 @@ const Creationdocuments = () => {
               required
               placeholder='Select tags'
             />
-            {success && <div className='alert alert-success'>{success}</div>}
-            {error && <div className='alert alert-error'>{error}</div>}
-            {loading && <div className='alert alert-info'>Uploading...</div>}
+            {success && (
+              <div className='bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md'>
+                {success}
+              </div>
+            )}
+            {error && (
+              <div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md'>
+                {error}
+              </div>
+            )}
+            {loading && (
+              <div className='bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-md'>
+                Uploading...
+              </div>
+            )}
           </div>
-          <div className='mt-4 flex flex-col sm:flex-row gap-2 '>
+          <div className='mt-4 flex flex-col sm:flex-row gap-2'>
             <button
               type='submit'
               disabled={!file || loading}
-              className='btn btn-primary flex-1/2 shadow-none disabled:opacity-50 font-medium'
+              className='flex-1 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:pointer-events-none'
             >
               {loading ? 'Submitting...' : 'Submit'}
             </button>
@@ -225,7 +237,7 @@ const Creationdocuments = () => {
               type='button'
               onClick={handleDelete}
               disabled={!file || loading}
-              className='btn flex-1 shadow-none disabled:opacity-50 font-medium'
+              className='flex-1 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50 disabled:pointer-events-none'
             >
               Delete
             </button>

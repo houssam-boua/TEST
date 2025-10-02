@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '../components/ui/button';
 
 const ActionButtons = ({
   onSubmit,
@@ -11,20 +12,22 @@ const ActionButtons = ({
 }) => {
   return (
     <div className={`mt-4 flex flex-col sm:flex-row gap-2 ${className}`}>
-      <button
+      <Button
         onClick={onSubmit}
         disabled={submitDisabled}
-        className='btn btn-primary flex-1/2 shadow-none disabled:opacity-50 font-medium'
+        variant='default'
+        className='flex-1 font-medium'
       >
         {submitLabel}
-      </button>
-      <button
+      </Button>
+      <Button
         onClick={onDelete}
         disabled={deleteDisabled}
-        className='btn flex-1 shadow-none disabled:opacity-50 font-medium'
+        variant='outline'
+        className='flex-1 font-medium'
       >
         {deleteLabel}
-      </button>
+      </Button>
     </div>
   );
 };

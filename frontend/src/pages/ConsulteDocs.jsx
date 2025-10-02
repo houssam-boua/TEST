@@ -6,6 +6,8 @@ import { HiCube, HiOutlineEye } from 'react-icons/hi2';
 import Filters from '../component/Filters';
 import { getDocuments } from '../services/documentsServices';
 import { getFormatIcon } from '../Helpers/getFormatIcon';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
 
 const ConsulteDocs = () => {
   const [documents, setDocuments] = useState([]);
@@ -77,23 +79,22 @@ const ConsulteDocs = () => {
       key: 'doc_status',
       label: 'Statut',
       render: (row) => (
-        <span
-          className={`text-xs rounded-lg badge badge-dash  ${row.doc_status === 'Active' ? 'badge-success' : 'badge-error'}`}
-        >
+        <Badge variant={row.doc_status === 'Active' ? 'success' : 'error'}>
           {row.doc_status}
-        </span>
+        </Badge>
       ),
     },
     {
       key: 'actions',
       label: 'Actions',
       render: (row) => (
-        <button
-          className='btn btn-xs btn-secondary'
+        <Button
+          variant='secondary'
+          size='xs'
           onClick={() => handleViewDoc(row)}
         >
           <HiOutlineEye />
-        </button>
+        </Button>
       ),
     },
   ];
@@ -243,24 +244,26 @@ const ConsulteDocs = () => {
         </form>
       </dialog>
 
-      <div className='join m-4 display-flex justify-center'>
-        <button
-          className='join-item btn btn-xs btn-secondary'
+      <div className='flex items-center justify-center gap-2 m-4'>
+        <Button
+          variant='secondary'
+          size='xs'
           onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage === 1}
         >
           «
-        </button>
-        <span className='join-item btn btn-xs bt-'>
+        </Button>
+        <span className='px-3 py-1 text-sm border rounded'>
           Page {currentPage} / {totalPages || 1}
         </span>
-        <button
-          className='join-item btn btn-xs btn-secondary'
+        <Button
+          variant='secondary'
+          size='xs'
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages || totalPages === 0}
         >
           »
-        </button>
+        </Button>
         {/* <select
           className='select select-xs ml-4 '
           value={pageSize}
