@@ -1,4 +1,4 @@
-const useRedirecter = ({ role }) => {
+export const redirectForRole = ({ role }) => {
   switch ((role || "").toLowerCase()) {
     case "admin":
       return "/a/acceuil";
@@ -11,4 +11,4 @@ const useRedirecter = ({ role }) => {
   }
 };
 
-export default useRedirecter;
+export default redirectForRole;
