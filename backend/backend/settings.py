@@ -15,8 +15,9 @@ import os
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
-BACKEND_DIR = "backend/media/"
+# MEDIA_ROOT and BACKEND_DIR are commented out to avoid overriding Minio/S3 storage.
+# MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+# BACKEND_DIR = "backend/media/"
 
 # Define the custom user model
 AUTH_USER_MODEL = "users.User"
@@ -53,9 +54,13 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "django_filters",
+    "drf_yasg",
     "users",
     "documents",
     "workflows",
+
+    # Storage
+    'minio_storage',
 ]
 
 REST_FRAMEWORK = {
@@ -159,7 +164,52 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+# Minio / S3 Storage configuration
+# All file storage is handled by MinioMediaStorage, ensuring files are stored in Minio/S3.
+# The storage backend is configured here; do not pass storage instances into model fields
+# because migrations will serialize them. Use relative upload paths (upload_to) in models.
 
+
+# --------------------------------------------------------------------
+# STATIC FILES
+# --------------------------------------------------------------------
+STATIC_URL = "static/"
+STATIC_ROOT = './static_files/'
+
+# --------------------------------------------------------------------
+# MINIO CONFIGURATION
+# --------------------------------------------------------------------
+MINIO_STORAGE_ENDPOINT = "127.0.0.1:9000"  # NO http:// prefix
+MINIO_STORAGE_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
+MINIO_STORAGE_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_STORAGE_USE_HTTPS = False
+
+# Bucket configuration
+MINIO_STORAGE_MEDIA_BUCKET_NAME = "documents"
+MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
+MINIO_STORAGE_AUTO_CREATE_STATIC_BUCKET = True
+
+# Optional: Direct MinIO URLs for serving files
+MINIO_STORAGE_MEDIA_URL = "http://127.0.0.1:9000/"
+
+# --------------------------------------------------------------------
+# STORAGE BACKENDS (Django 4.2+)
+# --------------------------------------------------------------------
+# This is the NEW way to configure storage in Django 4.2+
+STORAGES = {
+    "default": {
+        "BACKEND": "minio_storage.storage.MinioMediaStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+# --------------------------------------------------------------------
+# LEGACY STORAGE SETTING (for Django < 4.2)
+# --------------------------------------------------------------------
+# If the STORAGES dict above doesn't work, uncomment this line:
+# DEFAULT_FILE_STORAGE = "minio_storage.storage.MinioMediaStorage"
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
