@@ -94,10 +94,7 @@ const ChartPieDonutText = () => {
                 }
               }}
               />
-               <ChartLegend
-              content={<ChartLegendContent nameKey="browser" />}
-              className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"
-            />
+              
           </Pie>
         </PieChart>
       </ChartContainer>
