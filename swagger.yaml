@@ -1,0 +1,1430 @@
+openapi: 3.0.3
+info:
+  title: Docarea API
+  description: |
+    Document Management System API with user authentication, document management, workflow management, and OCR capabilities.
+    
+    ## Authentication
+    This API uses Token-based authentication. Include the token in your HTTP headers:
+    ```
+    Authorization: Token <your-token-key>
+    ```
+    
+    ## Features
+    - User Management with Roles and Departments
+    - Document Management with file upload
+    - Workflow and Task Management
+    - OCR Invoice Processing
+    - RESTful API endpoints with full CRUD operations
+    
+  version: 1.0.0
+  contact:
+    name: Docarea Team
+    email: support@docarea.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://127.0.0.1:8000
+    description: Development server
+  - url: http://localhost:8000
+    description: Local development server
+
+security:
+  - TokenAuth: []
+
+paths:
+  # Authentication Endpoints
+  /auth/login/:
+    post:
+      tags:
+        - Authentication
+      summary: User Login
+      description: Authenticate user with username and password to receive an auth token
+      operationId: loginUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  example: "admin"
+                password:
+                  type: string
+                  format: password
+                  example: "password123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Login successful"
+                  token:
+                    type: string
+                    example: "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b"
+                  data:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout/:
+    post:
+      tags:
+        - Authentication
+      summary: User Logout
+      description: Logout the current user and invalidate the token
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: "Logout successful"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # User Management Endpoints
+  /api/users/:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      description: Retrieve a list of all users with optional filtering
+      operationId: getUsers
+      parameters:
+        - name: username
+          in: query
+          description: Filter by username
+          schema:
+            type: string
+        - name: email
+          in: query
+          description: Filter by email
+          schema:
+            type: string
+        - name: first_name
+          in: query
+          description: Filter by first name
+          schema:
+            type: string
+        - name: last_name
+          in: query
+          description: Filter by last name
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    post:
+      tags:
+        - Users
+      summary: Create a new user
+      description: Create a new user with role and department assignment
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/users/{id}/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: User ID
+        schema:
+          type: integer
+    
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: Retrieve a specific user by their ID
+      operationId: getUserById
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: Update a user's information
+      operationId: updateUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: Delete a user from the system
+      operationId: deleteUser
+      responses:
+        '204':
+          description: User deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # Role Management Endpoints
+  /api/roles/:
+    get:
+      tags:
+        - Roles
+      summary: Get all roles
+      description: Retrieve a list of all roles with optional filtering
+      operationId: getRoles
+      parameters:
+        - name: role_name
+          in: query
+          description: Filter by role name
+          schema:
+            type: string
+        - name: role_type
+          in: query
+          description: Filter by role type
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    post:
+      tags:
+        - Roles
+      summary: Create a new role
+      description: Create a new role in the system
+      operationId: createRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleCreate'
+      responses:
+        '201':
+          description: Role created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/roles/{id}/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Role ID
+        schema:
+          type: integer
+    
+    get:
+      tags:
+        - Roles
+      summary: Get role by ID
+      description: Retrieve a specific role by its ID
+      operationId: getRoleById
+      responses:
+        '200':
+          description: Role details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    put:
+      tags:
+        - Roles
+      summary: Update role
+      description: Update a role's information
+      operationId: updateRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoleUpdate'
+      responses:
+        '200':
+          description: Role updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    delete:
+      tags:
+        - Roles
+      summary: Delete role
+      description: Delete a role from the system
+      operationId: deleteRole
+      responses:
+        '204':
+          description: Role deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # Department Management Endpoints
+  /api/departements/:
+    get:
+      tags:
+        - Departments
+      summary: Get all departments
+      description: Retrieve a list of all departments with optional filtering
+      operationId: getDepartments
+      parameters:
+        - name: dep_name
+          in: query
+          description: Filter by department name
+          schema:
+            type: string
+        - name: dep_type
+          in: query
+          description: Filter by department type
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of departments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    post:
+      tags:
+        - Departments
+      summary: Create a new department
+      description: Create a new department in the system
+      operationId: createDepartment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreate'
+      responses:
+        '201':
+          description: Department created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/departements/{id}/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Department ID
+        schema:
+          type: integer
+    
+    get:
+      tags:
+        - Departments
+      summary: Get department by ID
+      description: Retrieve a specific department by its ID
+      operationId: getDepartmentById
+      responses:
+        '200':
+          description: Department details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    put:
+      tags:
+        - Departments
+      summary: Update department
+      description: Update a department's information
+      operationId: updateDepartment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdate'
+      responses:
+        '200':
+          description: Department updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Department'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    delete:
+      tags:
+        - Departments
+      summary: Delete department
+      description: Delete a department from the system
+      operationId: deleteDepartment
+      responses:
+        '204':
+          description: Department deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # Document Management Endpoints
+  /api/documents/:
+    get:
+      tags:
+        - Documents
+      summary: Get all documents
+      description: Retrieve a list of all documents with optional filtering
+      operationId: getDocuments
+      parameters:
+        - name: doc_title
+          in: query
+          description: Filter by document title
+          schema:
+            type: string
+        - name: doc_type
+          in: query
+          description: Filter by document type
+          schema:
+            type: string
+        - name: doc_category
+          in: query
+          description: Filter by document category
+          schema:
+            type: string
+        - name: doc_status
+          in: query
+          description: Filter by document status
+          schema:
+            type: string
+        - name: doc_owner
+          in: query
+          description: Filter by document owner ID
+          schema:
+            type: integer
+        - name: doc_departement
+          in: query
+          description: Filter by department ID
+          schema:
+            type: integer
+        - name: doc_format
+          in: query
+          description: Filter by document format
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Document'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    post:
+      tags:
+        - Documents
+      summary: Create a new document
+      description: Upload and create a new document in the system
+      operationId: createDocument
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentCreate'
+      responses:
+        '201':
+          description: Document created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/documents/{id}/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Document ID
+        schema:
+          type: integer
+    
+    get:
+      tags:
+        - Documents
+      summary: Get document by ID
+      description: Retrieve a specific document by its ID
+      operationId: getDocumentById
+      responses:
+        '200':
+          description: Document details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    put:
+      tags:
+        - Documents
+      summary: Update document
+      description: Update a document's information
+      operationId: updateDocument
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DocumentUpdate'
+      responses:
+        '200':
+          description: Document updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    delete:
+      tags:
+        - Documents
+      summary: Delete document
+      description: Delete a document from the system
+      operationId: deleteDocument
+      responses:
+        '204':
+          description: Document deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # Workflow Management Endpoints
+  /api/workflows/:
+    get:
+      tags:
+        - Workflows
+      summary: Get all workflows
+      description: Retrieve a list of all workflows
+      operationId: getWorkflows
+      responses:
+        '200':
+          description: List of workflows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Workflow'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    post:
+      tags:
+        - Workflows
+      summary: Create a new workflow
+      description: Create a new workflow in the system
+      operationId: createWorkflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowCreate'
+      responses:
+        '201':
+          description: Workflow created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/workflows/{id}/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Workflow ID
+        schema:
+          type: integer
+    
+    get:
+      tags:
+        - Workflows
+      summary: Get workflow by ID
+      description: Retrieve a specific workflow by its ID
+      operationId: getWorkflowById
+      responses:
+        '200':
+          description: Workflow details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    put:
+      tags:
+        - Workflows
+      summary: Update workflow
+      description: Update a workflow's information
+      operationId: updateWorkflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkflowUpdate'
+      responses:
+        '200':
+          description: Workflow updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workflow'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    delete:
+      tags:
+        - Workflows
+      summary: Delete workflow
+      description: Delete a workflow from the system
+      operationId: deleteWorkflow
+      responses:
+        '204':
+          description: Workflow deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # Task Management Endpoints
+  /api/tasks/:
+    get:
+      tags:
+        - Tasks
+      summary: Get all tasks
+      description: Retrieve a list of all tasks with optional filtering
+      operationId: getTasks
+      parameters:
+        - name: task_name
+          in: query
+          description: Filter by task name
+          schema:
+            type: string
+        - name: task_status
+          in: query
+          description: Filter by task status
+          schema:
+            type: string
+            enum: [not_started, in_progress, completed]
+        - name: task_priority
+          in: query
+          description: Filter by task priority
+          schema:
+            type: string
+            enum: [urgent, high, normal, low]
+        - name: task_workflow
+          in: query
+          description: Filter by workflow ID
+          schema:
+            type: integer
+        - name: task_assigned_to
+          in: query
+          description: Filter by assigned user ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    post:
+      tags:
+        - Tasks
+      summary: Create a new task
+      description: Create a new task in the system
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/tasks/{id}/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Task ID
+        schema:
+          type: integer
+    
+    get:
+      tags:
+        - Tasks
+      summary: Get task by ID
+      description: Retrieve a specific task by its ID
+      operationId: getTaskById
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    put:
+      tags:
+        - Tasks
+      summary: Update task
+      description: Update a task's information
+      operationId: updateTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    
+    delete:
+      tags:
+        - Tasks
+      summary: Delete task
+      description: Delete a task from the system
+      operationId: deleteTask
+      responses:
+        '204':
+          description: Task deleted successfully
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+components:
+  securitySchemes:
+    TokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication. Format: "Token <your-token-key>"
+
+  schemas:
+    # User Schemas
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        username:
+          type: string
+          example: "john_doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        is_active:
+          type: boolean
+          example: true
+        is_staff:
+          type: boolean
+          example: false
+        is_superuser:
+          type: boolean
+          example: false
+        date_joined:
+          type: string
+          format: date-time
+          example: "2023-01-15T10:30:00Z"
+        last_login:
+          type: string
+          format: date-time
+          example: "2023-12-01T14:20:00Z"
+        role:
+          $ref: '#/components/schemas/Role'
+        departement:
+          $ref: '#/components/schemas/Department'
+
+    UserCreate:
+      type: object
+      required:
+        - username
+        - email
+        - password
+        - role
+        - departement
+      properties:
+        username:
+          type: string
+          example: "john_doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        password:
+          type: string
+          format: password
+          example: "securepassword123"
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        role:
+          type: integer
+          example: 1
+        departement:
+          type: integer
+          example: 1
+
+    UserUpdate:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "john_doe"
+        email:
+          type: string
+          format: email
+          example: "john@example.com"
+        first_name:
+          type: string
+          example: "John"
+        last_name:
+          type: string
+          example: "Doe"
+        is_active:
+          type: boolean
+          example: true
+        role:
+          type: integer
+          example: 1
+        departement:
+          type: integer
+          example: 1
+
+    # Role Schemas
+    Role:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        role_name:
+          type: string
+          example: "admin"
+        role_type:
+          type: string
+          example: "Administrator"
+
+    RoleCreate:
+      type: object
+      required:
+        - role_name
+        - role_type
+      properties:
+        role_name:
+          type: string
+          example: "admin"
+        role_type:
+          type: string
+          example: "Administrator"
+
+    RoleUpdate:
+      type: object
+      properties:
+        role_name:
+          type: string
+          example: "admin"
+        role_type:
+          type: string
+          example: "Administrator"
+
+    # Department Schemas
+    Department:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        dep_name:
+          type: string
+          example: "Human Resources"
+        dep_type:
+          type: string
+          example: "Corporate"
+
+    DepartmentCreate:
+      type: object
+      required:
+        - dep_name
+        - dep_type
+      properties:
+        dep_name:
+          type: string
+          example: "Human Resources"
+        dep_type:
+          type: string
+          example: "Corporate"
+
+    DepartmentUpdate:
+      type: object
+      properties:
+        dep_name:
+          type: string
+          example: "Human Resources"
+        dep_type:
+          type: string
+          example: "Corporate"
+
+    # Document Schemas
+    Document:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        doc_title:
+          type: string
+          example: "Project Proposal"
+        doc_type:
+          type: string
+          example: "PDF"
+        doc_creation_date:
+          type: string
+          format: date-time
+          example: "2023-12-01T10:30:00Z"
+        doc_modification_date:
+          type: string
+          format: date-time
+          example: "2023-12-01T15:45:00Z"
+        doc_path:
+          type: string
+          format: uri
+          example: "/media/documents/project_proposal.pdf"
+        doc_status:
+          type: string
+          example: "active"
+        doc_size:
+          type: number
+          format: float
+          example: 2.5
+        doc_format:
+          type: string
+          example: "PDF"
+        doc_category:
+          type: string
+          example: "Business"
+        doc_description:
+          type: string
+          example: "Annual project proposal document"
+        doc_comment:
+          type: string
+          example: "Reviewed and approved"
+        doc_owner:
+          $ref: '#/components/schemas/User'
+        doc_departement:
+          $ref: '#/components/schemas/Department'
+
+    DocumentCreate:
+      type: object
+      required:
+        - doc_title
+        - doc_type
+        - doc_path
+        - doc_status
+        - doc_size
+        - doc_format
+        - doc_category
+        - doc_description
+        - doc_owner
+        - doc_departement
+      properties:
+        doc_title:
+          type: string
+          example: "Project Proposal"
+        doc_type:
+          type: string
+          example: "PDF"
+        doc_path:
+          type: string
+          format: binary
+          description: "File to upload"
+        doc_status:
+          type: string
+          example: "active"
+        doc_size:
+          type: number
+          format: float
+          example: 2.5
+        doc_format:
+          type: string
+          example: "PDF"
+        doc_category:
+          type: string
+          example: "Business"
+        doc_description:
+          type: string
+          example: "Annual project proposal document"
+        doc_comment:
+          type: string
+          example: "Initial upload"
+        doc_owner:
+          type: integer
+          example: 1
+        doc_departement:
+          type: integer
+          example: 1
+
+    DocumentUpdate:
+      type: object
+      properties:
+        doc_title:
+          type: string
+          example: "Project Proposal Updated"
+        doc_type:
+          type: string
+          example: "PDF"
+        doc_path:
+          type: string
+          format: binary
+          description: "New file to upload (optional)"
+        doc_status:
+          type: string
+          example: "active"
+        doc_category:
+          type: string
+          example: "Business"
+        doc_description:
+          type: string
+          example: "Updated project proposal document"
+        doc_comment:
+          type: string
+          example: "Updated with new requirements"
+
+    # Workflow Schemas
+    Workflow:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nom:
+          type: string
+          example: "Document Review Workflow"
+        description:
+          type: string
+          example: "Standard workflow for document review and approval"
+        etat:
+          type: string
+          example: "active"
+        document:
+          $ref: '#/components/schemas/Document'
+
+    WorkflowCreate:
+      type: object
+      required:
+        - nom
+        - description
+        - etat
+        - document
+      properties:
+        nom:
+          type: string
+          example: "Document Review Workflow"
+        description:
+          type: string
+          example: "Standard workflow for document review and approval"
+        etat:
+          type: string
+          example: "active"
+        document:
+          type: integer
+          example: 1
+
+    WorkflowUpdate:
+      type: object
+      properties:
+        nom:
+          type: string
+          example: "Document Review Workflow Updated"
+        description:
+          type: string
+          example: "Updated workflow for document review and approval"
+        etat:
+          type: string
+          example: "active"
+        document:
+          type: integer
+          example: 1
+
+    # Task Schemas
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        task_name:
+          type: string
+          example: "Review Document"
+        task_date_echeance:
+          type: string
+          format: date-time
+          example: "2023-12-15T17:00:00Z"
+        task_priorite:
+          type: string
+          enum: [urgent, high, normal, low]
+          example: "high"
+        task_statut:
+          type: string
+          enum: [not_started, in_progress, completed]
+          example: "in_progress"
+        task_workflow:
+          $ref: '#/components/schemas/Workflow'
+        task_assigned_to:
+          $ref: '#/components/schemas/User'
+
+    TaskCreate:
+      type: object
+      required:
+        - task_name
+        - task_date_echeance
+        - task_priorite
+        - task_statut
+        - task_workflow
+        - task_assigned_to
+      properties:
+        task_name:
+          type: string
+          example: "Review Document"
+        task_date_echeance:
+          type: string
+          format: date-time
+          example: "2023-12-15T17:00:00Z"
+        task_priorite:
+          type: string
+          enum: [urgent, high, normal, low]
+          example: "high"
+        task_statut:
+          type: string
+          enum: [not_started, in_progress, completed]
+          example: "not_started"
+        task_workflow:
+          type: integer
+          example: 1
+        task_assigned_to:
+          type: integer
+          example: 1
+
+    TaskUpdate:
+      type: object
+      properties:
+        task_name:
+          type: string
+          example: "Review Document Updated"
+        task_date_echeance:
+          type: string
+          format: date-time
+          example: "2023-12-20T17:00:00Z"
+        task_priorite:
+          type: string
+          enum: [urgent, high, normal, low]
+          example: "normal"
+        task_statut:
+          type: string
+          enum: [not_started, in_progress, completed]
+          example: "completed"
+        task_workflow:
+          type: integer
+          example: 1
+        task_assigned_to:
+          type: integer
+          example: 1
+
+    # Invoice Schema (OCR)
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        store_name:
+          type: string
+          example: "ABC Store"
+        store_address:
+          type: string
+          example: "123 Main St, City, Country"
+        store_phone:
+          type: string
+          example: "+1-234-567-8900"
+        invoice_date:
+          type: string
+          format: date-time
+          example: "2023-12-01T10:30:00Z"
+        invoice_amount:
+          type: number
+          format: decimal
+          example: 125.50
+
+    # Error Schemas
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Invalid credentials"
+        message:
+          type: string
+          example: "The provided username or password is incorrect"
+
+    ValidationError:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Validation error"
+        details:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            username: ["This field is required."]
+            email: ["Enter a valid email address."]
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required or token invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Authentication required"
+            message: "Please provide a valid authentication token"
+
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Not found"
+            message: "The requested resource was not found"
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+
+tags:
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Users
+    description: User management operations
+  - name: Roles
+    description: Role management operations
+  - name: Departments
+    description: Department management operations
+  - name: Documents
+    description: Document management operations
+  - name: Workflows
+    description: Workflow management operations
+  - name: Tasks
+    description: Task management operations
