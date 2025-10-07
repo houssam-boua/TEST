@@ -8,6 +8,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import "./index.css";
 import { ThemeProvider } from "./Components/theme-provider";
 import AuthTokenProvider from "./Context/AuthTokenProvider";
+import { initializeAuth } from "./Slices/authSlice";
+
+// Initialize auth state from localStorage on app start
+store.dispatch(initializeAuth());
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

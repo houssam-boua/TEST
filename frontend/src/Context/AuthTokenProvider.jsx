@@ -38,21 +38,32 @@ const AuthTokenProvider = ({ children }) => {
   useEffect(() => {
     const validate = async () => {
       if (!token || !isAuthenticated) return;
-      dispatch(setLoading(true));
-      try {
-        const base =
-          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
-        const res = await fetch(`${base}/api/users/`, {
-          method: "HEAD",
-          headers: { Authorization: `Token ${token}` },
-        });
-        if (res.status === 401) dispatch(logout());
-      } catch (_) {
-        // network error: ignore
-      } finally {
-        dispatch(setLoading(false));
-      }
+
+      // Don't validate immediately on mount - give time for app initialization
+      const timeoutId = setTimeout(async () => {
+        try {
+          const base =
+            import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+          const res = await fetch(`${base}/api/users/`, {
+            method: "HEAD",
+            headers: { Authorization: `Token ${token}` },
+          });
+          if (res.status === 401) {
+            console.warn("Token validation failed, logging out");
+            dispatch(logout());
+          }
+        } catch (error) {
+          console.warn(
+            "Token validation network error, keeping session:",
+            error.message
+          );
+          // Don't logout on network errors - keep the session
+        }
+      }, 1000); // Wait 1 second before validating
+
+      return () => clearTimeout(timeoutId);
     };
+
     validate();
   }, [token, isAuthenticated, dispatch]);
 
@@ -82,10 +93,12 @@ const AuthTokenProvider = ({ children }) => {
 
   // Helpers
   const hasRole = (required) => {
-    if (!userRole) return false;
+    // Handle both string role and object role formats
+    const currentRole = userRole?.role_name || userRole || user?.role;
+    if (!currentRole) return false;
     const list = Array.isArray(required) ? required : [required];
     return list.some(
-      (r) => userRole.role_name?.toLowerCase() === String(r).toLowerCase()
+      (r) => String(currentRole).toLowerCase() === String(r).toLowerCase()
     );
   };
   const belongsToDepartment = (dep) =>

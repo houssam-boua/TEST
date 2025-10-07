@@ -1,11 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+
 :root {
   --background: #ffffff;
   --foreground: #180600;
   --card: #ffffff;
-  --card-foreground: #123440;;
+  --card-foreground: oklch(30.59% 0.0445 224.42);
   --popover: #e8e8e8;
   --popover-foreground: #123440;
   --primary: #048bb1;
@@ -18,16 +19,16 @@
   --accent-foreground: #180600;
   --destructive: #de3531;
   --destructive-foreground: #000000;
-  --border: #ffffff;
-  --input: #e8e8e8;
+  --border: #e7e2e2;
+  --input: #2d2828;
   --ring: #d1d1d1;
   --chart-1: #eed79a;
   --chart-2: #80e895;
   --chart-3: #eb797b;
   --chart-4: #00a1bb;
   --chart-5: #048bb1;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #0a0a0a;
+  --sidebar: #123440;
+  --sidebar-foreground: #ffffff;
   --sidebar-primary: #171717;
   --sidebar-primary-foreground: #fafafa;
   --sidebar-accent: #f5f5f5;
@@ -43,15 +44,20 @@
   --shadow-blur: 3px;
   --shadow-spread: 0px;
   --shadow-opacity: 0.08;
-  --shadow-color: oklch(0 0 0);
+  --shadow-color: oklch(100% 0.00011 271.152);
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.04);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.04);
-  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.08);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.08);
-  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 2px 4px -1px hsl(0 0% 0% / 0.08);
-  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 4px 6px -1px hsl(0 0% 0% / 0.08);
-  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 8px 10px -1px hsl(0 0% 0% / 0.08);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.20);
+  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
+    0 1px 2px -1px hsl(0 0% 0% / 0.08);
+  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
+    0 1px 2px -1px hsl(0 0% 0% / 0.08);
+  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
+    0 2px 4px -1px hsl(0 0% 0% / 0.08);
+  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
+    0 4px 6px -1px hsl(0 0% 0% / 0.08);
+  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
+    0 8px 10px -1px hsl(0 0% 0% / 0.08);
+  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.2);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 }
@@ -73,7 +79,7 @@
   --accent-foreground: #fafafa;
   --destructive: #ff6467;
   --destructive-foreground: #fafafa;
-  --border: #a1a1a1;
+  --border: #282828;
   --input: #343434;
   --ring: #737373;
   --chart-1: #91c5ff;
@@ -101,12 +107,17 @@
   --shadow-color: oklch(0 0 0);
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.04);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.04);
-  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.08);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.08);
-  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 2px 4px -1px hsl(0 0% 0% / 0.08);
-  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 4px 6px -1px hsl(0 0% 0% / 0.08);
-  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 8px 10px -1px hsl(0 0% 0% / 0.08);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.20);
+  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
+    0 1px 2px -1px hsl(0 0% 0% / 0.08);
+  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
+    0 1px 2px -1px hsl(0 0% 0% / 0.08);
+  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
+    0 2px 4px -1px hsl(0 0% 0% / 0.08);
+  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
+    0 4px 6px -1px hsl(0 0% 0% / 0.08);
+  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
+    0 8px 10px -1px hsl(0 0% 0% / 0.08);
+  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.2);
 }
 
 @theme inline {
