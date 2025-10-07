@@ -1,14 +1,33 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { apiSlice } from "./apiSlice";
 
-// Initial state
-const initialState = {
-  user: null,
-  token: localStorage.getItem("token"),
-  isAuthenticated: !!localStorage.getItem("token"),
-  isLoading: false,
-  error: null,
+// Helper function to get initial state from localStorage
+const getInitialState = () => {
+  const token = localStorage.getItem("token");
+  const userJson = localStorage.getItem("user");
+
+  let user = null;
+  try {
+    user = userJson ? JSON.parse(userJson) : null;
+  } catch (error) {
+    console.warn("Failed to parse user data from localStorage:", error);
+    localStorage.removeItem("user");
+  }
+
+  // Only consider authenticated if both token and user exist
+  const isAuthenticated = !!(token && user);
+
+  return {
+    user,
+    token,
+    isAuthenticated,
+    isLoading: false,
+    error: null,
+  };
 };
+
+// Initial state
+const initialState = getInitialState();
 
 const authSlice = createSlice({
   name: "auth",
@@ -66,12 +85,33 @@ const authSlice = createSlice({
     // Initialize auth state from localStorage
     initializeAuth: (state) => {
       const token = localStorage.getItem("token");
-      const user = localStorage.getItem("user");
+      const userJson = localStorage.getItem("user");
 
-      if (token && user) {
-        state.token = token;
-        state.user = JSON.parse(user);
-        state.isAuthenticated = true;
+      if (token && userJson) {
+        try {
+          const user = JSON.parse(userJson);
+          state.token = token;
+          state.user = user;
+          state.isAuthenticated = true;
+          state.isLoading = false;
+          state.error = null;
+        } catch (error) {
+          console.warn(
+            "Failed to parse user data during initialization:",
+            error
+          );
+          // Clear corrupted data
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          state.user = null;
+          state.token = null;
+          state.isAuthenticated = false;
+        }
+      } else {
+        // Ensure clean state if data is incomplete
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
       }
     },
   },
