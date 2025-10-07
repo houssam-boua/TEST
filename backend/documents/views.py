@@ -1,16 +1,19 @@
 # views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, viewsets
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.views.decorators.csrf import csrf_exempt
-from .models import Document
+from .models import Document, DocumentVersion
 from users.models import Departement
-from .serializers import DocumentSerializer
+from .serializers import DocumentSerializer, DocumentVersionSerializer
 
+class DocumentViewSet(viewsets.ModelViewSet):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
 
 class DocumentListCreateView(APIView):
     def post(self, request):
@@ -116,7 +119,7 @@ class DocumentDetailView(APIView):
     def delete(self, request, pk):
         document = get_object_or_404(Document, pk=pk)
         document.delete()  # This will also delete the file from MinIO (see model's delete method)
-        return Response({'status': 'Document deleted successfully'}, status=204)
+        return Response({'status': 'Document deleted successfully'}, status=200)
 
 
 @csrf_exempt
@@ -150,4 +153,23 @@ def create_folder(request):
                 'error': f'Failed to create folder: {str(e)}'
             }, status=500)
     
-    return Response({'error': 'Method not allowed'}, status=405)
+class MinioFileListView(APIView):
+    """
+    API endpoint that lists all files stored in MinIO using Django's default storage backend.
+    """
+    def get(self, request):
+        # List all files and directories at the root of the storage
+        directories, files = default_storage.listdir("")
+        # Combine files and directories for a flat listing, or return separately
+        return Response({
+            "directories": directories,
+            "files": files
+        }, status=status.HTTP_200_OK)
+
+class DocumentVersionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for DocumentVersion model.
+    """
+    queryset = DocumentVersion.objects.all()
+    serializer_class = DocumentVersionSerializer
+
