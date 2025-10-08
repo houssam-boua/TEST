@@ -8,82 +8,110 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-const invoices = [
+import { ChevronRight } from "lucide-react";
+const names = [
   {
-    invoice: "INV001",
-    paymentStatus: "Paid",
-    totalAmount: "$250.00",
-    paymentMethod: "Credit Card",
+    name: "Construction contract",
+    class: "Proposal",
+    dueDate: "16.07.2023",
+    owner: "Jhon Doe",
+    more: (
+      <ChevronRight
+        strokeWidth={0.75}
+         className="h-4 w-4 text-muted-foreground"
+      />
+    ),
   },
   {
-    invoice: "INV002",
-    paymentStatus: "Pending",
-    totalAmount: "$150.00",
-    paymentMethod: "PayPal",
+    name: "Application for leave",
+    class: "Application",
+    dueDate: "16.07.2023",
+    owner: "Jane Doe",
+    more: (
+      <ChevronRight
+        strokeWidth={0.75}
+        className="h-4 w-4 text-muted-foreground"
+      />
+    ),
   },
   {
-    invoice: "INV003",
-    paymentStatus: "Unpaid",
-    totalAmount: "$350.00",
-    paymentMethod: "Bank Transfer",
+    name: "Suggestion for leave",
+    class: "Proposal",
+    dueDate: "16.07.2023",
+    owner: "Mike Doe",
+    more: (
+      <ChevronRight
+        strokeWidth={0.75}
+        className="h-4 w-4 text-muted-foreground"
+      />
+    ),
   },
   {
-    invoice: "INV004",
-    paymentStatus: "Paid",
-    totalAmount: "$450.00",
-    paymentMethod: "Credit Card",
+    name: "Offer for sale",
+    class: "Proposal",
+    dueDate: "16.07.2023",
+    owner: "Jhon Doe",
+    more: (
+      <ChevronRight
+        strokeWidth={0.75}
+        className="h-4 w-4 text-muted-foreground"
+      />
+    ),
   },
   {
-    invoice: "INV005",
-    paymentStatus: "Paid",
-    totalAmount: "$550.00",
-    paymentMethod: "PayPal",
-  },
-  {
-    invoice: "INV006",
-    paymentStatus: "Pending",
-    totalAmount: "$200.00",
-    paymentMethod: "Bank Transfer",
-  },
-  {
-    invoice: "INV007",
-    paymentStatus: "Unpaid",
-    totalAmount: "$300.00",
-    paymentMethod: "Credit Card",
+    name: "Application for joining",
+    class: "Application",
+    dueDate: "16.07.2023",
+    owner: "Mike kan",
+    more: (
+      <ChevronRight
+        strokeWidth={0.75}
+        className="h-4 w-4 text-muted-foreground"
+      />
+    ),
   },
 ];
 
 const TableDemo = () => {
   return (
-    <Table className="border-border">
-      <TableCaption>A list of your recent invoices.</TableCaption>
+    <Table className=" rounded-md">
       <TableHeader>
-        <TableRow>
-          <TableHead className="w-[100px]">Invoice</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Method</TableHead>
-          <TableHead className="text-right">Amount</TableHead>
+        <TableRow className="border-b-2 border-muted">
+          <TableHead className="w-[100px] text-xs">Name</TableHead>
+          <TableHead className="text-muted-foreground text-xs">Class</TableHead>
+          <TableHead className="text-muted-foreground text-xs">
+            Due Date
+          </TableHead>
+          <TableHead className="text-right text-muted-foreground text-xs">
+            Owner
+          </TableHead>
+          <TableHead className="text-right text-muted-foreground text-xs"></TableHead>
         </TableRow>
       </TableHeader>
-      <TableBody className="border-border">
-        {invoices.map((invoice) => (
-          <TableRow key={invoice.invoice}>
-            <TableCell className="font-medium">{invoice.invoice}</TableCell>
-            <TableCell>{invoice.paymentStatus}</TableCell>
-            <TableCell>{invoice.paymentMethod}</TableCell>
-            <TableCell className="text-right">{invoice.totalAmount}</TableCell>
+      <TableBody className="">
+        {names.map((name) => (
+          <TableRow
+            key={name.name}
+            className="border-b border-muted last:border-0 hover:border-primary/40"
+          >
+            <TableCell className="font-medium">{name.name}</TableCell>
+            <TableCell className="text-muted-foreground">
+              {name.class}
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              {name.owner}
+            </TableCell>
+            <TableCell className="text-right text-muted-foreground">
+              {name.dueDate}
+            </TableCell>
+            <TableCell className="text-right text-muted-foreground">
+              {name.more}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
-      <TableFooter>
-        <TableRow>
-          <TableCell colSpan={3}>Total</TableCell>
-          <TableCell className="text-right">$2,500.00</TableCell>
-        </TableRow>
-      </TableFooter>
     </Table>
   );
-}
+};
 
 export default TableDemo;
