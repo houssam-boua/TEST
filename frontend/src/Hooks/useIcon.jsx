@@ -1,13 +1,13 @@
 import { CircleAlert } from "lucide-react";
 
-const useIcon = (status) => {
+const useIcon = (status,color ) => {
   switch (status) {
     case "approved":
-      return <CircleAlert />;
+      return <CircleAlert className={`${color}`} />;
     case "pending":
-      return <CircleAlert />;
+      return <CircleAlert className={`${color}`} />;
     case "rejected":
-      return <CircleAlert />;
+      return <CircleAlert className={`${color}`} />;
     default:
       return null;
   }

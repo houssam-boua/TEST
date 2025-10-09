@@ -3,6 +3,7 @@ import PublicLayout from "../Layout/PublicLayout";
 import UserLayout from "../Layout/UserLayout";
 import ValidatorLayout from "../Layout/ValidatorLayout";
 import AdminAccueil from "../Pages/AdminAccueil";
+import ConsulteDocuments from "../Pages/ConsulteDocuments";
 import LoginPage from "../Pages/LoginPage";
 import UnauthorizedPage from "../Pages/UnauthorizedPage";
 
@@ -23,7 +24,10 @@ export const routesConfig = {
   admin: {
     layout: AdminLayout,
     requiredRoles: ["admin"],
-    routes: [{ path: "/a/acceuil", component: AdminAccueil }],
+    routes: [
+      { path: "/a/acceuil", component: AdminAccueil },
+      { path: "/a/consulter-document", component: ConsulteDocuments },
+    ],
   },
 
   validator: {

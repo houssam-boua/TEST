@@ -67,7 +67,7 @@ const data = {
       items: [
         {
           title: "Dashboard",
-          url: "#",
+          url: "/a/acceuil",
         },
       ],
     },
@@ -77,17 +77,14 @@ const data = {
       icon: FileText,
       items: [
         {
-          title: "Genesis",
-          url: "#",
+          title: "Créer",
+          url: "/a/creer-document",
         },
         {
-          title: "Explorer",
-          url: "#",
+          title: "Consulter",
+          url: "/a/consulter-document",
         },
-        {
-          title: "Quantum",
-          url: "#",
-        },
+        
       ],
     },
     {

@@ -13,6 +13,14 @@ import CostumeCardTitle from "../collection/costume-card-title";
 import { FileText } from "lucide-react";
 import useIcon from "../../Hooks/useIcon";
 import ChartBarMultiple from "../charts/chart-bar-multiple";
+import useIconColor from "../../Hooks/useIconColor";
+
+// Render a status-based icon using hooks inside a proper component
+const StatusIcon = React.memo(function StatusIcon({ status, className }) {
+  const color = useIconColor(status);
+  const iconEl = useIcon(status, color, className);
+  return iconEl || null;
+});
 
 const recentDocuments = [
   {
@@ -65,8 +73,7 @@ const DashboardSectionCards = () => {
                 key={index}
                 className="mb-2 flex items-center justify-start gap-2"
               >
-                {useIcon(doc.status)}
-
+                <StatusIcon status={doc.status} className="h-6 w-6" />
                 <div className="flex-1 flex flex-col ">
                   <span className="text-xs">{doc.title}</span>
                   <span className="text-xs text-muted-foreground">
@@ -92,14 +99,16 @@ const DashboardSectionCards = () => {
                 key={index}
                 className="mb-2 flex items-center justify-start gap-2"
               >
-                {useIcon(doc.status)}
+                <StatusIcon status={doc.status} className="h-6 w-6" />
                 <div className="flex-1 flex flex-col ">
                   <span className="text-xs">{doc.title}</span>
                   <span className="text-xs text-muted-foreground">
                     {doc.status}
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground">{doc.time}</span>
+                <span className="text-xs text-muted-foreground">
+                  {doc.time}
+                </span>
               </li>
             ))}
           </ul>
