@@ -7,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import User, Role, Departement
 from .serializers import UserSerializer, RoleSerializer, DepartementSerializer
+from django.contrib.contenttypes.models import ContentType
+from .models import UserActionLog
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -15,6 +17,38 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
+
+    def create(self, serializer):
+        user = serializer.save()
+        UserActionLog.objects.create(
+            user=user,
+            action="create",
+            content_type=ContentType.objects.get_for_model(user),
+            object_id=user.id,
+            extra_info={"username": user.username}
+        )
+
+    def update(self, serializer):
+        user = serializer.save()
+        UserActionLog.objects.create(
+            user=user,
+            action="update",
+            content_type=ContentType.objects.get_for_model(user),
+            object_id=user.id,
+            extra_info={"username": user.username}
+        )
+
+    def delete(self, instance):
+        user_id = instance.id
+        username = instance.username
+        instance.delete()
+        UserActionLog.objects.create(
+            user=self.request.user if self.request.user.is_authenticated else None,
+            action="delete",
+            content_type=ContentType.objects.get_for_model(User),
+            object_id=user_id,
+            extra_info={"username": username}
+        )
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["username", "email", "first_name", "last_name"]
@@ -27,6 +61,38 @@ class RoleViewSet(viewsets.ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
 
+    def create(self, serializer):
+        role = serializer.save()
+        UserActionLog.objects.create(
+            user=self.request.user if self.request.user.is_authenticated else None,
+            action="create",
+            content_type=ContentType.objects.get_for_model(role),
+            object_id=role.id,
+            extra_info={"role_name": role.role_name}
+        )
+
+    def update(self, serializer):
+        role = serializer.save()
+        UserActionLog.objects.create(
+            user=self.request.user if self.request.user.is_authenticated else None,
+            action="update",
+            content_type=ContentType.objects.get_for_model(role),
+            object_id=role.id,
+            extra_info={"role_name": role.role_name}
+        )
+
+    def delete(self, instance):
+        role_id = instance.id
+        role_name = instance.role_name
+        instance.delete()
+        UserActionLog.objects.create(
+            user=self.request.user if self.request.user.is_authenticated else None,
+            action="delete",
+            content_type=ContentType.objects.get_for_model(Role),
+            object_id=role_id,
+            extra_info={"role_name": role_name}
+        )
+
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["role_name", "role_type"]
     #  GET /roles/?role_name=John
@@ -37,6 +103,38 @@ class DepartementViewSet(viewsets.ModelViewSet):
     '''Departement viewset for CRUD operations'''
     queryset = Departement.objects.all()
     serializer_class = DepartementSerializer
+
+    def create(self, serializer):
+        dep = serializer.save()
+        UserActionLog.objects.create(
+            user=self.request.user if self.request.user.is_authenticated else None,
+            action="create",
+            content_type=ContentType.objects.get_for_model(dep),
+            object_id=dep.id,
+            extra_info={"dep_name": dep.dep_name}
+        )
+
+    def update(self, serializer):
+        dep = serializer.save()
+        UserActionLog.objects.create(
+            user=self.request.user if self.request.user.is_authenticated else None,
+            action="update",
+            content_type=ContentType.objects.get_for_model(dep),
+            object_id=dep.id,
+            extra_info={"dep_name": dep.dep_name}
+        )
+
+    def delete(self, instance):
+        dep_id = instance.id
+        dep_name = instance.dep_name
+        instance.delete()
+        UserActionLog.objects.create(
+            user=self.request.user if self.request.user.is_authenticated else None,
+            action="delete",
+            content_type=ContentType.objects.get_for_model(Departement),
+            object_id=dep_id,
+            extra_info={"dep_name": dep_name}
+        )
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["dep_name", "dep_type"]

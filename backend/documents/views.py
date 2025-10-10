@@ -10,6 +10,8 @@ from django.views.decorators.csrf import csrf_exempt
 from .models import Document, DocumentVersion
 from users.models import Departement
 from .serializers import DocumentSerializer, DocumentVersionSerializer
+from users.models import UserActionLog
+from django.contrib.contenttypes.models import ContentType
 
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
@@ -89,6 +91,14 @@ class DocumentListCreateView(APIView):
         
         # Now save the document to database
         document.save()
+        # Log create action
+        UserActionLog.objects.create(
+            user=owner,
+            action="create",
+            content_type=ContentType.objects.get_for_model(document),
+            object_id=document.id,
+            extra_info={"doc_title": doc_title}
+        )
  
         serializer = DocumentSerializer(document)
         return Response({
@@ -113,12 +123,30 @@ class DocumentDetailView(APIView):
         serializer = DocumentSerializer(document, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            # Log update action
+            UserActionLog.objects.create(
+                user=document.doc_owner,
+                action="update",
+                content_type=ContentType.objects.get_for_model(document),
+                object_id=document.id,
+                extra_info={"updated_fields": list(request.data.keys())}
+            )
             return Response({'status': 'Document updated successfully'})
         return Response(serializer.errors, status=400)
 
     def delete(self, request, pk):
         document = get_object_or_404(Document, pk=pk)
+        owner = document.doc_owner
+        doc_id = document.id
         document.delete()  # This will also delete the file from MinIO (see model's delete method)
+        # Log delete action
+        UserActionLog.objects.create(
+            user=owner,
+            action="delete",
+            content_type=ContentType.objects.get_for_model(Document),
+            object_id=doc_id,
+            extra_info={"doc_title": getattr(document, "doc_title", None)}
+        )
         return Response({'status': 'Document deleted successfully'}, status=200)
 
 
