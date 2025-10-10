@@ -12,7 +12,11 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   IconChevronDown,
@@ -172,7 +176,13 @@ function DraggableRow({ row, onEdit, onDelete }) {
 // Memoize DraggableRow for performance
 const MemoizedRow = React.memo(DraggableRow);
 
-export function DataTable({ data = [], columns = [], onEdit, onDelete, onAdd }) {
+export function DataTable({
+  data = [],
+  columns = [],
+  onEdit,
+  onDelete,
+  onAdd,
+}) {
   // Remove local state for data, always use the data prop
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] = React.useState({});
@@ -228,7 +238,7 @@ export function DataTable({ data = [], columns = [], onEdit, onDelete, onAdd }) 
   return (
     <Tabs
       defaultValue="outline"
-      className="w-full flex-col justify-start gap-6"
+      className="w-full flex-col justify-start gap-6 "
     >
       <div className="flex items-center justify-end px-4 lg:px-6">
         <div className="flex items-center gap-2">
@@ -276,7 +286,7 @@ export function DataTable({ data = [], columns = [], onEdit, onDelete, onAdd }) 
         value="outline"
         className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
       >
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-hidden rounded-lg border border-muted">
           <DndContext
             collisionDetection={closestCenter}
             modifiers={[restrictToVerticalAxis]}
@@ -284,8 +294,8 @@ export function DataTable({ data = [], columns = [], onEdit, onDelete, onAdd }) 
             sensors={sensors}
             id={sortableId}
           >
-            <Table className="bg-white dark:bg-background ">
-              <TableHeader className="bg-muted/10 sticky top-0 z-10">
+            <Table className="bg-white  ">
+              <TableHeader className=" sticky top-0 z-10">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id}>
                     {headerGroup.headers.map((header) => {
@@ -293,12 +303,12 @@ export function DataTable({ data = [], columns = [], onEdit, onDelete, onAdd }) 
                         <TableHead
                           key={header.id}
                           colSpan={header.colSpan}
-                          className="font-"
+                          className="text-muted-foreground/80 border-0 border-b border-b-muted"
                         >
                           {header.isPlaceholder
                             ? null
                             : flexRender(
-                                header.column.columnDef.header,
+                                header.column. columnDef.header,
                                 header.getContext()
                               )}
                         </TableHead>
@@ -307,7 +317,7 @@ export function DataTable({ data = [], columns = [], onEdit, onDelete, onAdd }) 
                   </TableRow>
                 ))}
               </TableHeader>
-              <TableBody className="**:data-[slot=table-cell]:first:w-8">
+              <TableBody className="**:data-[slot=table-cell]:first:w-8 divide-y divide-muted">
                 {table.getRowModel().rows?.length ? (
                   <SortableContext
                     items={dataIds}
@@ -323,8 +333,11 @@ export function DataTable({ data = [], columns = [], onEdit, onDelete, onAdd }) 
                     ))}
                   </SortableContext>
                 ) : (
-                  <TableRow>
-                    <TableCell colSpan={table.getAllLeafColumns().length || 1} className="h-24 ">
+                  <TableRow className="bg-white border-muted">
+                    <TableCell
+                      colSpan={table.getAllLeafColumns().length || 1}
+                      className="h-24 border-muted"
+                    >
                       <div className="flex flex-col items-center justify-center mt-2 ">
                         <img
                           src={nodata}

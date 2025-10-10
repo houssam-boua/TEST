@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
+import { Eye } from "lucide-react";
 
 const columns = [
   {
@@ -41,14 +42,14 @@ const columns = [
   },
   {
     id: "seeDetails",
-    header: "Voir les détails",
+    header: "",
     cell: ({ row }) => (
       <Link
         to={`/admin/devicegrp/project/${row.original.projetId}`}
-        className="text-blue-600 underline hover:text-blue-800"
+        className="text-primary-"
         rel="noopener noreferrer"
       >
-        Détails
+        <Eye strokeWidth={0.5} size={20} />
       </Link>
     ),
   },
