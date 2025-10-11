@@ -82,7 +82,7 @@ const data = {
         },
         {
           title: "Consulter",
-          url: "/a/consulter-document",
+          url: "/a/consulter",
         },
         
       ],
@@ -93,21 +93,18 @@ const data = {
       icon: Workflow,
       items: [
         {
-          title: "Introduction",
-          url: "#",
+          title: "Créer",
+          url: "/a/creer-workflow",
         },
         {
-          title: "Get Started",
-          url: "#",
+          title: "Consulter",
+          url: "/a/consulter-workflow",
         },
         {
-          title: "Tutorials",
+          title: "Config",
           url: "#",
         },
-        {
-          title: "Changelog",
-          url: "#",
-        },
+        
       ],
     },
     {

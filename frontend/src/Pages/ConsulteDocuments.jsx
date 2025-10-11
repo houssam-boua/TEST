@@ -1,8 +1,73 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
-import { Eye } from "lucide-react";
+import { Info, Lock, MessageCircleMore, History } from "lucide-react";
+import { SheetDemo } from "../components/blocks/sheet";
 
+const infos = [
+  {
+    icon: <Info className="text-primary" strokeWidth={1.5} size={16} />,
+    title: "Nom du document",
+    description: "Document_Exemple.pdf",
+  },
+  {
+    icon: <Info className="text-primary" strokeWidth={1.5} size={16} />,
+    title: "Type",
+    description: "PDF",
+  },
+];
+
+const comments = [
+  {
+    icon: (
+      <MessageCircleMore className="text-primary" strokeWidth={1.5} size={16} />
+    ),
+    title: "John Doe — 2024-09-01",
+    description: "Ceci est un commentaire d'exemple.",
+  },
+  {
+    icon: (
+      <MessageCircleMore className="text-primary" strokeWidth={1.5} size={16} />
+    ),
+    title: "Jane Smith — 2024-09-02",
+    description: "Un autre commentaire pour démonstration.",
+  },
+];
+
+const versions = [
+  {
+    icon: <History className="text-primary" strokeWidth={1.5} size={16} />,
+    title: "Version 1.0",
+    description: "Initial version. (2024-08-01)",
+  },
+  {
+    icon: <History className="text-primary" strokeWidth={1.5} size={16} />,
+    title: "Version 1.1",
+    description: "Added more details. (2024-08-15)",
+  },
+  {
+    icon: <History className="text-primary" strokeWidth={1.5} size={16} />,
+    title: "Version 2.0",
+    description: "Major update. (2024-09-01)",
+  },
+];
+
+const access = [
+  {
+    icon: <Lock className="text-primary" strokeWidth={1.5} size={16} />,
+    title: "Alice",
+    description: "Read",
+  },
+  {
+    icon: <Lock className="text-primary" strokeWidth={1.5} size={16} />,
+    title: "Bob",
+    description: "Write",
+  },
+  {
+    icon: <Lock className="text-primary" strokeWidth={1.5} size={16} />,
+    title: "Charlie",
+    description: "Admin",
+  },
+];
 const columns = [
   {
     id: "id",
@@ -43,14 +108,13 @@ const columns = [
   {
     id: "seeDetails",
     header: "",
-    cell: ({ row }) => (
-      <Link
-        to={`/admin/devicegrp/project/${row.original.projetId}`}
-        className="text-primary-"
-        rel="noopener noreferrer"
-      >
-        <Eye strokeWidth={0.5} size={20} />
-      </Link>
+    cell: () => (
+      <SheetDemo
+        infos={infos}
+        comments={comments}
+        versions={versions}
+        access={access}
+      />
     ),
   },
 ];
