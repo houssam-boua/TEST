@@ -10,15 +10,16 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Link, useLocation } from "react-router-dom";
+import { House } from "lucide-react";
 
 // Map URL prefixes to sidebar section titles based on your navigation
 const sectionMap = [
-  { prefix: "/a/acceuil", title: "Accueil" },
+  { prefix: "/a/acceuil", title: "Dashboard" },
 
   // Documents section
-  { prefix: "/a/documents", title: "Documents" },
-  { prefix: "/a/genesis", title: "Documents" },
-  { prefix: "/a/explorer", title: "Documents" },
+  { prefix: "/a/creer-document", title: "New document" },
+  { prefix: "/a/consulter", title: "Documents" },
+  { prefix: "/a/consulter/:id/documents", title: "Document details" },
   { prefix: "/a/quantum", title: "Documents" },
 
   // Workflow section
@@ -63,7 +64,7 @@ function getAdminBreadcrumbs(pathname) {
 
   const crumbs = [
     {
-      label: "Dashboard",
+      label: <House size={16} strokeWidth={1.25} />,
       to: "/a/acceuil",
     },
   ];

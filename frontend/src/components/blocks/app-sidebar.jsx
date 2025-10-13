@@ -5,6 +5,7 @@ import {
   Book,
   BookOpen,
   Bot,
+  Cog,
   Command,
   FileClock,
   FileText,
@@ -84,7 +85,6 @@ const data = {
           title: "Consulter",
           url: "/a/consulter",
         },
-        
       ],
     },
     {
@@ -100,11 +100,6 @@ const data = {
           title: "Consulter",
           url: "/a/consulter-workflow",
         },
-        {
-          title: "Config",
-          url: "#",
-        },
-        
       ],
     },
     {
@@ -154,12 +149,12 @@ const data = {
       ],
     },
     {
-      title: "User management",
+      title: "Settings",
       url: "#",
-      icon: UserRoundCog,
+      icon: Cog ,
       items: [
         {
-          title: "General",
+          title: "Users",
           url: "#",
         },
         {
@@ -167,11 +162,7 @@ const data = {
           url: "#",
         },
         {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
+          title: "Departments",
           url: "#",
         },
       ],

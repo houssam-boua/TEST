@@ -19,8 +19,8 @@ const CollapsibleCard = ({
   title = "Collapsible Card",
   defaultOpen = false,
   currentStep = 1, // 1: Distributed, 2: Reviewing, 3: Validated
-  stepDescriptions = ["responsable : flgg dofkg", "", ""],
-  stepDate = ["Date : 12/10/2023", "", ""],
+  stepDescriptions = "Elyass Elhajji",
+  stepDate = "12/10/2023",
   children,
 }) => {
   const [open, setOpen] = React.useState(defaultOpen);
@@ -48,6 +48,16 @@ const CollapsibleCard = ({
               <span className="text-muted-foreground">Task 1:</span>
               <span className="font-medium text-muted-foreground">{title}</span>
             </CardTitle>
+          </div>
+
+          <div>
+            <span className="text-sm text-muted-foreground">
+              {stepDescriptions}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-sm text-muted-foreground">{stepDate}</span>
           </div>
           <div className="flex items-center gap-3">
             {useBadge({ state: "pending" })}
@@ -111,16 +121,6 @@ const CollapsibleCard = ({
                             >
                               {label}
                             </span>
-                            {stepDescriptions[i] ? (
-                              <div className="flex flex-col">
-                                <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                                  {stepDescriptions[i]}
-                                </span>
-                                <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
-                                  {stepDate[i]}
-                                </span>
-                              </div>
-                            ) : null}
                           </div>
                         </div>
                         {!isLast && (
