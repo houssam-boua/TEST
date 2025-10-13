@@ -35,9 +35,9 @@ const CreateWorkflow = () => {
   };
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10 bg-muted/5">
-      <div className="w-full max-w-3xl space-y-4">
-        <div className="w-96 items-center ">
+    <div className="flex min-h-svh w-full items-start justify-center p-6 md:p-10 bg-muted/5">
+      <div className="w-full  space-y-4">
+        <div className="w-full items-center ">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium">Créer un workflow</h2>
             <span className="text-sm text-muted-foreground">
