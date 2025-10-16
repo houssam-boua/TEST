@@ -155,7 +155,7 @@ const data = {
       items: [
         {
           title: "Users",
-          url: "#",
+          url: "/a/users",
         },
         {
           title: "Team",

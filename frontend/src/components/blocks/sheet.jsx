@@ -11,7 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Eye, History, Info, Lock, MessageCircleMore } from "lucide-react";
+import { ChevronRight, Eye, History, Info, Lock, MessageCircleMore } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemIcon } from "./item-icon";
 export function SheetDemo({
@@ -37,7 +37,9 @@ export function SheetDemo({
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Eye strokeWidth={0.5} size={20} />
+        <Button variant="secondary" className="w-fit h-fit">
+          <ChevronRight strokeWidth={0.5} size={20} />
+        </Button>
       </SheetTrigger>
       <SheetContent>
         <SheetHeader>

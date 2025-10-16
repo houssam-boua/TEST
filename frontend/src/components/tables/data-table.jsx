@@ -144,7 +144,7 @@ function DraggableRow({ row, onEdit, onDelete }) {
         if (cell.column.id === "actions") {
           return (
             <TableCell key={cell.id}>
-              <DropdownMenu>
+              <DropdownMenu className="bg-muted/80 border border-muted/10">
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-8 w-8">
                     <IconDotsVertical className="w-4 h-4" />

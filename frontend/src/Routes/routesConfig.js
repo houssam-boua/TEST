@@ -3,6 +3,7 @@ import PublicLayout from "../Layout/PublicLayout";
 import UserLayout from "../Layout/UserLayout";
 import ValidatorLayout from "../Layout/ValidatorLayout";
 import AdminAccueil from "../Pages/AdminAccueil";
+import AdminUsers from "../Pages/AdminUsers";
 import ConsulteDocuments from "../Pages/ConsulteDocuments";
 import ConsulteFolders from "../Pages/ConsulteFolders";
 import ConsulteTaks from "../Pages/ConsulteTaks";
@@ -30,7 +31,7 @@ export const routesConfig = {
     layout: AdminLayout,
     requiredRoles: ["admin"],
     routes: [
-      { path: "/a/acceuil", component: AdminAccueil },
+      { path: "/a/acceuil", component: AdminAccueil, breadcrumb: "Accueil" },
       { path: "/a/consulter", component: ConsulteFolders },
       {
         path: "/a/consulter/:folderId/documents/",
@@ -44,6 +45,7 @@ export const routesConfig = {
         component: ConsulteTaks,
       },
       { path: "/a/creer-workflow", component: CreateWorkflow },
+      { path: "a/users", component: AdminUsers},
     ],
   },
 

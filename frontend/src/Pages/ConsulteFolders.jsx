@@ -2,6 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
 import { ChevronRight, Eye, Folder, Users } from "lucide-react";
+import { Button } from "../components/ui/button";
 
 const columns = [
   {
@@ -54,11 +55,13 @@ const columns = [
         className="text-primary-"
         rel="noopener noreferrer"
       >
-        <ChevronRight
-          strokeWidth={1.5}
-          size={20}
-          className="stroke-muted-foreground/50"
-        />
+        <Button variant="secondary" className="w-fit h-fit">
+          <ChevronRight
+            strokeWidth={1.5}
+            size={20}
+            className="stroke-muted-foreground/50"
+          />
+        </Button>
       </Link>
     ),
   },
