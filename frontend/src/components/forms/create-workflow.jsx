@@ -102,14 +102,14 @@ export function CreateWorkflowForm({
     }
   };
   return (
-    <div className={cn("flex flex-col gap-6 ", className)} {...props}>
-      <Card className="border-4 border-border ">
-        <CardHeader className="items-center">
+    <div className={cn("flex flex-col gap-6 w-full", className)} {...props}>
+      <Card className="border-4 border-border w-full md:max-w-[720px]">
+        {/* <CardHeader className="items-center">
           <CardTitle>Créer un workflow</CardTitle>
           <CardDescription>
             Renseignez les informations du workflow
           </CardDescription>
-        </CardHeader>
+        </CardHeader> */}
         <CardContent>
           {submitError && (
             <Alert variant="destructive" className="mb-4">
@@ -118,13 +118,13 @@ export function CreateWorkflowForm({
           )}
           <Form {...form}>
             <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-2">
                 <FormField
                   control={form.control}
-                  className="col-span-2"
-                  name="task_name"
+                  className="col-span-1"
+                  name="nom"
                   render={({ field }) => (
-                    <FormItem className="col-span-2">
+                    <FormItem>
                       <FormLabel>Nom de la tâche</FormLabel>
                       <FormControl>
                         <Input placeholder="Nom de la tâche" {...field} />
@@ -132,11 +132,11 @@ export function CreateWorkflowForm({
                       <FormMessage />
                     </FormItem>
                   )}
-                ></FormField>
+                />
 
                 <FormField
                   control={form.control}
-                  name="task_statut"
+                  name="etat"
                   className="col-span-1"
                   render={({ field }) => (
                     <FormItem>
@@ -152,7 +152,6 @@ export function CreateWorkflowForm({
                           <SelectContent>
                             <SelectGroup>
                               <SelectLabel>Statuts</SelectLabel>
-
                               <SelectItem value="in_progress">
                                 In progress
                               </SelectItem>
@@ -194,7 +193,10 @@ export function CreateWorkflowForm({
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
-                      <PopoverContent className="w-full p-0" align="start">
+                      <PopoverContent
+                        className="w-full max-w-[680px] p-0"
+                        align="start"
+                      >
                         <Command>
                           <CommandInput
                             placeholder="Rechercher un document..."

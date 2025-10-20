@@ -151,20 +151,21 @@ const data = {
     {
       title: "Settings",
       url: "#",
-      icon: Cog ,
+      icon: Cog,
       items: [
         {
           title: "Users",
           url: "/a/users",
         },
-        {
-          title: "Team",
-          url: "#",
-        },
+        
         {
           title: "Departments",
-          url: "#",
+          url: "/a/departments",
         },
+        {
+          title: "Roles",
+          url: "/a/roles",
+        }
       ],
     },
     {

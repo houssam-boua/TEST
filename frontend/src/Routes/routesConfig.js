@@ -3,6 +3,8 @@ import PublicLayout from "../Layout/PublicLayout";
 import UserLayout from "../Layout/UserLayout";
 import ValidatorLayout from "../Layout/ValidatorLayout";
 import AdminAccueil from "../Pages/AdminAccueil";
+import AdminDepartements from "../Pages/AdminDepartements";
+import AdminRoles from "../Pages/AdminRoles";
 import AdminUsers from "../Pages/AdminUsers";
 import ConsulteDocuments from "../Pages/ConsulteDocuments";
 import ConsulteFolders from "../Pages/ConsulteFolders";
@@ -45,7 +47,9 @@ export const routesConfig = {
         component: ConsulteTaks,
       },
       { path: "/a/creer-workflow", component: CreateWorkflow },
-      { path: "a/users", component: AdminUsers},
+      { path: "/a/users", component: AdminUsers },
+      { path: "/a/departments", component: AdminDepartements },
+      { path: "/a/roles", component: AdminRoles },
     ],
   },
 

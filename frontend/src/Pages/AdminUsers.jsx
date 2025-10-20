@@ -1,7 +1,24 @@
 import React from "react";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
-import { Info, Lock, MessageCircleMore, History, User, Shield, Mail } from "lucide-react";
+import {
+  Info,
+  Lock,
+  MessageCircleMore,
+  History,
+  User,
+  Shield,
+  Mail,
+} from "lucide-react";
 import { SheetDemo } from "../components/blocks/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import CreateUserForm from "../components/forms/create-user";
+import { Button } from "../components/ui/button";
 import useRoleBadge from "../Hooks/useRoleBage";
 import useDepartmentBadge from "../Hooks/useDepartmentBadge";
 // Small wrapper component to call hook correctly and render the badge
@@ -184,18 +201,69 @@ const users = [
   },
 ];
 const AdminUsers = () => {
+  const [list, setList] = React.useState(users);
+  const [createOpen, setCreateOpen] = React.useState(false);
+
+  const handleAdd = () => setCreateOpen(true);
+
+  const handleCreate = async (values) => {
+    try {
+      const id = (list[list.length - 1]?.id ?? 0) + 1;
+      const newUser = {
+        id,
+        username: values.username,
+        email: values.email,
+        role: values.role || "user",
+        departement: values.departement || "",
+        createdAt: new Date().toISOString(),
+      };
+      setList((prev) => [...prev, newUser]);
+      setCreateOpen(false);
+    } catch (err) {
+      console.error("Create user failed", err);
+    }
+  };
+
+  // mock roles and departements for the select lists (replace with real API data)
+  const mockRoles = [
+    { id: 1, role_name: "admin" },
+    { id: 2, role_name: "user" },
+    { id: 3, role_name: "validator" },
+  ];
+  const mockDeps = [
+    { id: 1, dep_name: "IT" },
+    { id: 2, dep_name: "HR" },
+    { id: 3, dep_name: "Finance" },
+  ];
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
         <DataTable
           columns={combinedColumns}
-          data={users}
+          data={list}
           onEdit={() => {}}
           onDelete={() => {}}
-          onAdd={() => {}}
+          onAdd={handleAdd}
           pageSize={20}
           title={"Users"}
         />
+
+        <Dialog open={createOpen} onOpenChange={(v) => setCreateOpen(v)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Créer un utilisateur</DialogTitle>
+              <DialogDescription>
+                Remplissez les informations utilisateur.
+              </DialogDescription>
+            </DialogHeader>
+            <CreateUserForm
+              onCreate={handleCreate}
+              roles={mockRoles}
+              departements={mockDeps}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

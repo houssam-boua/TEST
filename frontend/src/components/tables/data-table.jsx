@@ -93,7 +93,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import nodata from "../../assets/nodata.svg";
-import DataGrid from "./data-grid";
 import CostumeCardTitle from "../collection/costume-card-title";
 import { Ellipsis } from "lucide-react";
 export const schema = z.object({
@@ -242,7 +241,6 @@ export function DataTable({
   onAdd,
   title,
   rowActions, // optional global row actions (array or function(row) => actions)
-  onRowClick,
 }) {
   // Remove local state for data, always use the data prop
   const [rowSelection, setRowSelection] = React.useState({});
@@ -292,7 +290,7 @@ export function DataTable({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
-  const [viewMode, setViewMode] = React.useState("table"); // 'table' | 'grid'
+  // view toggle removed: always render the table view
 
   function handleDragEnd() {
     // Dragging will not update the parent data, so you may want to lift this up if you want persistent reordering
@@ -346,16 +344,6 @@ export function DataTable({
               <span className="hidden lg:inline">New</span>
             </Button>
           )}
-          <Button
-            variant={viewMode === "grid" ? "default" : "outline"}
-            size="sm"
-            onClick={() =>
-              setViewMode((v) => (v === "grid" ? "table" : "grid"))
-            }
-            className="ml-2"
-          >
-            {viewMode === "grid" ? "Table" : "Grid"}
-          </Button>
         </div>
       </div>
       <TabsContent
@@ -370,71 +358,67 @@ export function DataTable({
             sensors={sensors}
             id={sortableId}
           >
-            {viewMode === "table" ? (
-              <Table className="bg-white  ">
-                <TableHeader className=" sticky top-0 z-10">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => {
-                        return (
-                          <TableHead
-                            key={header.id}
-                            colSpan={header.colSpan}
-                            className="text-muted-foreground/80 border-0 border-b border-b-muted"
-                          >
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext()
-                                )}
-                          </TableHead>
-                        );
-                      })}
-                    </TableRow>
-                  ))}
-                </TableHeader>
-                <TableBody className="**:data-[slot=table-cell]:first:w-8 divide-y divide-muted">
-                  {table.getRowModel().rows?.length ? (
-                    <SortableContext
-                      items={dataIds}
-                      strategy={verticalListSortingStrategy}
+            <Table className="bg-white  ">
+              <TableHeader className=" sticky top-0 z-10">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead
+                          key={header.id}
+                          colSpan={header.colSpan}
+                          className="text-muted-foreground/80 border-0 border-b border-b-muted"
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                        </TableHead>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody className="**:data-[slot=table-cell]:first:w-8 divide-y divide-muted">
+                {table.getRowModel().rows?.length ? (
+                  <SortableContext
+                    items={dataIds}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {table.getRowModel().rows.map((row) => (
+                      <MemoizedRow
+                        key={row.id}
+                        row={row}
+                        onEdit={onEdit}
+                        onDelete={onDelete}
+                        rowActions={rowActions}
+                      />
+                    ))}
+                  </SortableContext>
+                ) : (
+                  <TableRow className="bg-white border-muted">
+                    <TableCell
+                      colSpan={table.getAllLeafColumns().length || 1}
+                      className="h-24 border-muted"
                     >
-                      {table.getRowModel().rows.map((row) => (
-                        <MemoizedRow
-                          key={row.id}
-                          row={row}
-                          onEdit={onEdit}
-                          onDelete={onDelete}
-                          rowActions={rowActions}
+                      <div className="flex flex-col items-center justify-center mt-2 ">
+                        <img
+                          src={nodata}
+                          alt="No results"
+                          width={80}
+                          height={80}
                         />
-                      ))}
-                    </SortableContext>
-                  ) : (
-                    <TableRow className="bg-white border-muted">
-                      <TableCell
-                        colSpan={table.getAllLeafColumns().length || 1}
-                        className="h-24 border-muted"
-                      >
-                        <div className="flex flex-col items-center justify-center mt-2 ">
-                          <img
-                            src={nodata}
-                            alt="No results"
-                            width={80}
-                            height={80}
-                          />
-                          <span className="text-muted-foreground mt-2 ">
-                            Aucuns résultats.
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            ) : (
-              <DataGrid data={data} onCardClick={onRowClick} />
-            )}
+                        <span className="text-muted-foreground mt-2 ">
+                          Aucuns résultats.
+                        </span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </DndContext>
         </div>
         <div className="flex items-center justify-between px-4">
