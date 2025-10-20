@@ -164,11 +164,17 @@ cd frontend
 
 2. Install dependencies:
 
+```bash
+npm install
+```
+
 # 2. Environment Configuration
 
 1. Create a .env file in the frontend directory:
 
+```bash
 touch .env
+```
 
 # or create manually in your editor
 
