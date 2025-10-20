@@ -11,7 +11,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { ChevronRight, Eye, History, Info, Lock, MessageCircleMore } from "lucide-react";
+import {
+  ChevronRight,
+  Eye,
+  History,
+  Info,
+  Lock,
+  MessageCircleMore,
+} from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemIcon } from "./item-icon";
 export function SheetDemo({
@@ -19,6 +26,9 @@ export function SheetDemo({
   comments = [],
   versions = [],
   access = [],
+  // optional controlled open state
+  open,
+  onOpenChange,
 }) {
   const safeMap = (list) =>
     Array.isArray(list)
@@ -35,12 +45,15 @@ export function SheetDemo({
   const commentItems = safeMap(comments);
   const versionItems = safeMap(versions);
   return (
-    <Sheet>
-      <SheetTrigger asChild>
-        <Button variant="secondary" className="w-fit h-fit">
-          <ChevronRight strokeWidth={0.5} size={20} />
-        </Button>
-      </SheetTrigger>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {/* Only render the trigger when uncontrolled (no open/onOpenChange passed) */}
+      {typeof open === "undefined" && typeof onOpenChange === "undefined" ? (
+        <SheetTrigger asChild>
+          <Button variant="secondary" className="w-6 h-6">
+            <ChevronRight strokeWidth={0.5} size={20} />
+          </Button>
+        </SheetTrigger>
+      ) : null}
       <SheetContent>
         <SheetHeader>
           <SheetTitle>Document Information</SheetTitle>

@@ -1,7 +1,26 @@
 import React from "react";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
-import { Info, Lock, MessageCircleMore, History } from "lucide-react";
+import {
+  Info,
+  Lock,
+  MessageCircleMore,
+  History,
+  Download,
+  Copy,
+  Share2,
+  Share2Icon,
+  SquareArrowOutUpRight,
+  Star,
+} from "lucide-react";
 import { SheetDemo } from "../components/blocks/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { CreateDocumentForm } from "../components/forms/create-document-form";
 
 const infos = [
   {
@@ -106,14 +125,14 @@ const columns = [
     },
   },
   {
-    id: "seeDetails",
-    header: "",
+    id: "sharedWith",
+    accessorKey: "sharedWith",
+    header: "Accès",
     cell: () => (
-      <SheetDemo
-        infos={infos}
-        comments={comments}
-        versions={versions}
-        access={access}
+      <Share2Icon
+        strokeWidth={1.5}
+        size={20}
+        className="stroke-muted-foreground/50"
       />
     ),
   },
@@ -126,7 +145,7 @@ const combinedColumns = [
 ];
 
 // Mock data matching the columns used in combinedColumns
-const groups = [
+const initialGroups = [
   {
     id: 1,
     groupname: "Groupe A",
@@ -170,17 +189,142 @@ const groups = [
 ];
 
 const ConsulteDocuments = () => {
+  // Example action handlers for row menu
+  const [sheetOpen, setSheetOpen] = React.useState(false);
+  const [selectedRow, setSelectedRow] = React.useState(null);
+  const [favorites, setFavorites] = React.useState({});
+  const [groups, setGroups] = React.useState(initialGroups);
+  const [createOpen, setCreateOpen] = React.useState(false);
+
+  const handleDetails = (row) => {
+    // set the selected row data and open the sheet
+    setSelectedRow(row?.original ?? null);
+    setSheetOpen(true);
+  };
+
+  const handleDownload = (row) => {
+    console.log("Download", row.original);
+    // implement download logic here
+  };
+
+  const handleDuplicate = (row) => {
+    console.log("Duplicate", row.original);
+    // implement duplication logic here
+  };
+
+  const handleShare = (row) => {
+    console.log("Share", row.original);
+    // implement share logic here
+  };
+
+  const handleFavorite = (row) => {
+    const id = row?.original?.id;
+    if (typeof id === "undefined") return;
+    setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const rowActions = (row) => [
+    {
+      key: "details",
+      icon: <Info className="w-4 h-4" />,
+      label: "Details",
+      onClick: () => handleDetails(row),
+    },
+    {
+      key: "favorite",
+      icon: favorites[row?.original?.id] ? (
+        <Star className="w-4 h-4 text-yellow-400" fill="currentColor" />
+      ) : (
+        <Star className="w-4 h-4" />
+      ),
+      label: favorites[row?.original?.id] ? "Unfavorite" : "Favorite",
+      onClick: () => handleFavorite(row),
+    },
+    {
+      key: "download",
+      icon: <Download className="w-4 h-4" />,
+      label: "Download",
+      onClick: () => handleDownload(row),
+    },
+    {
+      key: "duplicate",
+      icon: <Copy className="w-4 h-4" />,
+      label: "Duplicate",
+      onClick: () => handleDuplicate(row),
+    },
+    {
+      key: "move",
+      icon: <SquareArrowOutUpRight className="w-4 h-4" />,
+      label: "Move",
+      onClick: () => handleShare(row),
+    },
+  ];
+
+  const handleAdd = () => setCreateOpen(true);
+
+  const handleCreate = async (formData, values) => {
+    try {
+      const id = (groups[groups.length - 1]?.id ?? 0) + 1;
+      const newItem = {
+        id,
+        groupname: values?.doc_path || `Document ${id}`,
+        projectName: values?.doc_category || "Projet inconnu",
+        devices: [],
+        createdAt: new Date().toISOString(),
+      };
+      setGroups((prev) => [...prev, newItem]);
+      setCreateOpen(false);
+    } catch (err) {
+      console.error("Create failed", err);
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
         <DataTable
+          title={"Documents"}
           columns={combinedColumns}
           data={groups}
           onEdit={() => {}}
           onDelete={() => {}}
-          onAdd={() => {}}
+          onAdd={handleAdd}
+          rowActions={rowActions}
           pageSize={20}
         />{" "}
+        {/* Create Document Dialog (controlled) */}
+        <Dialog open={createOpen} onOpenChange={(v) => setCreateOpen(v)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Créer un document</DialogTitle>
+              <DialogDescription>
+                Remplissez les informations pour ajouter un nouveau document.
+              </DialogDescription>
+            </DialogHeader>
+            <CreateDocumentForm onCreate={handleCreate} />
+          </DialogContent>
+        </Dialog>
+        {/* Controlled Sheet: pass open / onOpenChange and show details from selectedRow */}
+        <SheetDemo
+          infos={
+            selectedRow
+              ? [
+                  {
+                    icon: <Info className="text-primary" />,
+                    title: "Nom du document",
+                    description: String(
+                      selectedRow.groupname ?? selectedRow.id
+                    ),
+                  },
+                ]
+              : infos
+          }
+          comments={comments}
+          versions={versions}
+          access={access}
+          open={sheetOpen}
+          onOpenChange={(v) => setSheetOpen(v)}
+        />
       </div>
     </div>
   );

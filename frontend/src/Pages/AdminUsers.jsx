@@ -1,23 +1,18 @@
 import React from "react";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
-import {
-  Info,
-  Lock,
-  MessageCircleMore,
-  History,
-  User,
-  Shield,
-  Mail,
-  ArrowLeftIcon,
-} from "lucide-react";
+import { Info, Lock, MessageCircleMore, History, User, Shield, Mail } from "lucide-react";
 import { SheetDemo } from "../components/blocks/sheet";
-import { Badge } from "../components/ui/badge";
 import useRoleBadge from "../Hooks/useRoleBage";
-
+import useDepartmentBadge from "../Hooks/useDepartmentBadge";
 // Small wrapper component to call hook correctly and render the badge
 function RoleBadge({ role }) {
   // use the hook inside a component (not inside render map)
   const badge = useRoleBadge({ role });
+  return <>{badge}</>;
+}
+
+function DepartmentBadge({ departement }) {
+  const badge = useDepartmentBadge({ departement });
   return <>{badge}</>;
 }
 // Sheet tab data now tailored for user information
@@ -93,7 +88,14 @@ const columns = [
       return <RoleBadge role={row.original.role} />;
     },
   },
-  { id: "departement", accessorKey: "departement", header: "Département" },
+  {
+    id: "departement",
+    accessorKey: "departement",
+    header: "Département",
+    cell: ({ row }) => {
+      return <DepartmentBadge departement={row.original.departement} />;
+    },
+  },
 
   {
     id: "createdAt",
@@ -192,6 +194,7 @@ const AdminUsers = () => {
           onDelete={() => {}}
           onAdd={() => {}}
           pageSize={20}
+          title={"Users"}
         />
       </div>
     </div>

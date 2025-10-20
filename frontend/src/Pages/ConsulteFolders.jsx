@@ -1,7 +1,19 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
-import { ChevronRight, Eye, Folder, Users } from "lucide-react";
+import {
+  ChevronRight,
+  Copy,
+  Download,
+  Eye,
+  Folder,
+  Info,
+  Pencil,
+  SquareArrowOutUpRight,
+  Star,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { Button } from "../components/ui/button";
 
 const columns = [
@@ -55,7 +67,7 @@ const columns = [
         className="text-primary-"
         rel="noopener noreferrer"
       >
-        <Button variant="secondary" className="w-fit h-fit">
+        <Button variant="secondary" className="w-6 h-6">
           <ChevronRight
             strokeWidth={1.5}
             size={20}
@@ -114,17 +126,91 @@ const groups = [
 ];
 
 const ConsulteFolders = () => {
+  const [selectedRow, setSelectedRow] = React.useState(null);
+  const [favorites, setFavorites] = React.useState({});
+
+  const handleDetails = (row) => {
+    // set the selected row data and open the sheet
+    setSelectedRow(row?.original ?? null);
+    setSheetOpen(true);
+  };
+
+  const handleDownload = (row) => {
+    console.log("Download", row.original);
+    // implement download logic here
+  };
+
+  const handleEdit = (row) => {
+    console.log("Duplicate", row.original);
+    // implement duplication logic here
+  };
+
+  const handleShare = (row) => {
+    console.log("Share", row.original);
+    // implement share logic here
+  };
+
+  const handleDelete = (row) => {
+    console.log("Delete", row.original);
+    // implement delete logic here
+  };
+  const handleFavorite = (row) => {
+    const id = row?.original?.id;
+    if (typeof id === "undefined") return;
+    setFavorites((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const rowActions = (row) => [
+    {
+      key: "favorite",
+      icon: favorites[row?.original?.id] ? (
+        <Star className="w-4 h-4 text-yellow-400" fill="currentColor" />
+      ) : (
+        <Star className="w-4 h-4" />
+      ),
+      label: favorites[row?.original?.id] ? "Unfavorite" : "Favorite",
+      onClick: () => handleFavorite(row),
+    },
+    {
+      key: "download",
+      icon: <Download className="w-4 h-4" />,
+      label: "Download",
+      onClick: () => handleDownload(row),
+    },
+    {
+      key: "Edit",
+      icon: <Pencil className="w-4 h-4" />,
+      label: "Edit",
+      onClick: () => handleEdit(row),
+    },
+
+    {
+      key: "delete",
+      icon: <Trash2 className="w-4 h-4" />,
+      label: "Delete",
+      onClick: () => handleDelete(row),
+    },
+    {
+      key: "move",
+      icon: <SquareArrowOutUpRight className="w-4 h-4" />,
+      label: "Move",
+      onClick: () => handleShare(row),
+    },
+  ];
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
         <DataTable
+          title={"Folders"}
           columns={combinedColumns}
           data={groups}
           onEdit={() => {}}
           onDelete={() => {}}
           onAdd={() => {}}
           pageSize={20}
-        />{" "}
+          rowActions={rowActions}
+        />
       </div>
     </div>
   );

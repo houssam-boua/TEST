@@ -98,12 +98,6 @@ export function CreateDocumentForm({ className, onCreate, ...props }) {
   return (
     <div className={cn("flex flex-col gap-6 ", className)} {...props}>
       <Card className="border-4 border-border ">
-        <CardHeader className="items-center">
-          <CardTitle>Créer un document</CardTitle>
-          <CardDescription>
-            Renseignez les informations du document
-          </CardDescription>
-        </CardHeader>
         <CardContent>
           {submitError && (
             <Alert variant="destructive" className="mb-4">
@@ -141,7 +135,7 @@ export function CreateDocumentForm({ className, onCreate, ...props }) {
                             onChange={(e) =>
                               field.onChange(e.target.files?.[0] ?? null)
                             }
-                                    className="hidden"
+                            className="hidden"
                           />
                         </FormControl>
                         <FormDescription>

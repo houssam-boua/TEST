@@ -93,6 +93,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import nodata from "../../assets/nodata.svg";
+import DataGrid from "./data-grid";
+import CostumeCardTitle from "../collection/costume-card-title";
+import { Ellipsis } from "lucide-react";
 export const schema = z.object({
   id: z.number(),
   header: z.string(),
@@ -123,7 +126,7 @@ function DragHandle({ id }) {
   );
 }
 
-function DraggableRow({ row, onEdit, onDelete }) {
+function DraggableRow({ row, onEdit, onDelete, rowActions }) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
     id: row.original.id,
   });
@@ -142,24 +145,17 @@ function DraggableRow({ row, onEdit, onDelete }) {
       {row.getVisibleCells().map((cell) => {
         // Custom actions cell
         if (cell.column.id === "actions") {
+          // default action rendering when no custom actions provided
           return (
             <TableCell key={cell.id}>
-              <DropdownMenu className="bg-muted/80 border border-muted/10">
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <IconDotsVertical className="w-4 h-4" />
-                    <span className="sr-only">Open row actions</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => onEdit?.(row.original)}>
-                    Edit
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => onDelete?.(row.original.id)}>
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <RowActions
+                row={row}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                // allow per-column custom actions via columnDef.meta.rowActions
+                columnActions={cell.column.columnDef?.meta?.rowActions}
+                globalRowActions={rowActions}
+              />
             </TableCell>
           );
         }
@@ -173,6 +169,68 @@ function DraggableRow({ row, onEdit, onDelete }) {
   );
 }
 
+// Reusable row actions menu. columnActions can be an array or a function(row) returning items.
+function RowActions({
+  row,
+  onEdit,
+  onDelete,
+  columnActions,
+  globalRowActions,
+}) {
+  // Resolve actions: globalRowActions (passed from DataTable prop) take precedence,
+  // then columnActions (from column meta), then default actions.
+  let actions = [];
+  if (typeof globalRowActions === "function")
+    actions = globalRowActions(row) || [];
+  else if (Array.isArray(globalRowActions)) actions = globalRowActions;
+
+  if (!actions.length) {
+    if (typeof columnActions === "function") actions = columnActions(row) || [];
+    else if (Array.isArray(columnActions)) actions = columnActions;
+  }
+
+  // Default actions if none provided
+  if (!actions.length) {
+    actions = [
+      { key: "edit", label: "Edit", onClick: () => onEdit?.(row.original) },
+      {
+        key: "delete",
+        label: "Delete",
+        onClick: () => onDelete?.(row.original?.id),
+      },
+    ];
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-8 w-8">
+          <Ellipsis className="w-4 h-4" />
+          <span className="sr-only">Open row actions</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="bg-muted  border border/50">
+        {actions.map((a) => (
+          <DropdownMenuItem
+            key={a.key}
+            onClick={() => a.onClick?.(row)}
+            className=""
+          >
+            <div className="flex items-center gap-2 text-muted-foreground/80">
+              {a.icon ? (
+                <span className="w-4 h-4 flex items-center justify-center ">
+                  {a.icon}
+                </span>
+              ) : null}
+              <span>{a.label}</span>
+            </div>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 // Memoize DraggableRow for performance
 const MemoizedRow = React.memo(DraggableRow);
 
@@ -182,6 +240,9 @@ export function DataTable({
   onEdit,
   onDelete,
   onAdd,
+  title,
+  rowActions, // optional global row actions (array or function(row) => actions)
+  onRowClick,
 }) {
   // Remove local state for data, always use the data prop
   const [rowSelection, setRowSelection] = React.useState({});
@@ -231,6 +292,8 @@ export function DataTable({
     getFacetedUniqueValues: getFacetedUniqueValues(),
   });
 
+  const [viewMode, setViewMode] = React.useState("table"); // 'table' | 'grid'
+
   function handleDragEnd() {
     // Dragging will not update the parent data, so you may want to lift this up if you want persistent reordering
   }
@@ -241,6 +304,9 @@ export function DataTable({
       className="w-full flex-col justify-start gap-6 "
     >
       <div className="flex items-center justify-end px-4 lg:px-6">
+        <div className="flex-1">
+          <CostumeCardTitle title={title} />
+        </div>
         <div className="flex items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -277,9 +343,19 @@ export function DataTable({
           {onAdd && (
             <Button variant="outline" size="sm" onClick={onAdd}>
               <IconPlus />
-              <span className="hidden lg:inline">Ajouter</span>
+              <span className="hidden lg:inline">New</span>
             </Button>
           )}
+          <Button
+            variant={viewMode === "grid" ? "default" : "outline"}
+            size="sm"
+            onClick={() =>
+              setViewMode((v) => (v === "grid" ? "table" : "grid"))
+            }
+            className="ml-2"
+          >
+            {viewMode === "grid" ? "Table" : "Grid"}
+          </Button>
         </div>
       </div>
       <TabsContent
@@ -294,66 +370,71 @@ export function DataTable({
             sensors={sensors}
             id={sortableId}
           >
-            <Table className="bg-white  ">
-              <TableHeader className=" sticky top-0 z-10">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead
-                          key={header.id}
-                          colSpan={header.colSpan}
-                          className="text-muted-foreground/80 border-0 border-b border-b-muted"
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column. columnDef.header,
-                                header.getContext()
-                              )}
-                        </TableHead>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody className="**:data-[slot=table-cell]:first:w-8 divide-y divide-muted">
-                {table.getRowModel().rows?.length ? (
-                  <SortableContext
-                    items={dataIds}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    {table.getRowModel().rows.map((row) => (
-                      <MemoizedRow
-                        key={row.id}
-                        row={row}
-                        onEdit={onEdit}
-                        onDelete={onDelete}
-                      />
-                    ))}
-                  </SortableContext>
-                ) : (
-                  <TableRow className="bg-white border-muted">
-                    <TableCell
-                      colSpan={table.getAllLeafColumns().length || 1}
-                      className="h-24 border-muted"
+            {viewMode === "table" ? (
+              <Table className="bg-white  ">
+                <TableHeader className=" sticky top-0 z-10">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <TableRow key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => {
+                        return (
+                          <TableHead
+                            key={header.id}
+                            colSpan={header.colSpan}
+                            className="text-muted-foreground/80 border-0 border-b border-b-muted"
+                          >
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext()
+                                )}
+                          </TableHead>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableHeader>
+                <TableBody className="**:data-[slot=table-cell]:first:w-8 divide-y divide-muted">
+                  {table.getRowModel().rows?.length ? (
+                    <SortableContext
+                      items={dataIds}
+                      strategy={verticalListSortingStrategy}
                     >
-                      <div className="flex flex-col items-center justify-center mt-2 ">
-                        <img
-                          src={nodata}
-                          alt="No results"
-                          width={80}
-                          height={80}
+                      {table.getRowModel().rows.map((row) => (
+                        <MemoizedRow
+                          key={row.id}
+                          row={row}
+                          onEdit={onEdit}
+                          onDelete={onDelete}
+                          rowActions={rowActions}
                         />
-                        <span className="text-muted-foreground mt-2 ">
-                          Aucuns résultats.
-                        </span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                      ))}
+                    </SortableContext>
+                  ) : (
+                    <TableRow className="bg-white border-muted">
+                      <TableCell
+                        colSpan={table.getAllLeafColumns().length || 1}
+                        className="h-24 border-muted"
+                      >
+                        <div className="flex flex-col items-center justify-center mt-2 ">
+                          <img
+                            src={nodata}
+                            alt="No results"
+                            width={80}
+                            height={80}
+                          />
+                          <span className="text-muted-foreground mt-2 ">
+                            Aucuns résultats.
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            ) : (
+              <DataGrid data={data} onCardClick={onRowClick} />
+            )}
           </DndContext>
         </div>
         <div className="flex items-center justify-between px-4">
