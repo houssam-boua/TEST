@@ -1,3 +1,5 @@
+
+
 # Docarea - Document Management System
 
 ## Project Structure
@@ -187,3 +189,7 @@ yarn dev
 ```
 
 The application will be available at `http://localhost:5173` by default.
+
+
+# integration with n8n
+chat with ai 
