@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
+import { useGetDocumentsQuery } from "@/Slices/documentSlice";
 import {
   ChevronRight,
   Copy,
@@ -20,7 +21,7 @@ const columns = [
   {
     id: "name",
     accessorKey: "name",
-    header: "Name",
+    header: "Folder",
     cell: ({ row }) => {
       return (
         <div className="flex items-center gap-2">
@@ -34,36 +35,14 @@ const columns = [
       );
     },
   },
-  {
-    id: "size",
-    accessorKey: "size",
-    header: "Size",
-  },
-  {
-    id: "modifiedAt",
-    accessorKey: "modifiedAt",
-    header: "Modified",
-  },
-  {
-    id: "sharedWith",
-    accessorKey: "sharedWith",
-    header: "Access",
-    cell: ({ row }) => {
-      return (
-        <Users
-          strokeWidth={1.5}
-          size={20}
-          className="stroke-muted-foreground/50"
-        />
-      );
-    },
-  },
+  { id: "count", accessorKey: "count", header: "Files" },
+  { id: "size", accessorKey: "size", header: "Size" },
   {
     id: "seeDetails",
     header: "",
     cell: ({ row }) => (
       <Link
-        to={`/a/consulter/${row.original.id}/documents`}
+        to={`/a/consulter/${encodeURIComponent(row.original.id)}/documents/`}
         className="text-primary-"
         rel="noopener noreferrer"
       >
@@ -85,55 +64,11 @@ const combinedColumns = [
   defaultColumns[2],
 ];
 
-// Mock data matching the columns used in combinedColumns
-const groups = [
-  {
-    id: 1,
-    name: "Dossier Alpha",
-    size: "2MB",
-    modifiedAt: "6 minutes ago",
-    projetId: 101,
-  },
-  {
-    id: 2,
-    name: "Dossier Beta",
-    size: "5.7MB",
-    modifiedAt: "10 days ago",
-
-    projetId: 102,
-  },
-  {
-    id: 3,
-    name: "Dossier Gamma",
-    size: "9.1MB",
-    modifiedAt: "20 hrs ago",
-    projetId: 103,
-  },
-  {
-    id: 4,
-    size: "20MB",
-    name: "Dossier Delta",
-    modifiedAt: "1 day ago",
-    projetId: 104,
-  },
-  {
-    id: 5,
-    size: "25MB",
-    name: "Dossier Epsilon",
-    modifiedAt: "6 day ago",
-    projetId: 105,
-  },
-];
+// folder rows will be built dynamically from documents
 
 const ConsulteFolders = () => {
-  const [selectedRow, setSelectedRow] = React.useState(null);
+  const { data: documents = [] } = useGetDocumentsQuery();
   const [favorites, setFavorites] = React.useState({});
-
-  const handleDetails = (row) => {
-    // set the selected row data and open the sheet
-    setSelectedRow(row?.original ?? null);
-    setSheetOpen(true);
-  };
 
   const handleDownload = (row) => {
     console.log("Download", row.original);
@@ -198,13 +133,32 @@ const ConsulteFolders = () => {
     },
   ];
 
+  // group documents by folder prefix
+  const folderMap = React.useMemo(() => {
+    const m = new Map();
+    (documents || []).forEach((d) => {
+      const path = d.doc_path || d.file || d.url || "";
+      const key = path ? path.replace(/\/[^/]*$/, "") || "root" : "root";
+      if (!m.has(key))
+        m.set(key, {
+          id: key,
+          name: key === "root" ? "Root" : key,
+          count: 0,
+          size: null,
+        });
+      const entry = m.get(key);
+      entry.count = (entry.count || 0) + 1;
+    });
+    return Array.from(m.values());
+  }, [documents]);
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
         <DataTable
           title={"Folders"}
           columns={combinedColumns}
-          data={groups}
+          data={folderMap}
           onEdit={() => {}}
           onDelete={() => {}}
           onAdd={() => {}}

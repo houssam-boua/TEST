@@ -33,6 +33,8 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CloudUpload } from "lucide-react";
+import { useCreateDocumentMutation } from "@/Slices/documentSlice";
+import { toast } from "sonner";
 const docSchema = z.object({
   file: z.any().nullable().optional(),
   doc_category: z
@@ -51,6 +53,8 @@ const docSchema = z.object({
 export function CreateDocumentForm({ className, onCreate, ...props }) {
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // RTK Query mutation hook for creating documents (used when no onCreate prop)
+  const [createDocumentMutation] = useCreateDocumentMutation();
 
   const form = useForm({
     resolver: zodResolver(docSchema),
@@ -79,16 +83,43 @@ export function CreateDocumentForm({ className, onCreate, ...props }) {
       formData.append("doc_departement", values.doc_departement);
       formData.append("doc_description", values.doc_description);
       formData.append("doc_comment", values.doc_comment);
-
+      // Debug: log FormData contents so you can verify fields + file are present
+      try {
+        for (const pair of formData.entries()) {
+          // file objects may be large; log name for files
+          if (pair[1] instanceof File) {
+            console.debug("FormData entry:", pair[0], pair[1].name, pair[1]);
+          } else {
+            console.debug("FormData entry:", pair[0], pair[1]);
+          }
+        }
+      } catch {
+        console.debug("FormData logging failed");
+      }
       if (typeof onCreate === "function") {
         await onCreate(formData, values);
+        toast.success("Document créé", { duration: 4000 });
       } else {
-        // Fallback: just log the payload
-        console.debug("CreateDocument payload", values);
+        // Use the RTK Query mutation as a fallback to post to the API
+        const result = await createDocumentMutation(formData).unwrap();
+        console.debug("CreateDocument result", result);
+        // Show server response in toast for debugging (trim long JSON)
+        try {
+          const text = JSON.stringify(result);
+          toast.success(
+            `Document créé: ${text.slice(0, 200)}${
+              text.length > 200 ? "…" : ""
+            }`,
+            { duration: 6000 }
+          );
+        } catch {
+          toast.success("Document créé", { duration: 4000 });
+        }
       }
       form.reset(form.getValues());
     } catch (err) {
       setSubmitError(err?.message || "Erreur lors de la création du document");
+      toast.error(err?.message || "Erreur lors de la création du document");
       console.error("CreateDocument error:", err);
     } finally {
       setSubmitting(false);
@@ -106,47 +137,73 @@ export function CreateDocumentForm({ className, onCreate, ...props }) {
           )}
           <Form {...form}>
             <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
-              <div>
-                <label
-                  htmlFor="dropzone-file"
-                  className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-muted rounded-xl cursor-pointer bg-base-200/10 hover:border-primary/60 hover:bg-base-200/20 transition-colors duration-200 ease-in-out"
-                >
-                  <div className="flex flex-col items-center justify-center p-5 text-center">
-                    <CloudUpload className="w-10 h-10 mb-3 text-primary" />
-                    <p className="text-sm text-base-content/80">
-                      <span className="font-medium text-primary">
-                        Click to upload
-                      </span>
-                      or drag and drop
-                    </p>
-                    <p className="text-xs text-base-content/50 mt-1">
-                      PDF, DOC, XLS, or images (MAX. 10MB)
-                    </p>
-                  </div>
-                  <FormField
-                    control={form.control}
-                    name="file"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input
-                            type="file"
-                            accept="*/*"
-                            onChange={(e) =>
-                              field.onChange(e.target.files?.[0] ?? null)
-                            }
-                            className="hidden"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Choisissez un fichier à importer.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </label>
-              </div>
+              <FormField
+                control={form.control}
+                name="file"
+                render={({ field }) => (
+                  <FormItem>
+                    <label
+                      htmlFor="dropzone-file"
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const f = e.dataTransfer?.files?.[0] ?? null;
+                        if (f) field.onChange(f);
+                      }}
+                      onDragOver={(e) => e.preventDefault()}
+                      className="relative flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-muted rounded-xl cursor-pointer bg-base-200/10 hover:border-primary/60 hover:bg-base-200/20 transition-colors duration-200 ease-in-out"
+                    >
+                      <div className="flex flex-col items-center justify-center p-5 text-center">
+                        <CloudUpload className="w-10 h-10 mb-3 text-primary" />
+                        <p className="text-sm text-base-content/80">
+                          <span className="font-medium text-primary">
+                            Click to upload
+                          </span>
+                          or drag and drop
+                        </p>
+                        <p className="text-xs text-base-content/50 mt-1">
+                          PDF, DOC, XLS, or images (MAX. 10MB)
+                        </p>
+                      </div>
+
+                      {/* Invisible but clickable native file input (fills the label) */}
+                      <FormControl>
+                        <Input
+                          id="dropzone-file"
+                          type="file"
+                          accept="*/*"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          onChange={(e) =>
+                            field.onChange(e.target.files?.[0] ?? null)
+                          }
+                        />
+                      </FormControl>
+
+                      {/* Show selected file name and clear control */}
+                      {field.value && (
+                        <div className="absolute bottom-2 left-4 right-4 flex items-center justify-between gap-2 bg-base-100/60 px-3 py-1 rounded">
+                          <div className="truncate text-sm">
+                            {field.value.name}
+                          </div>
+                          <button
+                            type="button"
+                            className="text-xs text-destructive hover:underline"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              field.onChange(null);
+                            }}
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      )}
+                    </label>
+                    <FormDescription>
+                      Choisissez un fichier à importer.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <FormField

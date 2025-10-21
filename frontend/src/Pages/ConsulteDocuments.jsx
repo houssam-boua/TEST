@@ -13,6 +13,9 @@ import {
   Star,
 } from "lucide-react";
 import { SheetDemo } from "../components/blocks/sheet";
+import { useParams } from "react-router-dom";
+import { useGetDocumentsQuery } from "@/Slices/documentSlice";
+import { Button } from "../components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -88,33 +91,52 @@ const access = [
   },
 ];
 const columns = [
+  { id: "id", accessorKey: "id", header: "ID" },
   {
-    id: "id",
-    accessorKey: "id",
-    header: "ID",
+    id: "name",
+    accessorKey: "file_name",
+    header: "Nom",
+    cell: ({ row }) => (
+      <span className="truncate max-w-xs">
+        {row.original?.file_name ||
+          row.original?.doc_description ||
+          row.original?._path ||
+          row.original?.file}
+      </span>
+    ),
   },
   {
-    id: "groupname",
-    accessorKey: "groupname",
-    header: "Nom du groupe",
+    id: "path",
+    accessorKey: "doc_path",
+    header: "Chemin",
+    cell: ({ row }) => {
+      const p =
+        row.original?.doc_path || row.original?.file || row.original?.url || "";
+      if (!p) return "-";
+      return p.startsWith("http") ? (
+        <a
+          href={p}
+          target="_blank"
+          rel="noreferrer"
+          className="underline text-primary truncate max-w-xs"
+        >
+          {p}
+        </a>
+      ) : (
+        <span className="truncate max-w-xs">{p}</span>
+      );
+    },
   },
-  {
-    id: "project",
-    header: "Projet",
-    accessorKey: "projectName",
-  },
-  {
-    id: "devicesCount",
-    header: "Nombre d'appareils",
-    cell: ({ row }) => row.original?.devices?.length || 0,
-    enableSorting: false,
-  },
+  { id: "size", accessorKey: "file_size", header: "Taille" },
   {
     id: "createdAt",
     accessorKey: "createdAt",
-    header: "Date de début",
+    header: "Téléversé",
     cell: ({ row }) => {
-      const dateValue = row?.original?.createdAt || row?.createdAt;
+      const dateValue =
+        row?.original?.createdAt ||
+        row?.original?.uploaded_at ||
+        row?.original?.created_at;
       if (!dateValue) return "-";
       const date = new Date(dateValue);
       return date.toLocaleDateString("fr-FR", {
@@ -125,15 +147,20 @@ const columns = [
     },
   },
   {
-    id: "sharedWith",
-    accessorKey: "sharedWith",
-    header: "Accès",
-    cell: () => (
-      <Share2Icon
-        strokeWidth={1.5}
-        size={20}
-        className="stroke-muted-foreground/50"
-      />
+    id: "actions",
+    header: "",
+    cell: ({ row }) => (
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          const p =
+            row.original?.doc_path || row.original?.file || row.original?.url;
+          if (p) window.open(p, "_blank", "noopener,noreferrer");
+        }}
+      >
+        <Download size={16} />
+      </Button>
     ),
   },
 ];
@@ -144,56 +171,18 @@ const combinedColumns = [
   defaultColumns[2],
 ];
 
-// Mock data matching the columns used in combinedColumns
-const initialGroups = [
-  {
-    id: 1,
-    groupname: "Groupe A",
-    projectName: "Projet Alpha",
-    devices: [{ id: "DA-1" }, { id: "DA-2" }, { id: "DA-3" }],
-    createdAt: "2025-09-15T10:00:00Z",
-    projetId: 101,
-  },
-  {
-    id: 2,
-    groupname: "Groupe B",
-    projectName: "Projet Beta",
-    devices: [{ id: "DB-1" }],
-    createdAt: "2025-08-01T08:30:00Z",
-    projetId: 102,
-  },
-  {
-    id: 3,
-    groupname: "Groupe C",
-    projectName: "Projet Gamma",
-    devices: [],
-    createdAt: "2025-07-20T14:15:00Z",
-    projetId: 103,
-  },
-  {
-    id: 4,
-    groupname: "Groupe D",
-    projectName: "Projet Delta",
-    devices: [{ id: "DD-1" }, { id: "DD-2" }],
-    createdAt: "2025-06-10T12:00:00Z",
-    projetId: 104,
-  },
-  {
-    id: 5,
-    groupname: "Groupe E",
-    projectName: "Projet Epsilon",
-    devices: [{ id: "DE-1" }, { id: "DE-2" }, { id: "DE-3" }, { id: "DE-4" }],
-    createdAt: "2025-05-05T09:45:00Z",
-    projetId: 105,
-  },
-];
-
 const ConsulteDocuments = () => {
   // Example action handlers for row menu
   const [sheetOpen, setSheetOpen] = React.useState(false);
   const [selectedRow, setSelectedRow] = React.useState(null);
   const [favorites, setFavorites] = React.useState({});
-  const [groups, setGroups] = React.useState(initialGroups);
+  const { folderId } = useParams();
+  const queryArg = React.useMemo(
+    () => (folderId ? { folder: decodeURIComponent(folderId) } : undefined),
+    [folderId]
+  );
+  const { data: documents = [] } = useGetDocumentsQuery(queryArg);
+  const [groups, setGroups] = React.useState([]);
   const [createOpen, setCreateOpen] = React.useState(false);
 
   const handleDetails = (row) => {
@@ -263,13 +252,14 @@ const ConsulteDocuments = () => {
   const handleAdd = () => setCreateOpen(true);
 
   const handleCreate = async (formData, values) => {
+    // fallback client-side addition for UI demo; server will return new documents on refetch
     try {
       const id = (groups[groups.length - 1]?.id ?? 0) + 1;
       const newItem = {
         id,
-        groupname: values?.doc_path || `Document ${id}`,
-        projectName: values?.doc_category || "Projet inconnu",
-        devices: [],
+        file_name: values?.doc_path || `Document ${id}`,
+        doc_path: values?.doc_path || "",
+        file_size: formData?.get("file")?.size || null,
         createdAt: new Date().toISOString(),
       };
       setGroups((prev) => [...prev, newItem]);
@@ -278,6 +268,30 @@ const ConsulteDocuments = () => {
       console.error("Create failed", err);
     }
   };
+
+  React.useEffect(() => {
+    // sync fetched documents into the table state, but avoid setting state
+    // if the list didn't actually change to prevent render loops
+    const prev = (ConsulteDocuments._prevDocsRef =
+      ConsulteDocuments._prevDocsRef || { current: null });
+    const prevDocs = prev.current;
+    const nextDocs = documents || [];
+    let changed = false;
+    if (prevDocs === nextDocs) changed = false;
+    else if (!prevDocs || prevDocs.length !== nextDocs.length) changed = true;
+    else {
+      for (let i = 0; i < nextDocs.length; i++) {
+        if (nextDocs[i]?.id !== prevDocs[i]?.id) {
+          changed = true;
+          break;
+        }
+      }
+    }
+    if (changed) {
+      setGroups(nextDocs);
+      prev.current = nextDocs;
+    }
+  }, [documents]);
 
   return (
     <div className="flex flex-1 flex-col">
