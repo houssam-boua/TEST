@@ -36,7 +36,9 @@ const columns = [
     },
   },
   { id: "count", accessorKey: "count", header: "Files" },
+  {id:"sharedWith",accessorKey:"sharedWith",header:"Shared With"},
   { id: "size", accessorKey: "size", header: "Size" },
+  { id: "modifiedAt", accessorKey: "modifiedAt", header: "Last Modified" },
   {
     id: "seeDetails",
     header: "",

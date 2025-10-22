@@ -11,11 +11,20 @@ import {
   Share2Icon,
   SquareArrowOutUpRight,
   Star,
+  Link,
+  FileText,
 } from "lucide-react";
 import { SheetDemo } from "../components/blocks/sheet";
 import { useParams } from "react-router-dom";
 import { useGetDocumentsQuery } from "@/Slices/documentSlice";
-import { Button } from "../components/ui/button";
+import { Button } from "@/components/ui/button";
+import useRelativeTime from "../Hooks/useRelativeTime";
+import SharedList from "../components/collection/shared-list.jsx";
+
+function RelativeTime({ date }) {
+  const s = useRelativeTime(date);
+  return <span className="text-sm text-muted-foreground/70">{s}</span>;
+}
 import {
   Dialog,
   DialogContent,
@@ -24,35 +33,35 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { CreateDocumentForm } from "../components/forms/create-document-form";
-
-const infos = [
-  {
-    icon: <Info className="text-primary" strokeWidth={1.5} size={16} />,
-    title: "Nom du document",
-    description: "Document_Exemple.pdf",
-  },
-  {
-    icon: <Info className="text-primary" strokeWidth={1.5} size={16} />,
-    title: "Type",
-    description: "PDF",
-  },
-];
+import SharedWithDialog from "../components/blocks/shared-with-dialog.jsx";
+// const infos = [
+//   {
+//     icon: <Info className="text-primary" strokeWidth={1.5} size={16} />,
+//     title: "Nom du document",
+//     description: "Document_Exemple.pdf",
+//   },
+//   {
+//     icon: <Info className="text-primary" strokeWidth={1.5} size={16} />,
+//     title: "Type",
+//     description: "PDF",
+//   },
+// ];
 
 const comments = [
-  {
-    icon: (
-      <MessageCircleMore className="text-primary" strokeWidth={1.5} size={16} />
-    ),
-    title: "John Doe — 2024-09-01",
-    description: "Ceci est un commentaire d'exemple.",
-  },
-  {
-    icon: (
-      <MessageCircleMore className="text-primary" strokeWidth={1.5} size={16} />
-    ),
-    title: "Jane Smith — 2024-09-02",
-    description: "Un autre commentaire pour démonstration.",
-  },
+  // {
+  //   icon: (
+  //     <MessageCircleMore className="text-primary" strokeWidth={1.5} size={16} />
+  //   ),
+  //   title: "John Doe — 2024-09-01",
+  //   description: "Ceci est un commentaire d'exemple.",
+  // },
+  // {
+  //   icon: (
+  //     <MessageCircleMore className="text-primary" strokeWidth={1.5} size={16} />
+  //   ),
+  //   title: "Jane Smith — 2024-09-02",
+  //   description: "Un autre commentaire pour démonstration.",
+  // },
 ];
 
 const versions = [
@@ -90,6 +99,13 @@ const access = [
     description: "Admin",
   },
 ];
+
+const users = [
+  { username: "jdoe", fullName: "John Doe" },
+  { username: "jsmith", fullName: "Jane Smith" },
+  { username: "bwilliams", fullName: "Bob Williams" },
+];
+
 const columns = [
   { id: "id", accessorKey: "id", header: "ID" },
   {
@@ -97,71 +113,41 @@ const columns = [
     accessorKey: "file_name",
     header: "Nom",
     cell: ({ row }) => (
-      <span className="truncate max-w-xs">
-        {row.original?.file_name ||
-          row.original?.doc_description ||
-          row.original?._path ||
-          row.original?.file}
-      </span>
+      <div className="flex items-center gap-2">
+        <FileText
+          strokeWidth={1.5}
+          size={16}
+          className="fill-primary stroke-white"
+        />
+        <span>
+          {row.original?.file_name ||
+            row.original?.doc_description ||
+            row.original?._path ||
+            row.original?.file}
+        </span>
+      </div>
     ),
   },
-  {
-    id: "path",
-    accessorKey: "doc_path",
-    header: "Chemin",
-    cell: ({ row }) => {
-      const p =
-        row.original?.doc_path || row.original?.file || row.original?.url || "";
-      if (!p) return "-";
-      return p.startsWith("http") ? (
-        <a
-          href={p}
-          target="_blank"
-          rel="noreferrer"
-          className="underline text-primary truncate max-w-xs"
-        >
-          {p}
-        </a>
-      ) : (
-        <span className="truncate max-w-xs">{p}</span>
-      );
-    },
-  },
+
   { id: "size", accessorKey: "file_size", header: "Taille" },
   {
-    id: "createdAt",
-    accessorKey: "createdAt",
-    header: "Téléversé",
-    cell: ({ row }) => {
-      const dateValue =
-        row?.original?.createdAt ||
-        row?.original?.uploaded_at ||
-        row?.original?.created_at;
-      if (!dateValue) return "-";
-      const date = new Date(dateValue);
-      return date.toLocaleDateString("fr-FR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      });
-    },
+    id: "sharedWith",
+    accessorKey: "sharedWith",
+    header: "Shared With",
+    cell: () => <SharedWithDialog users={users} />,
   },
   {
-    id: "actions",
-    header: "",
-    cell: ({ row }) => (
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => {
-          const p =
-            row.original?.doc_path || row.original?.file || row.original?.url;
-          if (p) window.open(p, "_blank", "noopener,noreferrer");
-        }}
-      >
-        <Download size={16} />
-      </Button>
-    ),
+    id: "doc_modification_date",
+    accessorKey: "doc_modification_date",
+    header: "Modified",
+    cell: ({ row }) => {
+      const d =
+        row.original?.doc_modification_date ||
+        row.original?.updated_at ||
+        row.original?.createdAt ||
+        row.original?.created_at;
+      return <RelativeTime date={d} />;
+    },
   },
 ];
 
@@ -172,8 +158,8 @@ const combinedColumns = [
 ];
 
 const ConsulteDocuments = () => {
-  // Example action handlers for row menu
   const [sheetOpen, setSheetOpen] = React.useState(false);
+
   const [selectedRow, setSelectedRow] = React.useState(null);
   const [favorites, setFavorites] = React.useState({});
   const { folderId } = useParams();
@@ -305,7 +291,19 @@ const ConsulteDocuments = () => {
           onAdd={handleAdd}
           rowActions={rowActions}
           pageSize={20}
-        />{" "}
+        />
+        {/* Shared Users Dialog */}
+        <Dialog>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Shared Users</DialogTitle>
+              <DialogDescription>
+                Liste des utilisateurs ayant accès à ce document.
+              </DialogDescription>
+            </DialogHeader>
+            <SharedList users={users} />
+          </DialogContent>
+        </Dialog>
         {/* Create Document Dialog (controlled) */}
         <Dialog open={createOpen} onOpenChange={(v) => setCreateOpen(v)}>
           <DialogContent>
@@ -320,19 +318,7 @@ const ConsulteDocuments = () => {
         </Dialog>
         {/* Controlled Sheet: pass open / onOpenChange and show details from selectedRow */}
         <SheetDemo
-          infos={
-            selectedRow
-              ? [
-                  {
-                    icon: <Info className="text-primary" />,
-                    title: "Nom du document",
-                    description: String(
-                      selectedRow.groupname ?? selectedRow.id
-                    ),
-                  },
-                ]
-              : infos
-          }
+          infos={selectedRow ? [selectedRow] : []}
           comments={comments}
           versions={versions}
           access={access}

@@ -18,9 +18,13 @@ import {
   Info,
   Lock,
   MessageCircleMore,
+  MessagesSquare,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ItemIcon } from "./item-icon";
+import SheetCommentSection from "./sheet-comment-section";
+import SheetVersionSection from "./sheet-version-section";
+import SheetInfoSection from "./sheet-info-section";
 export function SheetDemo({
   infos = [],
   comments = [],
@@ -79,24 +83,7 @@ export function SheetDemo({
                 Version
               </TabsTrigger>
             </TabsList>
-            <TabsContent value="info">
-              <div className="flex flex-col gap-3">
-                {infoItems.length === 0 ? (
-                  <span className="text-sm text-muted-foreground">
-                    Aucune information.
-                  </span>
-                ) : (
-                  infoItems.map((it, idx) => (
-                    <ItemIcon
-                      key={idx}
-                      icon={it.icon}
-                      title={it.title}
-                      description={it.description}
-                    />
-                  ))
-                )}
-              </div>
-            </TabsContent>
+            <SheetInfoSection infos={infoItems} />
             <TabsContent value="access">
               <div className="flex flex-col gap-3">
                 {accessItems.length === 0 ? (
@@ -115,42 +102,8 @@ export function SheetDemo({
                 )}
               </div>
             </TabsContent>
-            <TabsContent value="comments">
-              <div className="flex flex-col gap-3">
-                {commentItems.length === 0 ? (
-                  <span className="text-sm text-muted-foreground">
-                    Aucun commentaire.
-                  </span>
-                ) : (
-                  commentItems.map((it, idx) => (
-                    <ItemIcon
-                      key={idx}
-                      icon={it.icon}
-                      title={it.title}
-                      description={it.description}
-                    />
-                  ))
-                )}
-              </div>
-            </TabsContent>
-            <TabsContent value="version">
-              <div className="flex flex-col gap-3">
-                {versionItems.length === 0 ? (
-                  <span className="text-sm text-muted-foreground">
-                    Aucune version.
-                  </span>
-                ) : (
-                  versionItems.map((it, idx) => (
-                    <ItemIcon
-                      key={idx}
-                      icon={it.icon}
-                      title={it.title}
-                      description={it.description}
-                    />
-                  ))
-                )}
-              </div>
-            </TabsContent>
+            <SheetCommentSection comments={commentItems} />
+            <SheetVersionSection versions={versionItems} />
           </Tabs>{" "}
         </div>
       </SheetContent>
