@@ -12,27 +12,27 @@ class WorkflowViewSet(viewsets.ModelViewSet):
     queryset = Workflow.objects.all()
     serializer_class = WorkflowSerializer
 
-    def create(self, serializer):
+    def perform_create(self, serializer):
         workflow = serializer.save()
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="create",
             content_type=ContentType.objects.get_for_model(workflow),
             object_id=workflow.id,
-            extra_info={"nom": workflow.nom}
+            extra_info={"nom": workflow.nom},
         )
 
-    def update(self, serializer):
+    def perform_update(self, serializer):
         workflow = serializer.save()
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="update",
             content_type=ContentType.objects.get_for_model(workflow),
             object_id=workflow.id,
-            extra_info={"nom": workflow.nom}
+            extra_info={"nom": workflow.nom},
         )
 
-    def delete(self, instance):
+    def perform_destroy(self, instance):
         workflow_id = instance.id
         nom = instance.nom
         instance.delete()
@@ -41,7 +41,7 @@ class WorkflowViewSet(viewsets.ModelViewSet):
             action="delete",
             content_type=ContentType.objects.get_for_model(Workflow),
             object_id=workflow_id,
-            extra_info={"nom": nom}
+            extra_info={"nom": nom},
         )
 
     filter_backends = [DjangoFilterBackend]
@@ -59,27 +59,27 @@ class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
 
-    def create(self, serializer):
+    def perform_create(self, serializer):
         task = serializer.save()
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="create",
             content_type=ContentType.objects.get_for_model(task),
             object_id=task.id,
-            extra_info={"task_name": task.task_name}
+            extra_info={"task_name": task.task_name},
         )
 
-    def update(self, serializer):
+    def perform_update(self, serializer):
         task = serializer.save()
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="update",
             content_type=ContentType.objects.get_for_model(task),
             object_id=task.id,
-            extra_info={"task_name": task.task_name}
+            extra_info={"task_name": task.task_name},
         )
 
-    def delete(self, instance):
+    def perform_destroy(self, instance):
         task_id = instance.id
         task_name = instance.task_name
         instance.delete()
@@ -88,7 +88,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             action="delete",
             content_type=ContentType.objects.get_for_model(Task),
             object_id=task_id,
-            extra_info={"task_name": task_name}
+            extra_info={"task_name": task_name},
         )
 
     filter_backends = [DjangoFilterBackend]
