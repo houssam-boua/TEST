@@ -6,7 +6,8 @@ import {
   InputGroupAddon,
   InputGroupButton,
 } from "@/components/ui/input-group";
-
+import { TabsContent } from "@/components/ui/tabs"; 
+import { ItemIcon } from "./item-icon";
 const SheetInfoSection = ({ infos }) => {
   return (
     <TabsContent value="info">

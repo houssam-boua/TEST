@@ -1,37 +1,63 @@
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import CreateWorkflowForm from "../components/forms/create-workflow";
 import CreateTaskForm from "../components/forms/create-task-form";
+import { useCreateWorkflowMutation } from "@/Slices/workflowSlice";
+import { useCreateTaskMutation } from "@/Slices/taskSlice";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 const CreateWorkflow = () => {
   const [step, setStep] = useState(1);
   const [workflowPayload, setWorkflowPayload] = useState(null);
+  const [createWorkflow] = useCreateWorkflowMutation();
+  const [createTask] = useCreateTaskMutation();
 
-  const documents = useMemo(
-    () => [
-      { value: "101", label: "Document 101 - Cahier de charges" },
-      { value: "102", label: "Document 102 - Spécifications" },
-      { value: "103", label: "Document 103 - PV Réunion" },
-    ],
-    []
-  );
+  // documents list removed; CreateTaskForm will receive workflowDocumentId from created workflow
 
   const handleCreateWorkflow = async (formData, values) => {
-    // TODO: POST workflow to backend and get workflow id
-    console.log("Creating workflow with data:", values);
-    setWorkflowPayload(values);
-    setStep(2);
+    console.log("[CreateWorkflowPage] handleCreateWorkflow invoked", {
+      formData,
+      values,
+    });
+    try {
+      const payload = values || {};
+      console.debug(
+        "[CreateWorkflowPage] calling createWorkflow with payload:",
+        payload
+      );
+      const res = await createWorkflow(payload).unwrap();
+      console.info("[CreateWorkflowPage] createWorkflow response:", res);
+      const workflowId = res?.id;
+      const workflowDocument = res?.document ?? payload?.document ?? null;
+      setWorkflowPayload({
+        ...payload,
+        id: workflowId,
+        document: workflowDocument,
+      });
+      setStep(2);
+    } catch (err) {
+      console.error("[CreateWorkflowPage] Create workflow failed:", err);
+    }
   };
 
   const handleCreateTask = async (formData, values) => {
-    // TODO: POST task to backend, potentially with workflowPayload information
-    console.log(
-      "Creating task with data:",
+    console.log("[CreateWorkflowPage] handleCreateTask invoked", {
+      formData,
       values,
-      "for workflow:",
-      workflowPayload
-    );
+      workflowPayload,
+    });
+    try {
+      const payload = values || {};
+      if (workflowPayload?.id) payload.task_workflow = workflowPayload.id;
+      console.debug(
+        "[CreateWorkflowPage] calling createTask with payload:",
+        payload
+      );
+      const res = await createTask(payload).unwrap();
+      console.info("[CreateWorkflowPage] createTask response:", res);
+    } catch (err) {
+      console.error("[CreateWorkflowPage] Create task failed:", err);
+    }
   };
 
   return (
@@ -71,7 +97,7 @@ const CreateWorkflow = () => {
           <CreateTaskForm
             onCreate={handleCreateTask}
             onBack={() => setStep(1)}
-            documents={documents}
+            workflowDocumentId={workflowPayload?.document}
           />
         )}
       </div>

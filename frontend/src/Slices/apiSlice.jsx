@@ -12,7 +12,8 @@ const baseQuery = fetchBaseQuery({
       headers.set("authorization", `Token ${token}`);
     }
 
-    // Only set Content-Type for non-FormData requests
+    // Only set Content-Type for non-FormData requests. createDocument/updateDocument
+    // are excluded because they send FormData with file uploads.
     if (
       !headers.get("Content-Type") &&
       endpoint !== "createDocument" &&
@@ -41,7 +42,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
-  tagTypes: [],
+  tagTypes: ["Document", "Workflow", "Task"],
   endpoints: (builder) => ({
     // Auth endpoints
     login: builder.mutation({

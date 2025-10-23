@@ -10,6 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import CreateWorkflowForm from "../components/forms/create-workflow";
+import { useGetWorkflowsQuery } from "@/Slices/workflowSlice";
 import { Button } from "../components/ui/button";
 const columns = [
   {
@@ -104,6 +105,11 @@ const groups = [
   },
 ];
 const ConsulteWorkflow = () => {
+  const {
+    data: fetchedWorkflows = [],
+    isLoading,
+    isError,
+  } = useGetWorkflowsQuery();
   const [workflows, setWorkflows] = React.useState(groups);
   const [createOpen, setCreateOpen] = React.useState(false);
 
@@ -111,7 +117,11 @@ const ConsulteWorkflow = () => {
 
   const handleCreate = async (formData, values) => {
     try {
-      const id = (workflows[workflows.length - 1]?.id ?? 0) + 1;
+      // If the API returned data, optimistically append the new item locally
+      const id =
+        (workflows[workflows.length - 1]?.id ??
+          fetchedWorkflows[fetchedWorkflows.length - 1]?.id ??
+          0) + 1;
       const newItem = {
         id,
         nom: values.nom || `Workflow ${id}`,
@@ -131,14 +141,18 @@ const ConsulteWorkflow = () => {
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
         <DataTable
           columns={combinedColumns}
-          data={workflows}
+          data={isLoading || isError ? workflows : fetchedWorkflows}
           onEdit={() => {}}
           onDelete={() => {}}
           onAdd={handleAdd}
           title={"Workflows"}
           pageSize={20}
-        />{" "}
-        <Dialog open={createOpen} onOpenChange={(v) => setCreateOpen(v)} className="w-full">
+        />
+        <Dialog
+          open={createOpen}
+          onOpenChange={(v) => setCreateOpen(v)}
+          className="w-full"
+        >
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Créer un workflow</DialogTitle>
@@ -146,7 +160,10 @@ const ConsulteWorkflow = () => {
                 Remplissez les informations pour ajouter un nouveau workflow.
               </DialogDescription>
             </DialogHeader>
-            <CreateWorkflowForm onCreate={handleCreate} documents={[]} />
+            <CreateWorkflowForm
+              onCreate={handleCreate}
+              documents={fetchedWorkflows}
+            />
           </DialogContent>
         </Dialog>
       </div>

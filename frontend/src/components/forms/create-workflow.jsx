@@ -40,6 +40,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDown, ChevronsUpDown, Check } from "lucide-react";
+import { useGetDocumentsQuery } from "@/Slices/documentSlice";
 import {
   Command,
   CommandEmpty,
@@ -60,12 +61,13 @@ const taskSchema = z.object({
 export function CreateWorkflowForm({
   className,
   onCreate,
-  documents = [],
+  documents: documentsProp = [],
   ...props
 }) {
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [docOpen, setDocOpen] = useState(false);
+  const [debug, setDebug] = useState({ lastPayload: null, lastFormData: null });
 
   const form = useForm({
     resolver: zodResolver(taskSchema),
@@ -77,21 +79,66 @@ export function CreateWorkflowForm({
     },
   });
 
+  // Fetch documents from the API to populate the document selector.
+  const { data: fetchedDocuments = [] } = useGetDocumentsQuery();
+
+  const documents =
+    (fetchedDocuments && Array.isArray(fetchedDocuments)
+      ? fetchedDocuments.map((d) => ({
+          value: String(d.id ?? d.pk ?? d?.id),
+          label:
+            d.file_name ||
+            d.doc_description ||
+            d.doc_path ||
+            `Document ${d.id}`,
+        }))
+      : []) || documentsProp;
+
   const onSubmit = async (values) => {
     setSubmitError("");
     setSubmitting(true);
     try {
+      console.log("[CreateWorkflowForm] onSubmit called with values:", values);
       const formData = new FormData();
       formData.append("nom", values.nom);
       formData.append("description", values.description);
       formData.append("etat", values.etat);
       formData.append("document", values.document);
 
+      // Build a readable representation of FormData for the debug panel
+      const fdEntries = [];
+      try {
+        for (const pair of formData.entries()) {
+          const [k, v] = pair;
+          if (v instanceof File) {
+            fdEntries.push({
+              key: k,
+              file: { name: v.name, size: v.size, type: v.type },
+            });
+            console.debug("[CreateWorkflow] FormData entry:", k, v.name, v);
+          } else {
+            fdEntries.push({ key: k, value: v });
+            console.debug("[CreateWorkflow] FormData entry:", k, v);
+          }
+        }
+      } catch (e) {
+        console.debug("[CreateWorkflow] FormData inspect failed", e);
+      }
+
+      // Save debug info and also log the original values
+      setDebug({ lastPayload: values, lastFormData: fdEntries });
+      console.info("[CreateWorkflowForm] submit payload:", values);
+
+      // Also log that we're about to call onCreate (page handler)
+      console.log("[CreateWorkflowForm] about to call onCreate prop");
+
       if (typeof onCreate === "function") {
+        console.log("[CreateWorkflowForm] calling onCreate...");
         await onCreate(formData, values);
+        console.log("[CreateWorkflowForm] onCreate returned");
       } else {
         // Fallback: just log the payload
-        console.debug("CreateWorkflow payload", values);
+        console.log("[CreateWorkflowForm] no onCreate prop, payload:", values);
       }
       form.reset(form.getValues());
     } catch (err) {
@@ -244,7 +291,7 @@ export function CreateWorkflowForm({
 
               <FormField
                 control={form.control}
-                name="doc_description"
+                name="description"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Description</FormLabel>
@@ -273,6 +320,13 @@ export function CreateWorkflowForm({
               </div>
             </form>
           </Form>
+          {/* Debug panel (dev) */}
+          <div className="mt-4 p-3 bg-slate-50 rounded border text-sm">
+            <div className="font-medium text-xs mb-1">Debug (last submit)</div>
+            <pre className="whitespace-pre-wrap break-words text-xs">
+              {JSON.stringify(debug, null, 2)}
+            </pre>
+          </div>
         </CardContent>
       </Card>
     </div>

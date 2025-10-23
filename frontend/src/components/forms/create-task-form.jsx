@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/command";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ChevronDown, ChevronsUpDown, Check } from "lucide-react";
+import { useGetUsersQuery } from "@/Slices/userSlice";
 
 const taskSchema = z.object({
   task_name: z.string().min(1, "Nom requis"),
@@ -48,19 +49,19 @@ const taskSchema = z.object({
     .enum(["not_started", "in_progress", "completed"])
     .default("not_started"),
   task_assigned_to: z.string().optional().default(""),
-  document: z.string().optional().default(""),
+  // document is supplied by the parent workflow and not collected here
 });
 
 export default function CreateTaskForm({
   className,
   onCreate,
   onBack,
-  documents = [],
+  workflowDocumentId = null,
   ...props
 }) {
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [docOpen, setDocOpen] = useState(false);
+  // document selector removed; document id will come from workflowDocumentId prop
 
   const form = useForm({
     resolver: zodResolver(taskSchema),
@@ -70,9 +71,18 @@ export default function CreateTaskForm({
       task_priorite: "normal",
       task_statut: "not_started",
       task_assigned_to: "",
-      document: "",
     },
   });
+
+  // Use the users slice to fetch assignable users
+  const { data: usersData = {}, isLoading: usersLoading } = useGetUsersQuery();
+  // usersData may be a paginated object { results: [...] } or a plain array.
+  // Normalize to an array to avoid runtime errors when mapping.
+  const users = Array.isArray(usersData)
+    ? usersData
+    : Array.isArray(usersData?.results)
+    ? usersData.results
+    : [];
 
   const onSubmit = async (values) => {
     setSubmitError("");
@@ -84,7 +94,10 @@ export default function CreateTaskForm({
       formData.append("task_priorite", values.task_priorite);
       formData.append("task_statut", values.task_statut);
       formData.append("task_assigned_to", values.task_assigned_to);
-      formData.append("document", values.document || "");
+      // Attach the workflow's document id provided by the parent form
+      if (workflowDocumentId) {
+        formData.append("document", workflowDocumentId);
+      }
       if (typeof onCreate === "function") {
         await onCreate(formData, values);
       } else {
@@ -159,9 +172,7 @@ export default function CreateTaskForm({
                         />
                       </PopoverContent>
                     </Popover>
-                    <FormDescription>
-                      Choisissez la date limite de la tâche.
-                    </FormDescription>
+
                     <FormMessage />
                   </FormItem>
                 );
@@ -232,84 +243,36 @@ export default function CreateTaskForm({
               name="task_assigned_to"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assigné à (ID/nom)</FormLabel>
+                  <FormLabel>Assigné à</FormLabel>
                   <FormControl>
-                    <Input placeholder="Utilisateur assigné" {...field} />
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue
+                          placeholder={
+                            usersLoading
+                              ? "Loading users..."
+                              : "Sélectionnez un utilisateur"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectLabel>Utilisateurs</SelectLabel>
+                          {users.map((u) => (
+                            <SelectItem key={u.id} value={String(u.id)}>
+                              {u.first_name} {u.last_name} ({u.username})
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="document"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Document</FormLabel>
-                  <Popover open={docOpen} onOpenChange={setDocOpen}>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant="outline"
-                          role="combobox"
-                          aria-expanded={docOpen}
-                          className="w-full justify-between"
-                        >
-                          {field.value
-                            ? documents.find(
-                                (d) => String(d.value) === String(field.value)
-                              )?.label || "Document sélectionné"
-                            : "Sélectionnez un document..."}
-                          <ChevronsUpDown className="opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px] p-0" align="start">
-                      <Command>
-                        <CommandInput
-                          placeholder="Rechercher un document..."
-                          className="h-9"
-                        />
-                        <CommandList>
-                          <CommandEmpty>Aucun document trouvé.</CommandEmpty>
-                          <CommandGroup>
-                            {documents.map((doc) => (
-                              <CommandItem
-                                key={String(doc.value)}
-                                value={String(doc.value)}
-                                onSelect={(currentValue) => {
-                                  const next =
-                                    currentValue === field.value
-                                      ? ""
-                                      : currentValue;
-                                  field.onChange(next);
-                                  setDocOpen(false);
-                                }}
-                              >
-                                {doc.label}
-                                <Check
-                                  className={cn(
-                                    "ml-auto h-4 w-4",
-                                    String(field.value) === String(doc.value)
-                                      ? "opacity-100"
-                                      : "opacity-0"
-                                  )}
-                                />
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  <FormDescription>
-                    Sélectionnez le document lié à cette tâche.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Document selector removed — document id comes from the workflow */}
           </div>
 
           <div className="flex justify-between gap-3">
