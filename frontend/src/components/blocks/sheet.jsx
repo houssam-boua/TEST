@@ -44,7 +44,8 @@ export function SheetDemo({
         }))
       : [];
 
-  const infoItems = safeMap(infos);
+  // pass raw infos to the Info tab so it can display full document objects
+  const infoItems = Array.isArray(infos) ? infos : [];
   const accessItems = safeMap(access);
   const commentItems = safeMap(comments);
   const versionItems = safeMap(versions);

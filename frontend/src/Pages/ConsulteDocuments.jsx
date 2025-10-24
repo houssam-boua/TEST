@@ -13,10 +13,15 @@ import {
   Star,
   Link,
   FileText,
+  Edit,
+  Trash,
 } from "lucide-react";
 import { SheetDemo } from "../components/blocks/sheet";
 import { useParams } from "react-router-dom";
-import { useGetDocumentsQuery } from "@/Slices/documentSlice";
+import {
+  useGetDocumentsQuery,
+  useDeleteDocumentMutation,
+} from "@/Slices/documentSlice";
 import { Button } from "@/components/ui/button";
 import useRelativeTime from "../Hooks/useRelativeTime";
 import SharedList from "../components/collection/shared-list.jsx";
@@ -34,18 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import { CreateDocumentForm } from "../components/forms/create-document-form";
 import SharedWithDialog from "../components/blocks/shared-with-dialog.jsx";
-// const infos = [
-//   {
-//     icon: <Info className="text-primary" strokeWidth={1.5} size={16} />,
-//     title: "Nom du document",
-//     description: "Document_Exemple.pdf",
-//   },
-//   {
-//     icon: <Info className="text-primary" strokeWidth={1.5} size={16} />,
-//     title: "Type",
-//     description: "PDF",
-//   },
-// ];
+import DeleteDocument from "../components/forms/delete-document.jsx";
 
 const comments = [
   // {
@@ -170,10 +164,14 @@ const ConsulteDocuments = () => {
   const { data: documents = [] } = useGetDocumentsQuery(queryArg);
   const [groups, setGroups] = React.useState([]);
   const [createOpen, setCreateOpen] = React.useState(false);
-
+  const [DeleteOpen, setDeleteOpen] = React.useState(false);
+  const [deleteLoading, setDeleteLoading] = React.useState(false);
   const handleDetails = (row) => {
     // set the selected row data and open the sheet
-    setSelectedRow(row?.original ?? null);
+    // Some table implementations pass either the table row wrapper or the raw item.
+    // Normalize here so the sheet always receives the document object.
+    const item = row?.original ?? row?.data ?? row ?? null;
+    setSelectedRow(item);
     setSheetOpen(true);
   };
 
@@ -190,6 +188,30 @@ const ConsulteDocuments = () => {
   const handleShare = (row) => {
     console.log("Share", row.original);
     // implement share logic here
+  };
+
+  const [deleteDocument] = useDeleteDocumentMutation();
+
+  const handleDelete = async (doc) => {
+    // accept either the document object, a row wrapper, or an id
+    const id = doc?.id ?? doc?.original?.id ?? doc?.data?.id ?? doc;
+    if (!id) return;
+    try {
+      setDeleteLoading(true);
+      await deleteDocument(id).unwrap();
+      // optimistic UI update: remove from local groups and close sheet if open
+      setGroups((prev) => prev.filter((g) => g?.id !== id));
+      if (selectedRow?.id === id) {
+        setSelectedRow(null);
+        setSheetOpen(false);
+      }
+      setDeleteOpen(false);
+      console.log(`Document ${id} deleted`);
+    } catch (err) {
+      console.error("Failed to delete document", err);
+    } finally {
+      setDeleteLoading(false);
+    }
   };
 
   const handleFavorite = (row) => {
@@ -216,6 +238,12 @@ const ConsulteDocuments = () => {
       onClick: () => handleFavorite(row),
     },
     {
+      key: "edit",
+      icon: <Edit className="w-4 h-4" />,
+      label: "Edit",
+      onClick: () => console.warn("edit action not implemented", row),
+    },
+    {
       key: "download",
       icon: <Download className="w-4 h-4" />,
       label: "Download",
@@ -232,6 +260,16 @@ const ConsulteDocuments = () => {
       icon: <SquareArrowOutUpRight className="w-4 h-4" />,
       label: "Move",
       onClick: () => handleShare(row),
+    },
+    {
+      key: "delete",
+      icon: <Trash className="w-4 h-4" />,
+      label: "Delete",
+      onClick: () => {
+        const item = row?.original ?? row?.data ?? row ?? null;
+        setSelectedRow(item);
+        setDeleteOpen(true);
+      },
     },
   ];
 
@@ -314,6 +352,23 @@ const ConsulteDocuments = () => {
               </DialogDescription>
             </DialogHeader>
             <CreateDocumentForm onCreate={handleCreate} />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={DeleteOpen} onOpenChange={(v) => setDeleteOpen(v)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Supprimer un document</DialogTitle>
+              <DialogDescription>
+                Êtes-vous sûr de vouloir supprimer ce document ?
+              </DialogDescription>
+            </DialogHeader>
+            <DeleteDocument
+              document={selectedRow}
+              onDelete={handleDelete}
+              onCancel={() => setDeleteOpen(false)}
+              loading={deleteLoading}
+            />
           </DialogContent>
         </Dialog>
         {/* Controlled Sheet: pass open / onOpenChange and show details from selectedRow */}
