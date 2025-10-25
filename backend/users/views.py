@@ -5,6 +5,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.decorators import action
 from .models import User, Role, Departement
 from .serializers import UserSerializer, RoleSerializer, DepartementSerializer
 from django.contrib.contenttypes.models import ContentType
@@ -50,6 +51,20 @@ class UserViewSet(viewsets.ModelViewSet):
             extra_info={"username": username}
         )
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
+    def validators(self, request):
+        """
+        Return users that have the 'validator' role.
+        GET /users/validators/
+        """
+        users = User.objects.filter(role__role_name__iexact='validator')
+        page = self.paginate_queryset(users)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(users, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["username", "email", "first_name", "last_name"]
     #  GET /users/?username=John
@@ -94,9 +109,9 @@ class RoleViewSet(viewsets.ModelViewSet):
         )
 
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["role_name", "role_type"]
+    filterset_fields = ["role_name", "role_color"]
     #  GET /roles/?role_name=John
-    #  GET /roles/?role_type=test
+    #  GET /roles/?role_color=test
 
 
 class DepartementViewSet(viewsets.ModelViewSet):
@@ -137,9 +152,9 @@ class DepartementViewSet(viewsets.ModelViewSet):
         )
 
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["dep_name", "dep_type"]
+    filterset_fields = ["dep_name", "dep_color"]
     #  GET /departements/?dep_name=test
-    #  GET /departements/?dep_type=test
+    #  GET /departements/?dep_color=test
 
 
 class LoginView(APIView):

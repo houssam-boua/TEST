@@ -60,7 +60,7 @@ urlpatterns = [
         # - Update a role by ID     : PUT /roles/1/
         # - Delete a role by ID     : DELETE /roles/1/
         # - Search by role_name     : GET /roles/?role_name=exemple
-        # - Search by role_type     : GET /roles/?role_type=exemple
+        # - Search by role_color     : GET /roles/?role_color=exemple
 
         # - Get all departements    : GET /departements/
         # - Create a new departement: POST /departements/
@@ -68,7 +68,7 @@ urlpatterns = [
         # - Update a departement by ID: PUT /departements/1/
         # - Delete a departement by ID: DELETE /departements/1/
         # - Search by dep_name       : GET /departements/?dep_name=exemple
-        # - Search by dep_type       : GET /departements/?dep_type=exemple
+        # - Search by dep_color       : GET /departements/?dep_color=exemple
 
         path("api/", include("users.urls")),
 

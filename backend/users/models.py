@@ -11,19 +11,19 @@ class Departement(models.Model):
     """
     Represents a department within the organization.
     """
-    dep_name = models.CharField(max_length=100)
-    dep_type = models.CharField(max_length=100)
+    dep_name = models.CharField(max_length=100, unique=True)
+    dep_color = models.CharField(max_length=100)
 
     def __str__(self):
-        return f"{self.dep_name} - {self.dep_type}"
+        return f"{self.dep_name} - {self.dep_color}"
 
 
 class Role(models.Model):
     """
     Represents a role assigned to a user.
     """
-    role_name = models.CharField(max_length=100)
-    role_type = models.TextField(max_length=100)
+    role_name = models.CharField(max_length=100, unique=True)
+    role_color = models.TextField(max_length=100)
 
     def __str__(self):
         return self.role_name

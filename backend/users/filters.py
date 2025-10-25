@@ -37,11 +37,11 @@ class UserFilter(django_filters.FilterSet):
     
 class RoleFilter(django_filters.FilterSet):
     role_name = django_filters.CharFilter(method='validate_role_name')
-    role_type = django_filters.CharFilter(method='validate_role_type')
+    role_color = django_filters.CharFilter(method='validate_role_color')
 
     class Meta:
         model = Role
-        fields = ['role_name', 'role_type']
+        fields = ['role_name', 'role_color']
 
     def validate_role_name(self, queryset, name, value):
         # Add your custom validation logic for role name here
@@ -49,19 +49,19 @@ class RoleFilter(django_filters.FilterSet):
             raise django_filters.exceptions.ValidationError("Role name must contain only letters.")
         return queryset.filter(role_name=value)
 
-    def validate_role_type(self, queryset, name, value):
+    def validate_role_color(self, queryset, name, value):
         # Add your custom validation logic for role type here
         if not value.isalpha():
             raise django_filters.exceptions.ValidationError("Role type must contain only letters.")
-        return queryset.filter(role_type=value)
+        return queryset.filter(role_color=value)
     
 class DepartementFilter(django_filters.FilterSet):
     dep_name = django_filters.CharFilter(method='validate_dep_name')
-    dep_type = django_filters.CharFilter(method='validate_dep_type')
+    dep_color = django_filters.CharFilter(method='validate_dep_color')
 
     class Meta:
         model = Departement
-        fields = ['dep_name', 'dep_type']
+        fields = ['dep_name', 'dep_color']
 
     def validate_dep_name(self, queryset, name, value):
         # Add your custom validation logic for departement name here
@@ -69,8 +69,8 @@ class DepartementFilter(django_filters.FilterSet):
             raise django_filters.exceptions.ValidationError("Departement name must contain only letters.")
         return queryset.filter(dep_name=value)
 
-    def validate_dep_type(self, queryset, name, value):
+    def validate_dep_color(self, queryset, name, value):
         # Add your custom validation logic for departement type here
         if not value.isalpha():
             raise django_filters.exceptions.ValidationError("Departement type must contain only letters.")
-        return queryset.filter(dep_type=value)
+        return queryset.filter(dep_color=value)

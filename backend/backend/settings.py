@@ -35,7 +35,10 @@ SECRET_KEY = "django-insecure-4rman5(hp!xg5)h@x&60gvh4!7^)he(7u2g-nb)%ngeowbxiad
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = ["127.0.0.1", "localhost", "stirling.ramaqs.com"]
+
 
 
 # Application definition
@@ -78,6 +81,8 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    # Removed CommonMiddleware to avoid early Invalid HTTP_HOST parsing of malformed host headers in development.
+    # If you fix the client Host header to a valid value (e.g. "localhost:8000") you can re-enable it.
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",

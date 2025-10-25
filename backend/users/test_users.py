@@ -11,33 +11,33 @@ class DepartementModelTest(TestCase):
         """Test creating a departement"""
         departement = Departement.objects.create(
             dep_name="Engineering",
-            dep_type="Technical"
+            dep_color="Technical"
         )
         self.assertEqual(str(departement), "Engineering - Technical")
         self.assertEqual(departement.dep_name, "Engineering")
-        self.assertEqual(departement.dep_type, "Technical")
+        self.assertEqual(departement.dep_color, "Technical")
 
 class RoleModelTest(TestCase):
     def test_role_creation(self):
         """Test creating a role"""
         role = Role.objects.create(
             role_name="Developer",
-            role_type="Technical"
+            role_color="Technical"
         )
         self.assertEqual(str(role), "Developer")
         self.assertEqual(role.role_name, "Developer")
-        self.assertEqual(role.role_type, "Technical")
+        self.assertEqual(role.role_color, "Technical")
 
 class CustomUserModelTest(TestCase):
     def test_user_creation(self):
         """Test creating a user with minimal fields"""
         departement = Departement.objects.create(
             dep_name="Engineering",
-            dep_type="Technical"
+            dep_color="Technical"
         )
         role = Role.objects.create(
             role_name="Developer",
-            role_type="Technical"
+            role_color="Technical"
         )
         user = User.objects.create_user(
             username='testuser',
@@ -64,11 +64,11 @@ class CustomUserModelTest(TestCase):
         """Test that plain text passwords get hashed"""
         departement = Departement.objects.create(
             dep_name="Engineering",
-            dep_type="Technical"
+            dep_color="Technical"
         )
         role = Role.objects.create(
             role_name="Developer",
-            role_type="Technical"
+            role_colorr="Technical"
         )
         
         user = User(
@@ -87,11 +87,11 @@ class CustomUserModelTest(TestCase):
         """Test creating a superuser"""
         departement = Departement.objects.create(
             dep_name="Management",
-            dep_type="Administrative"
+            dep_colorr="Administrative"
         )
         role = Role.objects.create(
             role_name="CEO",
-            role_type="Executive"
+            role_colorrr="Executive"
         )
         
         admin_user = User.objects.create_superuser(
@@ -112,8 +112,8 @@ class CustomUserModelTest(TestCase):
             User.objects.create_user(
                 username=None,
                 password='12345',
-                role=Role.objects.create(role_name="Developer", role_type="Technical"),
-                departement=Departement.objects.create(dep_name="Engineering", dep_type="Technical")
+                role=Role.objects.create(role_name="Developer", role_colorr="Technical"),
+                departement=Departement.objects.create(dep_name="Engineering", dep_color="Technical")
             )
     
     def test_user_without_role(self):
@@ -123,7 +123,7 @@ class CustomUserModelTest(TestCase):
                 username='testuser',
                 password='12345',
                 role=None,
-                departement=Departement.objects.create(dep_name="Engineering", dep_type="Technical")
+                departement=Departement.objects.create(dep_name="Engineering", dep_color="Technical")
             )
     
     def test_user_without_departement(self):
@@ -132,7 +132,7 @@ class CustomUserModelTest(TestCase):
             User.objects.create_user(
                 username='testuser',
                 password='12345',
-                role=Role.objects.create(role_name="Developer", role_type="Technical"),
+                role=Role.objects.create(role_name="Developer", role_color="Technical"),
                 departement=None
             )
     
@@ -140,11 +140,11 @@ class CustomUserModelTest(TestCase):
         """Test that token is created when user is created"""
         departement = Departement.objects.create(
             dep_name="Engineering",
-            dep_type="Technical"
+            dep_color="Technical"
         )
         role = Role.objects.create(
             role_name="Developer",
-            role_type="Technical"
+            role_color="Technical"
         )
         
         user = User.objects.create_user(
@@ -160,11 +160,11 @@ class CustomUserModelTest(TestCase):
         """Test updating a user"""
         departement = Departement.objects.create(
             dep_name="Engineering",
-            dep_type="Technical"
+            dep_color="Technical"
         )
         role = Role.objects.create(
             role_name="Developer",
-            role_type="Technical"
+            role_color="Technical"
         )
         
         user = User.objects.create_user(
@@ -176,11 +176,11 @@ class CustomUserModelTest(TestCase):
         
         new_departement = Departement.objects.create(
             dep_name="Marketing",
-            dep_type="Business"
+            dep_colorr="Business"
         )
         new_role = Role.objects.create(
             role_name="Manager",
-            role_type="Management"
+            role_color="Management"
         )
         
         user.departement = new_departement
@@ -195,11 +195,11 @@ class CustomUserModelTest(TestCase):
         """Test deleting a user"""
         departement = Departement.objects.create(
             dep_name="Engineering",
-            dep_type="Technical"
+            dep_colorr="Technical"
         )
         role = Role.objects.create(
             role_name="Developer",
-            role_type="Technical"
+            role_color="Technical"
         )
         
         user = User.objects.create_user(
@@ -216,11 +216,11 @@ class CustomUserModelTest(TestCase):
         """Test that username must be unique"""
         departement = Departement.objects.create(
             dep_name="Engineering",
-            dep_type="Technical"
+            dep_color="Technical"
         )
         role = Role.objects.create(
             role_name="Developer",
-            role_type="Technical"
+            role_color="Technical"
         )
         
         User.objects.create_user(

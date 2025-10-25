@@ -23,7 +23,7 @@ class Command(BaseCommand):
         departements = []
         for _ in range(10):
             dep = Departement.objects.create(
-                dep_name=fake.word().capitalize(), dep_type=fake.word().capitalize()
+                dep_name=fake.word().capitalize(), dep_color=fake.word().capitalize()
             )
             departements.append(dep)
         self.stdout.write(self.style.SUCCESS("Successfully created Departements."))
@@ -34,7 +34,7 @@ class Command(BaseCommand):
         role_names = ["admin", "validator", "user"]
         for name in role_names:
             role = Role.objects.create(
-            role_name=name, role_type=fake.catch_phrase()
+            role_name=name, role_color=fake.catch_phrase()
             )
             roles.append(role)
         self.stdout.write(self.style.SUCCESS("Successfully created Roles."))

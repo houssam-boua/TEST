@@ -7,8 +7,8 @@ from .models import Document
 class DocumentModelTest(TestCase):
     def setUp(self):
         from users.models import User, Departement, Role
-        self.departement = Departement.objects.create(dep_name="Engineering", dep_type="Technical")
-        self.role = Role.objects.create(role_name="Developer", role_type="Technical")
+        self.departement = Departement.objects.create(dep_name="Engineering", dep_color="Technical")
+        self.role = Role.objects.create(role_name="Developer", role_color="Technical")
         self.owner = User.objects.create_user(username="owner", password="pass123", role=self.role, departement=self.departement)
 
     def test_document_creation(self):
