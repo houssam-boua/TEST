@@ -74,7 +74,7 @@ class Command(BaseCommand):
                 doc_status=random.choice(["Active", "Inactive"]),
                 doc_size=random.randint(100, 5000),
                 doc_format=random.choice(["pdf", "docx", "xlsx"]),
-                doc_category=fake.word().capitalize(),
+                # doc_category=fake.word().capitalize(),
                 doc_description=fake.text(max_nb_chars=200),
                 doc_owner=random.choice(users),
                 doc_departement=random.choice(departements),

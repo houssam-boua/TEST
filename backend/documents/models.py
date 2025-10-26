@@ -9,11 +9,18 @@ class Document(models.Model):
     Represents a document in the system.
     Includes metadata such as title, type, status, and owner.
     """
+    DOC_STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('archived', 'Archived'),
+    ]
+
     doc_title = models.CharField(max_length=1024)
-    doc_type = models.CharField(max_length=50)
-    doc_creation_date = models.DateTimeField(auto_now_add=True)
-    doc_modification_date = models.DateTimeField(auto_now=True)
+    doc_type = models.CharField(max_length=50) # e.g., PDF, Word Document, Excel Spreadsheet
     # doc_deletion_date = models.DateTimeField(null=True, blank=True)
+    
     # Uses Django's default storage (configured in settings.py, e.g., Minio/S3 via DEFAULT_FILE_STORAGE)
     # Set max_length=2048 for Minio/S3 compatibility (object key length limit)
     # Use a relative upload_to string. The actual storage backend is configured via
@@ -21,12 +28,12 @@ class Document(models.Model):
     # storage instance here because that can get serialized into migrations.
     doc_path = models.FileField(upload_to='documents/', max_length=2048)
 
-    doc_status = models.CharField(max_length=50)
+    doc_status = models.CharField(max_length=50, choices=DOC_STATUS_CHOICES)
     doc_size = models.FloatField()
-    doc_format = models.CharField(max_length=20)
-    doc_category = models.CharField(max_length=50)
+    doc_format = models.CharField(max_length=20)  # e.g., PDF, DOCX, XLSX
+    # doc_category = models.CharField(max_length=50)
     doc_description = models.TextField()
-    doc_comment = models.TextField(blank=True)
+    # doc_comment = models.TextField(blank=True)
 
     doc_owner = models.ForeignKey(User, on_delete=models.CASCADE)
     doc_departement = models.ForeignKey(Departement, on_delete=models.CASCADE)
@@ -60,7 +67,7 @@ class DocumentVersion(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     def delete(self, *args, **kwargs):
         # Delete file from storage
         if self.version_path:

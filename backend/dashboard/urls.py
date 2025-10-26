@@ -6,17 +6,17 @@ from .views import DashboardView, invalidate_dashboard_cache
 @api_view(['GET'])
 def documents_count(request):
     count = DashboardView.get_documents_count()
-    return Response({'count': count})
+    return Response({"data": count, "message": "Total document count retrieved successfully."}, status=200)
 
 @api_view(['GET'])
 def documents_by_status(request):
     counts = DashboardView.get_documents_by_status_count()
-    return Response(counts)
+    return Response({"data": counts, "message": "Document count by status retrieved successfully."}, status=200)
 
 @api_view(['GET'])
 def documents_by_departement(request):
     counts = DashboardView.get_documents_by_departement_count()
-    return Response(counts)
+    return Response({"data": counts, "message": "Document count by department retrieved successfully."}, status=200)
 
 @api_view(['GET'])
 def recent_documents(request):
@@ -25,17 +25,17 @@ def recent_documents(request):
     except (TypeError, ValueError):
         limit = 5
     results = DashboardView.get_recent_documents(limit=limit)
-    return Response({'results': results})
+    return Response({'data': results, 'message': 'Recent documents retrieved successfully.'}, status=200)
 
 @api_view(['GET'])
 def validators_count(request):
     count = DashboardView.get_validators_count()
-    return Response({'count': count})
+    return Response({'data': count, 'message': 'Total validators count retrieved successfully.'}, status=200)
 
 @api_view(['GET'])
 def users_count(request):
     count = DashboardView.get_users_count()
-    return Response({'count': count})
+    return Response({'data': count, 'message': 'Total users count retrieved successfully.'}, status=200)
 
 @api_view(['POST'])
 def invalidate_cache(request):

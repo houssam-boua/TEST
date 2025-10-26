@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from documents.models import Document
 from users.models import User
-from django.db.models import Count
+from django.db.models import Count, F
 
 # Default cache timeout (seconds)
 CACHE_TIMEOUT = 60
@@ -36,10 +36,9 @@ class DashboardView(APIView):
                 return cached
             
         status_counts = Document.objects.values('doc_status').annotate(count=Count('id')).order_by('doc_status')
-        counts = {item['doc_status']: item['count'] for item in status_counts}
         if use_cache:
-            cache.set("dashboard_documents_by_status_count", counts, timeout)
-        return counts
+            cache.set("dashboard_documents_by_status_count", status_counts, timeout)
+        return status_counts
 
     def get_documents_by_departement_count(use_cache: bool = True, timeout: int = CACHE_TIMEOUT) -> Dict[str, int]:
         """
@@ -50,11 +49,10 @@ class DashboardView(APIView):
             if cached is not None:
                 return cached
 
-        departement_counts = Document.objects.values('doc_departement__dep_name').annotate(count=Count('id')).order_by('doc_departement__dep_name')
-        counts = {item['doc_departement__dep_name']: item['count'] for item in departement_counts}
+        departement_counts = Document.objects.values(dep_name=F('doc_departement__dep_name')).annotate(count=Count('id')).order_by('dep_name')
         if use_cache:
-            cache.set("dashboard_documents_by_departement_count", counts, timeout)
-        return counts
+            cache.set("dashboard_documents_by_departement_count", departement_counts, timeout)
+        return departement_counts
 
     def get_recent_documents(limit: int = 5) -> List[Dict[str, Any]]:
         """

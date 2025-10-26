@@ -23,7 +23,17 @@ class DocumentListCreateView(APIView):
         # Extract file and custom path
         file = request.FILES.get('file')
         custom_path = request.data.get('doc_path', '')  # Folder prefix (e.g., "projects/2024")
- 
+
+        format_and_types = {
+            'pdf': 'PDF',
+            'docx': 'Word Document',
+            'xlsx': 'Excel Spreadsheet',
+            'csv': 'CSV File',
+            'txt': 'Text File',
+            'png': 'PNG Image',
+            'jpg': 'JPEG Image',
+            'jpeg': 'JPEG Image',
+        }
         # Validate required fields
         required_fields = [
             "file", "doc_category", "doc_status", "doc_owner", 
@@ -70,8 +80,8 @@ class DocumentListCreateView(APIView):
         # Create Document instance
         document = Document(
             doc_title=doc_title,
-            doc_type=doc_format,
-            doc_category=request.data['doc_category'],
+            doc_type=format_and_types.get(doc_format.lower(), 'Unknown'),
+            # doc_category=request.data['doc_category'],
             doc_status=request.data['doc_status'],
             doc_owner=owner,
             doc_departement=departement,
