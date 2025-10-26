@@ -31,6 +31,9 @@ class Document(models.Model):
     doc_owner = models.ForeignKey(User, on_delete=models.CASCADE)
     doc_departement = models.ForeignKey(Departement, on_delete=models.CASCADE)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     def delete(self, *args, **kwargs):
         # Delete file from storage
         if self.doc_path:
@@ -55,6 +58,9 @@ class DocumentVersion(models.Model):
     version_path = models.FileField(upload_to="documents/versions/", max_length=255)
     version_comment = models.TextField(blank=True)
 
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     def delete(self, *args, **kwargs):
         # Delete file from storage
         if self.version_path:

@@ -5,6 +5,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.models import ContentType
 
 
 class Departement(models.Model):
@@ -13,6 +15,9 @@ class Departement(models.Model):
     """
     dep_name = models.CharField(max_length=100, unique=True)
     dep_color = models.CharField(max_length=100)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.dep_name} - {self.dep_color}"
@@ -24,6 +29,9 @@ class Role(models.Model):
     """
     role_name = models.CharField(max_length=100, unique=True)
     role_color = models.TextField(max_length=100)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.role_name
@@ -52,8 +60,6 @@ class User(AbstractUser):
     def __str__(self):
         return f"{self.username} - {self.role}"
 
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
 
 class UserActionLog(models.Model):
     """

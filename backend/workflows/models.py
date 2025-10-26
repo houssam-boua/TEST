@@ -10,6 +10,8 @@ class Workflow(models.Model):
     description = models.TextField()
     etat = models.CharField(max_length=50)
     document = models.ForeignKey("documents.Document", on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class Task(models.Model):
@@ -37,3 +39,6 @@ class Task(models.Model):
 
     task_workflow = models.ForeignKey(Workflow, on_delete=models.CASCADE)
     task_assigned_to = models.ForeignKey("users.User", on_delete=models.CASCADE)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)

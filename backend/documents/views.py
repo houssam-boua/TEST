@@ -13,6 +13,7 @@ from .serializers import DocumentSerializer, DocumentVersionSerializer
 from users.models import UserActionLog
 from django.contrib.contenttypes.models import ContentType
 
+
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
@@ -111,7 +112,6 @@ class DocumentListCreateView(APIView):
         serializer = DocumentSerializer(documents, many=True)
         return Response(serializer.data)
 
-
 class DocumentDetailView(APIView):
     def get(self, request, pk):
         document = get_object_or_404(Document, pk=pk)
@@ -149,6 +149,25 @@ class DocumentDetailView(APIView):
         )
         return Response({'status': 'Document deleted successfully'}, status=200)
 
+class MinioFileListView(APIView):
+    """
+    API endpoint that lists all files stored in MinIO using Django's default storage backend.
+    """
+    def get(self, request):
+        # List all files and directories at the root of the storage
+        directories, files = default_storage.listdir("")
+        # Combine files and directories for a flat listing, or return separately
+        return Response({
+            "directories": directories,
+            "files": files
+        }, status=status.HTTP_200_OK)
+
+class DocumentVersionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for DocumentVersion model.
+    """
+    queryset = DocumentVersion.objects.all()
+    serializer_class = DocumentVersionSerializer
 
 @csrf_exempt
 def create_folder(request):
@@ -180,24 +199,4 @@ def create_folder(request):
             return Response({
                 'error': f'Failed to create folder: {str(e)}'
             }, status=500)
-    
-class MinioFileListView(APIView):
-    """
-    API endpoint that lists all files stored in MinIO using Django's default storage backend.
-    """
-    def get(self, request):
-        # List all files and directories at the root of the storage
-        directories, files = default_storage.listdir("")
-        # Combine files and directories for a flat listing, or return separately
-        return Response({
-            "directories": directories,
-            "files": files
-        }, status=status.HTTP_200_OK)
-
-class DocumentVersionViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint for DocumentVersion model.
-    """
-    queryset = DocumentVersion.objects.all()
-    serializer_class = DocumentVersionSerializer
-
+ 

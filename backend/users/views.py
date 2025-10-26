@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from .models import User, Role, Departement
-from .serializers import UserSerializer, RoleSerializer, DepartementSerializer
+from .serializers import UserSerializer, UserActionLogSerializer, RoleSerializer, DepartementSerializer
 from django.contrib.contenttypes.models import ContentType
 from .models import UserActionLog
 
@@ -62,7 +62,7 @@ class UserViewSet(viewsets.ModelViewSet):
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        serializer = self.get_serializer(users, many=True)
+        serializer = self.get_serializer(users,  many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     filter_backends = [DjangoFilterBackend]
@@ -70,6 +70,18 @@ class UserViewSet(viewsets.ModelViewSet):
     #  GET /users/?username=John
     #  GET /users/?email=John@exemple.com
 
+class UserViewActionLogSet(viewsets.ReadOnlyModelViewSet):
+    """
+    ViewSet for viewing UserActionLog entries.
+    Read-only access to UserActionLog model.
+    """
+    queryset = UserActionLog.objects.all().order_by('-timestamp')
+    serializer_class = UserActionLogSerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["user__username", "action", "content_type__model"]
+    #  GET /useractionlogs/?user__username=John
+    #  GET /useractionlogs/?action=create
 
 class RoleViewSet(viewsets.ModelViewSet):
     '''Role viewset for CRUD operations'''

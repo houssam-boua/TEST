@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import User, Role, Departement
+from .models import User, UserActionLog, Role, Departement
 
 User = get_user_model()
 
@@ -16,6 +16,11 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
         return user
+
+class UserActionLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserActionLog
+        fields = "__all__"
 
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
