@@ -80,8 +80,8 @@ class UserViewActionLogSet(viewsets.ReadOnlyModelViewSet):
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["user__username", "action", "content_type__model"]
-    #  GET /useractionlogs/?user__username=John
-    #  GET /useractionlogs/?action=create
+    #  GET /users/logs/?user__username=John
+    #  GET /users/logs/?action=create
 
 class RoleViewSet(viewsets.ModelViewSet):
     '''Role viewset for CRUD operations'''

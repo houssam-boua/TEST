@@ -5,8 +5,8 @@ from .views import UserViewSet, UserViewActionLogSet, RoleViewSet, DepartementVi
 
 router = DefaultRouter()
 
+router.register(r"users/logs", UserViewActionLogSet, basename="useractionlog")  
 router.register(r"users", UserViewSet, basename="user")
-router.register(r"useractionlogs", UserViewActionLogSet, basename="useractionlog")
 router.register(r"roles", RoleViewSet, basename="role")
 router.register(r"departements", DepartementViewSet, basename="departement")
 
