@@ -38,6 +38,10 @@ export const documentSlice = apiSlice.injectEndpoints({
       query: (id) => ({ url: `/api/documents/${id}/`, method: "DELETE" }),
       invalidatesTags: ["Document"],
     }),
+
+    
+
+    
   }),
   overrideExisting: false,
 });
@@ -48,4 +52,5 @@ export const {
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
   useDeleteDocumentMutation,
+  useGetRecentDocumentsQuery,
 } = documentSlice;

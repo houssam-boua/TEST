@@ -31,24 +31,58 @@ const chartConfig = {
     color: "var(--chart-2)",
   },
 };
-const ChartBarMultiple = () => {
+const ChartBarMultiple = ({ data: propData, config: propConfig }) => {
+  // allow parent to pass data and config; fall back to local defaults
+  const data =
+    Array.isArray(propData) && propData.length ? propData : chartData;
+  const cfg = propConfig || chartConfig;
+
+  // determine which keys to render as bars. If data items include `count` use single bar.
+  const keys = React.useMemo(() => {
+    if (data.length && Object.prototype.hasOwnProperty.call(data[0], "count")) {
+      return [
+        {
+          key: "count",
+          color: cfg.count?.color || "var(--chart-1)",
+          label: cfg.count?.label || "count",
+        },
+      ];
+    }
+    // default approved/pending
+    return [
+      {
+        key: "approved",
+        color: cfg.approved?.color || "var(--chart-1)",
+        label: cfg.approved?.label || "approved",
+      },
+      {
+        key: "pending",
+        color: cfg.pending?.color || "var(--chart-2)",
+        label: cfg.pending?.label || "pending",
+      },
+    ];
+  }, [data, cfg]);
+
   return (
-    <ChartContainer config={chartConfig}>
-      <BarChart accessibilityLayer data={chartData}>
+    <ChartContainer config={cfg}>
+      <BarChart accessibilityLayer data={data}>
         <CartesianGrid vertical={false} />
         <XAxis
           dataKey="month"
           tickLine={false}
           tickMargin={10}
           axisLine={false}
-          tickFormatter={(value) => value.slice(0, 3)}
+          tickFormatter={(value) =>
+            typeof value === "string" ? value.slice(0, 3) : value
+          }
         />
         <ChartTooltip
           cursor={false}
           content={<ChartTooltipContent indicator="dashed" />}
         />
-        <Bar dataKey="approved" fill="var(--color-approved)" radius={4} />
-        <Bar dataKey="pending" fill="var(--color-pending)" radius={4} />
+        {keys.map((k) => (
+          <Bar key={k.key} dataKey={k.key} fill={k.color} radius={4} />
+        ))}
       </BarChart>
     </ChartContainer>
   );

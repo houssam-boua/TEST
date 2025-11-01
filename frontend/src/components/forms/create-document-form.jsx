@@ -31,9 +31,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { CloudUpload } from "lucide-react";
+import { useGetDepartementsQuery } from "../../Slices/departementSlice";
 
 export function CreateDocumentForm({ onSubmit, loading }) {
   const [localError, setLocalError] = useState(null);
+  const { data: departements } = useGetDepartementsQuery();
 
   const form = useForm({
     defaultValues: {
@@ -239,9 +241,14 @@ export function CreateDocumentForm({ onSubmit, loading }) {
                           <SelectContent>
                             <SelectGroup>
                               <SelectLabel>Départements</SelectLabel>
-                              <SelectItem value="1">RH</SelectItem>
-                              <SelectItem value="2">IT</SelectItem>
-                              <SelectItem value="3">Finance</SelectItem>
+                              {departements?.map((dep) => (
+                                <SelectItem
+                                  key={String(dep.id)}
+                                  value={String(dep.id)}
+                                >
+                                  {dep.dep_name}
+                                </SelectItem>
+                              ))}
                             </SelectGroup>
                           </SelectContent>
                         </Select>

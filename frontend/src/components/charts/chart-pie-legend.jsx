@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { Pie, PieChart } from "recharts";
 import { useGetDashboardDocumentsByStatusQuery } from "@/Slices/dashboardSlices";
 
@@ -51,21 +52,38 @@ const chartConfig = {
   },
 };
 
-export function ChartPieLegend() {
-  const { data } = useGetDashboardDocumentsByStatusQuery();
+export function ChartPieLegend({ data: propData }) {
+  const { data: hookData } = useGetDashboardDocumentsByStatusQuery();
+
+  // source supports either:
+  // - propData as an array
+  // - propData as { data: [...] }
+  // - hookData from RTK query (likely { data: [...] })
+  const source = React.useMemo(() => {
+    if (Array.isArray(propData)) return propData;
+    if (propData && Array.isArray(propData.data)) return propData.data;
+    if (hookData && Array.isArray(hookData)) return hookData;
+    if (hookData && Array.isArray(hookData.data)) return hookData.data;
+    return null;
+  }, [propData, hookData]);
 
   // Map backend response to chart format { label, documents, fill }
-  const mapped = (() => {
-    if (!data || !Array.isArray(data)) return chartData;
+  const mapped = React.useMemo(() => {
+    if (!source || !Array.isArray(source)) return chartData;
     try {
-      return data.map((item) => {
-        // backend may return { status, count } or { name, documents }
+      return source.map((item) => {
+        // backend may return { doc_status, count } or { status, count } or { name, documents }
         const label =
-          item.status ?? item.name ?? item.label ?? item[0] ?? "unknown";
+          item.doc_status ??
+          item.status ??
+          item.name ??
+          item.label ??
+          String(item[0] ?? "unknown");
         const documents =
           item.count ?? item.documents ?? item.value ?? item.total ?? 0;
-        const key = String(label).toLowerCase();
-        const cfg = chartConfig[key] ?? {};
+        const key = String(label).toLowerCase().replace(/\s+/g, "_");
+        const cfg =
+          chartConfig[key] ?? chartConfig[label?.toLowerCase?.()] ?? {};
         return {
           label,
           documents,
@@ -75,7 +93,7 @@ export function ChartPieLegend() {
     } catch {
       return chartData;
     }
-  })();
+  }, [source]);
 
   return (
     <Card className="flex flex-col border-border">

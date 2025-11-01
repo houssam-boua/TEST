@@ -14,6 +14,10 @@ import { CircleAlert, FileText } from "lucide-react";
 import useIcon from "../../Hooks/useIcon";
 import ChartBarMultiple from "../charts/chart-bar-multiple";
 import useIconColor from "../../Hooks/useIconColor";
+import {
+  useGetDashboardDocumentsByDepartementQuery,
+  useGetDashboardDocumentsRecentQuery,
+} from "../../Slices/dashboardSlices";
 
 // Render a status-based icon using hooks inside a proper component
 const StatusIcon = React.memo(function StatusIcon({
@@ -26,7 +30,7 @@ const StatusIcon = React.memo(function StatusIcon({
   return iconEl || null;
 });
 
-const recentDocuments = [
+const sampleRecentDocuments = [
   {
     title: "Document 1",
     size: "2MB",
@@ -65,7 +69,51 @@ const recentActivities = [
   },
 ];
 
-const DashboardSectionCards = () => {
+const DashboardSectionCards = ({ departmentCounts }) => {
+  const {
+    data: recentDocumentsResponse,
+    isLoading,
+    isError,
+  } = useGetDashboardDocumentsRecentQuery();
+
+  // fetch dashboard-by-department if parent didn't provide props
+  const {
+    data: byDeptResponse,
+    isLoading: byDeptLoading,
+    isError: byDeptError,
+  } = useGetDashboardDocumentsByDepartementQuery();
+
+  const formatDate = (iso) => {
+    if (!iso) return "-";
+    try {
+      return new Date(iso).toLocaleString();
+    } catch {
+      return iso;
+    }
+  };
+
+  // normalize API response ({ data: [...] }) into UI-friendly items
+  const recentDocs = React.useMemo(() => {
+    // support either { data: [...] } response or a bare array
+    const items = Array.isArray(recentDocumentsResponse)
+      ? recentDocumentsResponse
+      : recentDocumentsResponse?.data ?? sampleRecentDocuments;
+    return (items || []).map((it) => ({
+      title: it.title || it.name || "Untitled",
+      size: it.size || it.filesize || "-",
+      day: formatDate(it.created_at || it.createdAt || it.created),
+      status: it.status || "pending",
+      icon: it.icon || FileText,
+      raw: it,
+    }));
+  }, [recentDocumentsResponse]);
+
+  // normalize department counts for the chart
+  const deptItems = React.useMemo(() => {
+    const source = departmentCounts || byDeptResponse?.data || [];
+    return (source || []).map((d) => ({ month: d.dep_name, count: d.count }));
+  }, [departmentCounts, byDeptResponse]);
+
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4  *:data-[slot=card]:shadow-xs *:data-[slot=card]:bg-card *:data-[slot=card]:border-border lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-3">
       <Card className="@container/card ">
@@ -73,27 +121,37 @@ const DashboardSectionCards = () => {
           <CostumeCardTitle title="Recent documents" />
         </CardHeader>
         <CardContent>
-          <ul>
-            {recentDocuments.map((doc, index) => (
-              <li
-                key={index}
-                className="mb-2 flex items-center justify-start gap-2"
-              >
-                <StatusIcon
-                  status={doc.status}
-                  className="h-6 w-6"
-                  IconComponent={doc.icon}
-                />
-                <div className="flex-1 flex flex-col ">
-                  <span className="text-xs">{doc.title}</span>
+          {isLoading ? (
+            <div className="text-sm text-muted-foreground">Loading...</div>
+          ) : isError ? (
+            <div className="text-sm text-destructive">
+              Unable to load recent documents
+            </div>
+          ) : (
+            <ul>
+              {recentDocs.map((doc, index) => (
+                <li
+                  key={index}
+                  className="mb-2 flex items-center justify-start gap-2"
+                >
+                  <StatusIcon
+                    status={doc.status}
+                    className="h-6 w-6"
+                    IconComponent={doc.icon}
+                  />
+                  <div className="flex-1 flex flex-col ">
+                    <span className="text-xs">{doc.title}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {doc.size}
+                    </span>
+                  </div>
                   <span className="text-xs text-muted-foreground">
-                    {doc.size}
+                    {doc.day}
                   </span>
-                </div>
-                <span className="text-xs text-muted-foreground">{doc.day}</span>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
 
@@ -134,7 +192,20 @@ const DashboardSectionCards = () => {
         </CardHeader>
 
         <CardContent>
-          <ChartBarMultiple />
+          <ChartBarMultiple
+            data={deptItems}
+            config={{ count: { label: "Documents", color: "var(--chart-1)" } }}
+          />
+          {byDeptLoading && (
+            <div className="text-xs text-muted-foreground mt-2">
+              Loading department stats...
+            </div>
+          )}
+          {byDeptError && (
+            <div className="text-xs text-destructive mt-2">
+              Unable to load department stats
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
