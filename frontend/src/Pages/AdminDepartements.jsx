@@ -8,60 +8,117 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import CreateDepartementForm from "../components/forms/create-departement";
-import { Button } from "../components/ui/button";
+import { useCreateDepartementMutation } from "@/Slices/departementSlice";
+import {
+  useDeleteDepartementMutation,
+  useGetDepartementsQuery,
+  useUpdateDepartementMutation,
+} from "../Slices/departementSlice";
+import DepartmentBadge from "@/Hooks/useDepartmentBadge";
+import { Pencil, Trash2 } from "lucide-react";
+import DeleteDepartment from "../components/forms/delete-department";
+import EditDepartement from "../components/forms/edit-departement";
 
 const columns = [
   { id: "id", accessorKey: "id", header: "ID" },
   { id: "dep_name", accessorKey: "dep_name", header: "Nom" },
-  { id: "dep_type", accessorKey: "dep_type", header: "Type" },
   {
-    id: "createdAt",
-    accessorKey: "createdAt",
+    id: "dep_color",
+    accessorKey: "dep_color",
+    header: "Couleur",
+    cell: ({ row }) => {
+      const color = row?.original?.dep_color;
+      const name = row?.original?.dep_name;
+      return <DepartmentBadge color={color} name={name} />;
+    },
+  },
+  {
+    id: "created_at",
+    accessorKey: "created_at",
     header: "Créé le",
     cell: ({ row }) => {
-      const d = row?.original?.createdAt;
+      const d = row?.original?.created_at;
       if (!d) return "-";
       return new Date(d).toLocaleDateString("fr-FR");
     },
   },
 ];
 
-const initialDeps = [
-  {
-    id: 1,
-    dep_name: "IT",
-    dep_type: "Tech",
-    createdAt: "2025-09-01T10:00:00Z",
-  },
-  {
-    id: 2,
-    dep_name: "HR",
-    dep_type: "People",
-    createdAt: "2025-08-15T09:00:00Z",
-  },
-];
-
 const AdminDepartements = () => {
-  const [deps, setDeps] = React.useState(initialDeps);
+  const { data: deps, refetch } = useGetDepartementsQuery();
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
 
-  const handleAdd = () => setCreateOpen(true);
+  const [selectedDepartment, setSelectedDepartment] = React.useState(null);
+  const [createDepartement] = useCreateDepartementMutation();
+  const [deleteDepartement, { isLoading: deleteLoading }] =
+    useDeleteDepartementMutation();
+  const [editDepartement, { isLoading: editLoading }] =
+    useUpdateDepartementMutation();
 
-  const handleCreate = async (values) => {
+  const handleAdd = () => {
+    setCreateOpen(true);
+  };
+
+  const handleCreate = async (departement) => {
     try {
-      const id = (deps[deps.length - 1]?.id ?? 0) + 1;
-      const newItem = {
-        id,
-        dep_name: values.dep_name,
-        dep_type: values.dep_type,
-        createdAt: new Date().toISOString(),
-      };
-      setDeps((p) => [...p, newItem]);
+      await createDepartement(departement).unwrap();
+      refetch();
       setCreateOpen(false);
-    } catch (err) {
-      console.error("Create departement failed", err);
+    } catch (error) {
+      console.error("Failed to create department:", error);
     }
   };
+
+  const handleEdit = (department) => {
+    setSelectedDepartment(department);
+    setEditOpen(true);
+  };
+
+  const handleDelete = (department) => {
+    setSelectedDepartment(department);
+    setDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async (department) => {
+    try {
+      // API expects id as parameter for delete endpoint
+      await deleteDepartement(department.id).unwrap();
+      refetch();
+      setDeleteOpen(false);
+      setSelectedDepartment(null);
+    } catch (err) {
+      console.error("Failed to delete department:", err);
+    }
+  };
+
+  const handleConfirmEdit = async (values) => {
+    try {
+      await editDepartement({ id: selectedDepartment.id, ...values }).unwrap();
+      refetch();
+      setEditOpen(false);
+      setSelectedDepartment(null);
+    } catch (err) {
+      console.error("Failed to edit department:", err);
+    }
+  };
+
+  const rowActions = (row) => [
+    {
+      key: "Edit",
+      icon: <Pencil className="w-4 h-4" />,
+      label: "Edit",
+      onClick: () => handleEdit(row.original),
+    },
+
+    {
+      key: "delete",
+      icon: <Trash2 className="w-4 h-4" />,
+      label: "Delete",
+      onClick: () => handleDelete(row.original),
+    },
+  ];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -74,6 +131,7 @@ const AdminDepartements = () => {
           ]}
           data={deps}
           onAdd={handleAdd}
+          rowActions={rowActions}
           pageSize={20}
           title={"Départements"}
         />
@@ -81,12 +139,47 @@ const AdminDepartements = () => {
         <Dialog open={createOpen} onOpenChange={(v) => setCreateOpen(v)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Créer un département</DialogTitle>
+              <DialogTitle>Create a department</DialogTitle>
+              <DialogDescription>Add a new department.</DialogDescription>
+            </DialogHeader>
+            <CreateDepartementForm
+              onSubmit={handleCreate}
+              onCancel={() => setCreateOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={deleteOpen} onOpenChange={(v) => setDeleteOpen(v)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Department</DialogTitle>
               <DialogDescription>
-                Ajoutez un nouveau département.
+                Are you sure you want to delete this department?
               </DialogDescription>
             </DialogHeader>
-            <CreateDepartementForm onCreate={handleCreate} />
+            <DeleteDepartment
+              department={selectedDepartment}
+              onDelete={handleConfirmDelete}
+              onCancel={() => setDeleteOpen(false)}
+              loading={deleteLoading}
+            />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={editOpen} onOpenChange={(v) => setEditOpen(v)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Department</DialogTitle>
+              <DialogDescription>
+                Make changes to the department details.
+              </DialogDescription>
+            </DialogHeader>
+            <EditDepartement
+              department={selectedDepartment}
+              onSubmit={handleConfirmEdit}
+              onCancel={() => setEditOpen(false)}
+              loading={editLoading}
+            />
           </DialogContent>
         </Dialog>
       </div>

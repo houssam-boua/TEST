@@ -94,7 +94,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import nodata from "../../assets/nodata.svg";
 import CostumeCardTitle from "../collection/costume-card-title";
-import { Ellipsis } from "lucide-react";
+import { Ellipsis, Pen } from "lucide-react";
 export const schema = z.object({
   id: z.number(),
   header: z.string(),
@@ -191,7 +191,11 @@ function RowActions({
   // Default actions if none provided
   if (!actions.length) {
     actions = [
-      { key: "edit", label: "Edit", onClick: () => onEdit?.(row.original) },
+      {
+        key: "edit",
+        label: "Edit",
+        onClick: () => onEdit?.(row.original),
+      },
       {
         key: "delete",
         label: "Delete",

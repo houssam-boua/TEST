@@ -8,6 +8,8 @@ import {
   User,
   Shield,
   Mail,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { SheetDemo } from "../components/blocks/sheet";
 import {
@@ -21,6 +23,13 @@ import CreateUserForm from "../components/forms/create-user";
 import { Button } from "../components/ui/button";
 import useRoleBadge from "../Hooks/useRoleBage";
 import useDepartmentBadge from "../Hooks/useDepartmentBadge";
+import { useGetUsersQuery, useCreateUserMutation } from "@/Slices/userSlice";
+import {
+  useDeleteUserMutation,
+  useUpdateUserMutation,
+} from "../Slices/userSlice";
+import DeleteUser from "../components/forms/delete-user";
+import EditUser from "../components/forms/edit-user";
 // Small wrapper component to call hook correctly and render the badge
 function RoleBadge({ role }) {
   // use the hook inside a component (not inside render map)
@@ -110,7 +119,9 @@ const columns = [
     accessorKey: "departement",
     header: "Département",
     cell: ({ row }) => {
-      return <DepartmentBadge departement={row.original.departement} />;
+      const color = row?.original?.dep_color;
+      const name = row?.original?.dep_name;
+      return <DepartmentBadge color={color} name={name} />;
     },
   },
 
@@ -157,83 +168,88 @@ const combinedColumns = [
   defaultColumns[2],
 ];
 
-// Mock user list
-const users = [
-  {
-    id: 1,
-    username: "jdoe",
-    email: "jdoe@example.com",
-    role: "admin",
-    departement: "IT",
-    createdAt: "2025-09-15T10:00:00Z",
-  },
-  {
-    id: 2,
-    username: "asmith",
-    email: "asmith@example.com",
-    role: "user",
-    departement: "HR",
-    createdAt: "2025-08-01T08:30:00Z",
-  },
-  {
-    id: 3,
-    username: "mbrown",
-    email: "mbrown@example.com",
-    role: "validator",
-    departement: "Finance",
-    createdAt: "2025-07-20T14:15:00Z",
-  },
-  {
-    id: 4,
-    username: "cwhite",
-    email: "cwhite@example.com",
-    role: "user",
-    departement: "Marketing",
-    createdAt: "2025-06-10T12:00:00Z",
-  },
-  {
-    id: 5,
-    username: "tgreen",
-    email: "tgreen@example.com",
-    role: "admin",
-    departement: "IT",
-    createdAt: "2025-05-05T09:45:00Z",
-  },
-];
+// users are loaded from the API via useGetUsersQuery
 const AdminUsers = () => {
-  const [list, setList] = React.useState(users);
+  const {
+    data: users,
+    refetch,
+    isLoading,
+    isError,
+    error,
+  } = useGetUsersQuery();
+
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [editOpen, setEditOpen] = React.useState(false);
+
+  const [selectedUser, setSelectedUser] = React.useState(null);
+  const [createUser] = useCreateUserMutation();
+  const [deleteUser, { isLoading: deleteLoading }] = useDeleteUserMutation();
+  const [editUser, { isLoading: editLoading }] = useUpdateUserMutation();
 
   const handleAdd = () => setCreateOpen(true);
-
-  const handleCreate = async (values) => {
+  const handleEdit = (user) => {
+    setSelectedUser(user);
+    setEditOpen(true);
+  };
+  const handleDelete = (user) => {
+    setSelectedUser(user);
+    setDeleteOpen(true);
+  };
+  const handleCreate = async (user) => {
     try {
-      const id = (list[list.length - 1]?.id ?? 0) + 1;
-      const newUser = {
-        id,
-        username: values.username,
-        email: values.email,
-        role: values.role || "user",
-        departement: values.departement || "",
-        createdAt: new Date().toISOString(),
-      };
-      setList((prev) => [...prev, newUser]);
+      await createUser(user).unwrap();
+      refetch();
       setCreateOpen(false);
-    } catch (err) {
-      console.error("Create user failed", err);
+    } catch (error) {
+      console.error("Failed to create user:", error);
     }
   };
 
-  // mock roles and departements for the select lists (replace with real API data)
-  const mockRoles = [
-    { id: 1, role_name: "admin" },
-    { id: 2, role_name: "user" },
-    { id: 3, role_name: "validator" },
-  ];
-  const mockDeps = [
-    { id: 1, dep_name: "IT" },
-    { id: 2, dep_name: "HR" },
-    { id: 3, dep_name: "Finance" },
+  const handleConfirmDelete = async (user) => {
+    try {
+      await deleteUser(user.id).unwrap();
+      refetch();
+      setDeleteOpen(false);
+      setSelectedUser(null);
+    } catch (err) {
+      console.error("Failed to delete user:", err);
+    }
+  };
+
+  const handleConfirmEdit = async (user) => {
+    try {
+      await editUser({ id: user.id, data: user }).unwrap();
+      refetch();
+      setEditOpen(false);
+      setSelectedUser(null);
+    } catch (error) {
+      console.error("Failed to edit user:", error);
+    }
+  };
+
+  if (isLoading) return <div className="p-4">Loading users…</div>;
+  if (isError)
+    return (
+      <div className="p-4 text-red-600">
+        Error loading users: {String(error)}
+      </div>
+    );
+
+  const rowActions = (row) => [
+    {
+      key: "Edit",
+      icon: <Pencil className="w-4 h-4" />,
+      label: "Edit",
+      onClick: () => handleEdit(row.original),
+    },
+
+    {
+      key: "delete",
+      icon: <Trash2 className="w-4 h-4" />,
+      label: "Delete",
+      onClick: () => handleDelete(row.original),
+    },
   ];
 
   return (
@@ -241,13 +257,16 @@ const AdminUsers = () => {
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
         <DataTable
           columns={combinedColumns}
-          data={list}
+          data={users}
           onEdit={() => {}}
           onDelete={() => {}}
           onAdd={handleAdd}
+          rowActions={rowActions}
           pageSize={20}
           title={"Users"}
         />
+
+        {/* Debug console: shows last payload/request and API response */}
 
         <Dialog open={createOpen} onOpenChange={(v) => setCreateOpen(v)}>
           <DialogContent>
@@ -259,8 +278,40 @@ const AdminUsers = () => {
             </DialogHeader>
             <CreateUserForm
               onCreate={handleCreate}
-              roles={mockRoles}
-              departements={mockDeps}
+              onCancel={() => setCreateOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={deleteOpen} onOpenChange={(v) => setDeleteOpen(v)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete User</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this user?
+              </DialogDescription>
+            </DialogHeader>
+            <DeleteUser
+              user={selectedUser}
+              onDelete={handleConfirmDelete}
+              onCancel={() => setDeleteOpen(false)}
+              loading={deleteLoading}
+            />
+          </DialogContent>
+        </Dialog>
+        <Dialog open={editOpen} onOpenChange={(v) => setEditOpen(v)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+              <DialogDescription>
+                Please edit the user information.
+              </DialogDescription>
+            </DialogHeader>
+            <EditUser
+              user={selectedUser}
+              onSubmit={handleConfirmEdit}
+              onCancel={() => setEditOpen(false)}
+              loading={editLoading}
             />
           </DialogContent>
         </Dialog>

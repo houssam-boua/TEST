@@ -13,63 +13,44 @@ import {
 import { useGetRolesQuery } from "@/Slices/rolesSlices";
 import { useGetDepartementsQuery } from "@/Slices/departementSlice";
 
-const CreateUserForm = ({
-  onSubmit,
-  onCreate,
-  onCancel,
-  loading,
-  roles: rolesProp,
-  departements: departementsProp,
-}) => {
-  // support either onSubmit or onCreate prop
-  const submitHandler = onSubmit || onCreate;
-
+const EditUser = ({ user, onSubmit, onCancel, loading }) => {
   const { data: rolesData } = useGetRolesQuery();
   const { data: depsData } = useGetDepartementsQuery();
 
-  // prefer API data, fall back to props passed from parent (mock data)
   const roles = useMemo(
-    () =>
-      Array.isArray(rolesData) && rolesData.length
-        ? rolesData
-        : Array.isArray(rolesProp)
-        ? rolesProp
-        : [],
-    [rolesData, rolesProp]
+    () => (Array.isArray(rolesData) ? rolesData : []),
+    [rolesData]
   );
   const departements = useMemo(
-    () =>
-      Array.isArray(depsData) && depsData.length
-        ? depsData
-        : Array.isArray(departementsProp)
-        ? departementsProp
-        : [],
-    [depsData, departementsProp]
+    () => (Array.isArray(depsData) ? depsData : []),
+    [depsData]
   );
 
   const [form, setForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
+    firstName: user?.first_name || "",
+    lastName: user?.last_name || "",
+    email: user?.email || "",
+    role: user?.role ? String(user.role) : "",
+    departement: user?.departement ? String(user.departement) : "",
     password: "",
-    role: "",
-    departement: "",
   });
 
-  // Set defaults when roles/departements load
   useEffect(() => {
-    setForm((prev) => ({
-      ...prev,
-      role: prev.role || (roles[0]?.id ? String(roles[0].id) : ""),
-      departement:
-        prev.departement ||
-        (departements[0]?.id ? String(departements[0].id) : ""),
-    }));
-  }, [roles, departements]);
+    if (user) {
+      setForm({
+        firstName: user.first_name || "",
+        lastName: user.last_name || "",
+        email: user.email || "",
+        role: user.role ? String(user.role) : "",
+        departement: user.departement ? String(user.departement) : "",
+        password: "",
+      });
+    }
+  }, [user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((p) => ({ ...p, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSelect = (name, value) => {
@@ -78,30 +59,20 @@ const CreateUserForm = ({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (submitHandler) {
-      // Map to backend expected keys: username, password, email, first_name, last_name, role, departement
-      const payload = {
-        username: `${form.firstName}${form.lastName}`.toLowerCase(),
-        password: form.password || `${form.firstName}${form.lastName}123`,
-        email: form.email,
-        first_name: form.firstName,
-        last_name: form.lastName,
-        // coerce to numbers before sending
-        role: form.role ? Number(form.role) : null,
-        departement: form.departement ? Number(form.departement) : null,
-        // some backends expect *_id keys — include both to be safe
-        role_id: form.role ? Number(form.role) : null,
-      };
-
-      // basic client-side validation
-      if (!payload.departement) {
-        // prevent submitting invalid payload
-        console.error("CreateUserForm: departement is missing", payload);
-        return Promise.reject(new Error("Departement is required"));
-      }
-
-      return submitHandler(payload);
-    }
+    if (!onSubmit) return;
+    const payload = {
+      id: user?.id,
+      first_name: form.firstName,
+      last_name: form.lastName,
+      email: form.email,
+      // include password only if provided
+      ...(form.password ? { password: form.password } : {}),
+      role: form.role ? Number(form.role) : null,
+      departement: form.departement ? Number(form.departement) : null,
+      role_id: form.role ? Number(form.role) : null,
+      departement_id: form.departement ? Number(form.departement) : null,
+    };
+    return onSubmit(payload);
   };
 
   return (
@@ -160,7 +131,7 @@ const CreateUserForm = ({
             type="password"
             value={form.password}
             onChange={handleChange}
-            placeholder="auto-generated if left blank"
+            placeholder="leave blank to keep current"
           />
         </div>
 
@@ -226,4 +197,4 @@ const CreateUserForm = ({
   );
 };
 
-export default CreateUserForm;
+export default EditUser;

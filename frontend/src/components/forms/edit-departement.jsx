@@ -1,12 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const CreateDepartement = ({ onSubmit, onCancel, loading }) => {
+const EditDepartement = ({ department, onSubmit, onCancel, loading }) => {
   const [form, setForm] = useState({
     dep_name: "",
-    dep_color: "#2563eb",
+    dep_color: "",
   });
+
+  useEffect(() => {
+    if (department) {
+      // Normalize color to ensure it starts with '#' so the color input works
+      const rawColor = department.dep_color || "";
+      const depColor = rawColor.startsWith("#") ? rawColor : `#${rawColor}`;
+      setForm({
+        dep_name: department.dep_name,
+        dep_color: depColor,
+      });
+    }
+  }, [department]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -25,7 +37,7 @@ const CreateDepartement = ({ onSubmit, onCancel, loading }) => {
     >
       <div className="flex flex-col gap-1">
         <label htmlFor="dep_name" className="text-sm font-medium">
-          Departement Name
+          Departement Name{" "}
         </label>
         <Input
           id="dep_name"
@@ -39,7 +51,7 @@ const CreateDepartement = ({ onSubmit, onCancel, loading }) => {
 
       <div className="flex flex-col gap-1">
         <label htmlFor="dep_color" className="text-sm font-medium">
-          Color
+          Couleur
         </label>
         <input
           id="dep_color"
@@ -61,11 +73,11 @@ const CreateDepartement = ({ onSubmit, onCancel, loading }) => {
           Annuler
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? "Création..." : "Créer"}
+          {loading ? "Saving..." : "Save"}
         </Button>
       </div>
     </form>
   );
 };
 
-export default CreateDepartement;
+export default EditDepartement;
