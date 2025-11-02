@@ -13,8 +13,8 @@ urlpatterns = [
  
     # Explicit Document list and detail endpoints (for custom actions)
     path('documents/', DocumentListCreateView.as_view(), name='document-list-create'),
+    path('documents/folders/', MinioFileListView.as_view(), name='minio-file-list'),
     path('documents/<int:pk>/', DocumentDetailView.as_view(), name='document-detail'),
 
-    path('minio-files/', MinioFileListView.as_view(), name='minio-file-list'),
     path('', include(router.urls)),
 ]

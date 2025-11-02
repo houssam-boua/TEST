@@ -19,30 +19,40 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
 
-    def create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         user = serializer.save()
         UserActionLog.objects.create(
-            user=user,
+            user=self.request.user if self.request.user.is_authenticated else None,
             action="create",
             content_type=ContentType.objects.get_for_model(user),
             object_id=user.id,
             extra_info={"username": user.username}
         )
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    def update(self, serializer):
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
         user = serializer.save()
         UserActionLog.objects.create(
-            user=user,
+            user=self.request.user if self.request.user.is_authenticated else None,
             action="update",
             content_type=ContentType.objects.get_for_model(user),
             object_id=user.id,
             extra_info={"username": user.username}
         )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def delete(self, instance):
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
         user_id = instance.id
         username = instance.username
-        instance.delete()
+        self.perform_destroy(instance)
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="delete",
@@ -50,6 +60,7 @@ class UserViewSet(viewsets.ModelViewSet):
             object_id=user_id,
             extra_info={"username": username}
         )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def validators(self, request):
@@ -88,7 +99,9 @@ class RoleViewSet(viewsets.ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
 
-    def create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         role = serializer.save()
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
@@ -97,8 +110,14 @@ class RoleViewSet(viewsets.ModelViewSet):
             object_id=role.id,
             extra_info={"role_name": role.role_name}
         )
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    def update(self, serializer):
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
         role = serializer.save()
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
@@ -107,11 +126,13 @@ class RoleViewSet(viewsets.ModelViewSet):
             object_id=role.id,
             extra_info={"role_name": role.role_name}
         )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def delete(self, instance):
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
         role_id = instance.id
         role_name = instance.role_name
-        instance.delete()
+        self.perform_destroy(instance)
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="delete",
@@ -119,6 +140,7 @@ class RoleViewSet(viewsets.ModelViewSet):
             object_id=role_id,
             extra_info={"role_name": role_name}
         )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["role_name", "role_color"]
@@ -131,7 +153,9 @@ class DepartementViewSet(viewsets.ModelViewSet):
     queryset = Departement.objects.all()
     serializer_class = DepartementSerializer
 
-    def create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         dep = serializer.save()
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
@@ -140,8 +164,14 @@ class DepartementViewSet(viewsets.ModelViewSet):
             object_id=dep.id,
             extra_info={"dep_name": dep.dep_name}
         )
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    def update(self, serializer):
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
         dep = serializer.save()
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
@@ -150,11 +180,13 @@ class DepartementViewSet(viewsets.ModelViewSet):
             object_id=dep.id,
             extra_info={"dep_name": dep.dep_name}
         )
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def delete(self, instance):
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
         dep_id = instance.id
         dep_name = instance.dep_name
-        instance.delete()
+        self.perform_destroy(instance)
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="delete",
@@ -162,13 +194,25 @@ class DepartementViewSet(viewsets.ModelViewSet):
             object_id=dep_id,
             extra_info={"dep_name": dep_name}
         )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["dep_name", "dep_color"]
     #  GET /departements/?dep_name=test
     #  GET /departements/?dep_color=test
 
+class PermissionViewSet(viewsets.ViewSet):
+    """
+    A simple ViewSet for listing available permissions.
+    """
 
+    permission_classes = [IsAuthenticated]
+
+    @action(detail=False, methods=['get'])
+    def list_permissions(self, request):
+        permissions = [perm.codename for perm in request.user.get_all_permissions()]
+        return Response({"permissions": permissions}, status=status.HTTP_200_OK)
+    
 class LoginView(APIView):
     """
     Accepts POST requests with 'username' and 'password' in the request body.

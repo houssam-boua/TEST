@@ -161,15 +161,23 @@ class DocumentDetailView(APIView):
 
 class MinioFileListView(APIView):
     """
-    API endpoint that lists all files stored in MinIO using Django's default storage backend.
+    API endpoint that lists all folder paths stored in MinIO using Django's default storage backend.
     """
     def get(self, request):
-        # List all files and directories at the root of the storage
-        directories, files = default_storage.listdir("")
-        # Combine files and directories for a flat listing, or return separately
+        def get_all_directories(path=""):
+            directories, files = default_storage.listdir(path)
+            all_dirs = []
+            for dir_name in directories:
+                full_path = f"{path}/{dir_name}".lstrip('/')
+                all_dirs.append(full_path)
+                # Recurse into subdirectory
+                sub_dirs = get_all_directories(full_path)
+                all_dirs.extend(sub_dirs)
+            return all_dirs
+        
+        all_directories = get_all_directories()
         return Response({
-            "directories": directories,
-            "files": files
+            "folders": all_directories
         }, status=status.HTTP_200_OK)
 
 class DocumentVersionViewSet(viewsets.ModelViewSet):
