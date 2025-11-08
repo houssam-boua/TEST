@@ -5,8 +5,8 @@ from .models import User, UserActionLog, Role, Departement
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
-    role = serializers.SlugRelatedField(queryset=Role.objects.all(), slug_field='role_name')
-    departement = serializers.SlugRelatedField(queryset=Departement.objects.all(), slug_field='dep_name')
+    role = serializers.SlugRelatedField(queryset=Role.objects.all(), slug_field='id')
+    departement = serializers.SlugRelatedField(queryset=Departement.objects.all(), slug_field='id')
 
     class Meta:
         model = User
@@ -25,9 +25,10 @@ class UserSerializer(serializers.ModelSerializer):
         password = validated_data.pop("password", None)
         role = validated_data.pop("role")
         departement = validated_data.pop("departement")
-        username = validated_data.get("username")
-        email = validated_data.get("email", None)
-
+        # Remove username/email from validated_data to avoid passing them twice
+        username = validated_data.pop("username", None)
+        email = validated_data.pop("email", None)
+    
         user = User.objects.create_user(
             username=username,
             email=email,

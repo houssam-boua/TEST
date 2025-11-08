@@ -65,7 +65,8 @@ class DashboardView(APIView):
             results.append({
                 "id": d.id,
                 "title": getattr(d, "doc_title", ""),
-                "owner": getattr(d.doc_owner, "username", None) if getattr(d, "doc_owner", None) else None,
+                "status": getattr(d, "doc_status", ""),
+                "towner": getattr(d.doc_owner, "username", None) if getattr(d, "doc_owner", None) else None,
                 "departement": getattr(d.doc_departement, "dep_name", None) if getattr(d, "doc_departement", None) else None,
                 "path": getattr(getattr(d, "doc_path", None), "name", None),
                 "created_at": getattr(d, "created_at", None),

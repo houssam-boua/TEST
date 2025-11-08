@@ -64,7 +64,7 @@ class DocumentListCreateView(APIView):
         # Extract file metadata
         doc_size = file.size
         doc_format = file.name.split('.')[-1] if '.' in file.name else ''
-        doc_title = file.name
+        doc_title = request.data.get('doc_title', '')
  
         # Build the upload path: custom_path + filename
         # Normalize slashes and ensure no leading/trailing slashes cause issues

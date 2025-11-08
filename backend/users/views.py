@@ -10,6 +10,27 @@ from .models import User, Role, Departement
 from .serializers import UserSerializer, UserActionLogSerializer, RoleSerializer, DepartementSerializer
 from django.contrib.contenttypes.models import ContentType
 from .models import UserActionLog
+from django.core.mail import send_mail
+from django.conf import settings
+import secrets
+import string
+
+def generate_password(length=12):
+    alphabet = string.ascii_letters + string.digits + string.punctuation
+
+    print(f"Generating password of length {length} using alphabet: {alphabet}")  # Debug log
+
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+def check_username_exists(username):
+    return User.objects.filter(username=username).exists()
+
+def send_password_email(user_email, username, password):
+    subject = 'Your Account Credentials'
+    message = f'Hello {username},\n\nYour account has been created.\nYour password is: {password}\n\nPlease change it after logging in.'
+    print(settings.DEFAULT_FROM_EMAIL)
+    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user_email])
+
 
 class UserViewSet(viewsets.ModelViewSet):
     """
@@ -20,9 +41,27 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
 
     def create(self, request, *args, **kwargs):
+        request.data["username"] = request.data.get("username", "").replace(" ", "")
+
+        # print(f"Received create user request with username: {request.data}")  # Debug log
+
         serializer = self.get_serializer(data=request.data)
+
+        # print(f"Creating user with data: {request.data.get('username', '').replace(' ', '')}")  # Debug log
+
         serializer.is_valid(raise_exception=True)
+
+        # if check_username_exists(serializer.validated_data['username']):
+        #     return Response({
+        #         "error": "Username already exists."
+        #     }, status=status.HTTP_400_BAD_REQUEST)
+        
+        serializer.validated_data['password'] = generate_password()
+
         user = serializer.save()
+
+        send_password_email(user.email, user.username, serializer.validated_data['password'])
+
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="create",
@@ -30,15 +69,19 @@ class UserViewSet(viewsets.ModelViewSet):
             object_id=user.id,
             extra_info={"username": user.username}
         )
+
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
+
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
+
         user = serializer.save()
+
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="update",
@@ -146,7 +189,6 @@ class RoleViewSet(viewsets.ModelViewSet):
     filterset_fields = ["role_name", "role_color"]
     #  GET /roles/?role_name=John
     #  GET /roles/?role_color=test
-
 
 class DepartementViewSet(viewsets.ModelViewSet):
     '''Departement viewset for CRUD operations'''
@@ -256,7 +298,6 @@ class LoginView(APIView):
             return Response({
                 "error": "Invalid credentials"
             }, status=status.HTTP_400_BAD_REQUEST)
-
 
 class LogoutView(APIView):
     """
