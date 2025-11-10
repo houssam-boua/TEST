@@ -42,7 +42,7 @@ export function CreateDocumentForm({ onSubmit, loading }) {
       file: null,
       doc_category: "Technical",
       doc_title: "",
-      doc_status: "Draft",
+      doc_status: "",
       doc_path: "",
       doc_owner: "",
       doc_departement: "",
@@ -209,12 +209,11 @@ export function CreateDocumentForm({ onSubmit, loading }) {
                           <SelectContent>
                             <SelectGroup>
                               <SelectLabel>Statuts</SelectLabel>
-                              <SelectItem value="Draft">Brouillon</SelectItem>
-                              <SelectItem value="In Review">
-                                En revue
-                              </SelectItem>
-                              <SelectItem value="Approved">Approuvé</SelectItem>
-                              <SelectItem value="Rejected">Rejeté</SelectItem>
+                              <SelectItem value="draft">Draft</SelectItem>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="rejected">Rejected</SelectItem>
+                              <SelectItem value="archived">Archived</SelectItem>
                             </SelectGroup>
                           </SelectContent>
                         </Select>

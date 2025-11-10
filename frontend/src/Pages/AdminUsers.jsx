@@ -30,6 +30,8 @@ import {
 } from "../Slices/userSlice";
 import DeleteUser from "../components/forms/delete-user";
 import EditUser from "../components/forms/edit-user";
+import { Avatarr } from "../components/blocks/avatarr";
+import { RowExpanding } from "@tanstack/react-table";
 // Small wrapper component to call hook correctly and render the badge
 function RoleBadge({ role }) {
   // use the hook inside a component (not inside render map)
@@ -37,8 +39,13 @@ function RoleBadge({ role }) {
   return <>{badge}</>;
 }
 
-function DepartmentBadge({ departement }) {
-  const badge = useDepartmentBadge({ departement });
+function DepartmentBadge({ departement, color, name }) {
+  // Accept both the older `departement` prop and explicit `color`/`name` props
+  // so callers can pass either shape. Prefer explicit `name`/`color` when provided.
+  const badge = useDepartmentBadge({
+    color: color ?? undefined,
+    name: name ?? departement,
+  });
   return <>{badge}</>;
 }
 // Sheet tab data now tailored for user information
@@ -103,13 +110,28 @@ const access = [
   },
 ];
 const columns = [
-  { id: "id", accessorKey: "id", header: "ID" },
-  { id: "username", accessorKey: "username", header: "Nom d'utilisateur" },
+  {
+    id: "id",
+    accessorKey: "id",
+    header: "",
+    cell: ({ row }) => (
+      <Avatarr
+        fstName={
+          row.original.first_name ??
+          row.original.firstName ??
+          row.original.name ??
+          row.original.username
+        }
+        lstName={row.original.last_name ?? row.original.lastName ?? undefined}
+      />
+    ),
+  },
+  { id: "username", accessorKey: "username", header: "Username" },
   { id: "email", accessorKey: "email", header: "Email" },
   {
     id: "role",
     accessorKey: "role",
-    header: "Rôle",
+    header: "Role",
     cell: ({ row }) => {
       return <RoleBadge role={row.original.role} />;
     },
@@ -117,18 +139,18 @@ const columns = [
   {
     id: "departement",
     accessorKey: "departement",
-    header: "Département",
+    header: "Department",
     cell: ({ row }) => {
-      const color = row?.original?.dep_color;
-      const name = row?.original?.dep_name;
+      const color = row.original.departement_color;
+      const name = row?.original?.departement;
       return <DepartmentBadge color={color} name={name} />;
     },
   },
 
   {
     id: "createdAt",
-    accessorKey: "createdAt",
-    header: "Créé le",
+    accessorKey: "created_At",
+    header: "Created",
     cell: ({ row }) => {
       const dateValue = row?.original?.createdAt || row?.createdAt;
       if (!dateValue) return "-";
@@ -139,26 +161,6 @@ const columns = [
         day: "2-digit",
       });
     },
-  },
-  {
-    id: "seeDetails",
-    header: "",
-    cell: ({ row }) => (
-      <SheetDemo
-        infos={infos.map((it) =>
-          it.title === "Nom d'utilisateur"
-            ? { ...it, description: row.original.username }
-            : it.title === "Email"
-            ? { ...it, description: row.original.email }
-            : it.title === "Rôle"
-            ? { ...it, description: row.original.role }
-            : it
-        )}
-        comments={comments}
-        versions={versions}
-        access={access}
-      />
-    ),
   },
 ];
 

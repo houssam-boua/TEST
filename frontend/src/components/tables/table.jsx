@@ -11,6 +11,8 @@ import {
 import { ChevronRight } from "lucide-react";
 import { useGetDashboardDocumentsRecentQuery } from "@/Slices/dashboardSlices";
 import React from "react";
+import DepartmentBadge from "../../Hooks/useDepartmentBadge";
+import useTitleSplit from "../../Hooks/useTitleSplit";
 
 // Map API recent documents to table rows. Handles several possible response shapes.
 const mapRecentToRows = (data) => {
@@ -24,31 +26,11 @@ const mapRecentToRows = (data) => {
     list = data.data.results;
 
   return list.map((d) => {
-    const title =
-      d.doc_title ||
-      d.title ||
-      d.name ||
-      d.name_text ||
-      d.filename ||
-      (d.data && d.data.title) ||
-      "Untitled";
-    const cls = d.doc_category || d.doc_type || d.category || d.type || "-";
-    const owner =
-      d.doc_owner?.username ||
-      (d.doc_owner &&
-        `${d.doc_owner.first_name || ""} ${
-          d.doc_owner.last_name || ""
-        }`.trim()) ||
-      d.owner ||
-      d.owner_name ||
-      "-";
-    const date =
-      d.doc_creation_date ||
-      d.created_at ||
-      d.createdAt ||
-      d.date ||
-      d.uploaded ||
-      null;
+    const title = d.title || (d.data && d.data.title) || "Untitled";
+    const type = d.type || (d.data && d.data.type) || "Unknown";
+    const status = d.doc_status || d.status;
+    const owner = d.owner || "-";
+    const date = d.created_at || null;
     const more = (
       <ChevronRight
         strokeWidth={0.75}
@@ -57,13 +39,36 @@ const mapRecentToRows = (data) => {
     );
     return {
       name: title,
-      class: cls,
+      type: type,
+      status: status,
       dueDate: date ? new Date(date).toLocaleDateString("fr-FR") : "-",
       owner,
       more,
     };
   });
 };
+
+function StatusBadge({ status }) {
+  const s = String(status || "")
+    .toLowerCase()
+    .trim();
+
+  // map normalized statuses to friendly names and hex colors
+  const map = {
+    approved: { name: "Approved", color: "#16A34A" }, // green-600
+    pending: { name: "Pending", color: "#F59E0B" }, // amber-500
+    rejected: { name: "Rejected", color: "#EF4444" }, // red-500
+    "in review": { name: "In Review", color: "#3B82F6" }, // blue-500
+    draft: { name: "Draft", color: "#6B7280" }, // gray-500
+  };
+
+  const entry = map[s] || {
+    name: (s && s[0]?.toUpperCase() + s.slice(1)) || "-",
+    color: "#6B7280",
+  };
+
+  return <DepartmentBadge color={entry.color} name={entry.name} />;
+}
 
 const TableDemo = () => {
   const { data, isLoading, isError, error } =
@@ -75,10 +80,14 @@ const TableDemo = () => {
       <TableHeader>
         <TableRow className="border-b-2 border-muted">
           <TableHead className="w-[100px] text-xs">Name</TableHead>
-          <TableHead className="text-muted-foreground text-xs">Class</TableHead>
+          <TableHead className="w-[100px] text-xs">Type</TableHead>
           <TableHead className="text-muted-foreground text-xs">Owner</TableHead>
+
+          <TableHead className="text-muted-foreground text-xs">
+            Status
+          </TableHead>
           <TableHead className="text-right text-muted-foreground text-xs">
-            Due Date
+            Date creation
           </TableHead>
           <TableHead className="text-right text-muted-foreground text-xs"></TableHead>
         </TableRow>
@@ -118,17 +127,20 @@ const TableDemo = () => {
               key={row.name + Math.random()}
               className="border-b border-muted last:border-0 hover:border-primary/40"
             >
-              <TableCell className="font-medium">{row.name}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {row.class}
-              </TableCell>
-              <TableCell className="text-muted-foreground">
+              {/* Title and type split using hook */}
+              <TitleCell title={row.name} />
+              <TableCell className="text-muted-foreground/60">
                 {row.owner}
               </TableCell>
-              <TableCell className="text-right text-muted-foreground">
+
+              <TableCell className="text-muted-foreground/60">
+                <StatusBadge status={row.status} />
+              </TableCell>
+
+              <TableCell className="text-right text-muted-foreground/60">
                 {row.dueDate}
               </TableCell>
-              <TableCell className="text-right text-muted-foreground">
+              <TableCell className="text-right text-muted-foreground/60">
                 {row.more}
               </TableCell>
             </TableRow>
@@ -137,5 +149,18 @@ const TableDemo = () => {
     </Table>
   );
 };
+
+// Small presentational component that uses the useTitleSplit hook to split the
+// document title into a name and a type and render two table cells.
+function TitleCell({ title }) {
+  const { name, type } = useTitleSplit(title);
+
+  return (
+    <>
+      <TableCell className="font-medium ">{name}</TableCell>
+      <TableCell className="font-medium text-muted-foreground/60">{type || ""}</TableCell>
+    </>
+  );
+}
 
 export default TableDemo;

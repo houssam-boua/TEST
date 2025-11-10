@@ -20,6 +20,7 @@ const safeExtractCount = (data) => {
   if (typeof data === "number") return data;
   if (typeof data.count === "number") return data.count;
   if (typeof data.count_total === "number") return data.count_total;
+  if (typeof data.data === "number") return data.data;
   if (Array.isArray(data)) return data.length;
   if (Array.isArray(data.results)) return data.results.length;
   if (Array.isArray(data.data)) return data.data.length;
@@ -30,12 +31,14 @@ const safeExtractCount = (data) => {
 
 const SectionCards = () => {
   // First card -> users count
-  const { data: usersCountData, isLoading: loadingUsers } =
-    useGetDashboardUsersCountQuery();
+
   // Fourth card -> documents count
   const { data: docsCountData, isLoading: loadingDocs } =
     useGetDashboardDocumentsCountQuery();
-
+  // Users count
+  const { data: usersCountData, isLoading: loadingUsers } =
+    useGetDashboardUsersCountQuery();
+  console.log("Users count data:", usersCountData);
   const usersCount = safeExtractCount(usersCountData);
   const docsCount = safeExtractCount(docsCountData);
 

@@ -79,7 +79,7 @@ const data = {
       items: [
         {
           title: "Créer",
-          url: "/a/creer-document",
+          url: "/a/creer-documents",
         },
         {
           title: "Consulter",
@@ -131,8 +131,8 @@ const data = {
       icon: History,
       items: [
         {
-          title: "General",
-          url: "#",
+          title: "Acitivity Log",
+          url: "/a/activity-history",
         },
         {
           title: "Team",
@@ -157,7 +157,7 @@ const data = {
           title: "Users",
           url: "/a/users",
         },
-        
+
         {
           title: "Departments",
           url: "/a/departments",
@@ -165,7 +165,7 @@ const data = {
         {
           title: "Roles",
           url: "/a/roles",
-        }
+        },
       ],
     },
     {

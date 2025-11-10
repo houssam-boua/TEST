@@ -2,6 +2,7 @@ import AdminLayout from "../Layout/AdminLayout";
 import PublicLayout from "../Layout/PublicLayout";
 import UserLayout from "../Layout/UserLayout";
 import ValidatorLayout from "../Layout/ValidatorLayout";
+import ActivityHistory from "../Pages/ActivityHistory";
 import AdminAccueil from "../Pages/AdminAccueil";
 import AdminDepartements from "../Pages/AdminDepartements";
 import AdminRoles from "../Pages/AdminRoles";
@@ -11,6 +12,7 @@ import ConsulteFolders from "../Pages/ConsulteFolders";
 import ConsulteTaks from "../Pages/ConsulteTaks";
 import ConsulteWorkflow from "../Pages/ConsulteWorkflow";
 import CreateDocument from "../Pages/CreateDocument";
+import CreateDocumentsBatch from "../Pages/CreateDocumentsBatch";
 import CreateWorkflow from "../Pages/CreateWorkflow";
 import LoginPage from "../Pages/LoginPage";
 import UnauthorizedPage from "../Pages/UnauthorizedPage";
@@ -33,14 +35,13 @@ export const routesConfig = {
     layout: AdminLayout,
     requiredRoles: ["admin"],
     routes: [
-      { path: "/a/acceuil", component: AdminAccueil, breadcrumb: "Accueil" },
+      { path: "/a/acceuil", component: AdminAccueil, breadcrumb: "Accuefgbdil" },
       { path: "/a/consulter", component: ConsulteFolders },
       {
         path: "/a/consulter/:folderId/documents/",
         component: ConsulteDocuments,
       },
-      { path: "/a/creer-document", component: CreateDocument },
-
+      { path: "/a/creer-documents", component: CreateDocumentsBatch },
       { path: "/a/consulter-workflow", component: ConsulteWorkflow },
       {
         path: "/a/consulter-workflow/:workflowId/tasks",
@@ -50,6 +51,7 @@ export const routesConfig = {
       { path: "/a/users", component: AdminUsers },
       { path: "/a/departments", component: AdminDepartements },
       { path: "/a/roles", component: AdminRoles },
+      {path: "/a/activity-history", component: ActivityHistory, breadcrumb: "Historic activity" },
     ],
   },
 

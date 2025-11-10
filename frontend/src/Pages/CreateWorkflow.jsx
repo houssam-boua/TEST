@@ -5,7 +5,7 @@ import { useCreateWorkflowMutation } from "@/Slices/workflowSlice";
 import { useCreateTaskMutation } from "@/Slices/taskSlice";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-
+import { Card } from "@/components/ui/card";
 const CreateWorkflow = () => {
   const [step, setStep] = useState(1);
   const [workflowPayload, setWorkflowPayload] = useState(null);
@@ -61,13 +61,13 @@ const CreateWorkflow = () => {
   };
 
   return (
-    <div className="flex min-h-svh w-full items-start justify-center p-6 md:p-10 bg-muted/5">
-      <div className="w-full  space-y-4">
-        <div className="w-full items-center ">
+    <div className="flex min-h-svh w-full items-start justify-center p-6 md:p-10 ">
+      <Card className="w-full p-5  space-y-4 border-border ">
+        <div className="w-96 mx-auto">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Créer un workflow</h2>
+            <h2 className="text-lg font-medium">Workflow</h2>
             <span className="text-sm text-muted-foreground">
-              Étape {step} sur 2
+              Tasks
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -100,7 +100,7 @@ const CreateWorkflow = () => {
             workflowDocumentId={workflowPayload?.document}
           />
         )}
-      </div>
+      </Card>
     </div>
   );
 };

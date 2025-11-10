@@ -22,13 +22,9 @@ const chartData = [
   { month: "Media", approved: 73, pending: 190 },
 ];
 const chartConfig = {
-  approved: {
-    label: "approved",
-    color: "var(--chart-1)",
-  },
-  pending: {
-    label: "pending",
-    color: "var(--chart-2)",
+  count: {
+    label: "Documents",
+    color: "var(--chart-4)",
   },
 };
 const ChartBarMultiple = ({ data: propData, config: propConfig }) => {
@@ -43,24 +39,14 @@ const ChartBarMultiple = ({ data: propData, config: propConfig }) => {
       return [
         {
           key: "count",
-          color: cfg.count?.color || "var(--chart-1)",
+          color: cfg.count?.color || "var(--chart-4)",
           label: cfg.count?.label || "count",
         },
       ];
     }
-    // default approved/pending
-    return [
-      {
-        key: "approved",
-        color: cfg.approved?.color || "var(--chart-1)",
-        label: cfg.approved?.label || "approved",
-      },
-      {
-        key: "pending",
-        color: cfg.pending?.color || "var(--chart-2)",
-        label: cfg.pending?.label || "pending",
-      },
-    ];
+    // default: if data includes `approved` show approved counts, otherwise no bars
+
+    return [];
   }, [data, cfg]);
 
   return (
