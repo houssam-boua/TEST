@@ -1,17 +1,23 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import authenticate
-from rest_framework import viewsets, status
+
+from rest_framework import viewsets, status, permissions
 from rest_framework.authtoken.models import Token
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import action
-from .models import User, Role, Departement
-from .serializers import UserSerializer, UserActionLogSerializer, RoleSerializer, DepartementSerializer
+
 from django.contrib.contenttypes.models import ContentType
-from .models import UserActionLog
+from django.contrib.auth.models import Permission, Group
+
 from django.core.mail import send_mail
 from django.conf import settings
+
+from .models import User, Role, Departement
+from .serializers import UserSerializer, UserActionLogSerializer, RoleSerializer, DepartementSerializer, PermissionSerializer, GroupSerializer
+from .models import UserActionLog
+
 import secrets
 import string
 
@@ -51,10 +57,10 @@ class UserViewSet(viewsets.ModelViewSet):
 
         serializer.is_valid(raise_exception=True)
 
-        # if check_username_exists(serializer.validated_data['username']):
-        #     return Response({
-        #         "error": "Username already exists."
-        #     }, status=status.HTTP_400_BAD_REQUEST)
+        if check_username_exists(serializer.validated_data['username']):
+            return Response({
+                "error": "Username already exists."
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         serializer.validated_data['password'] = generate_password()
 
@@ -78,6 +84,8 @@ class UserViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        print(f"Updating user {instance.id} with data: {request.data}")  # Debug log
+
         serializer.is_valid(raise_exception=True)
 
         user = serializer.save()
@@ -246,15 +254,21 @@ class DepartementViewSet(viewsets.ModelViewSet):
 class PermissionViewSet(viewsets.ViewSet):
     """
     A simple ViewSet for listing available permissions.
-    """
+    """ 
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminUser]
 
     @action(detail=False, methods=['get'])
     def list_permissions(self, request):
-        permissions = [perm.codename for perm in request.user.get_all_permissions()]
-        return Response({"permissions": permissions}, status=status.HTTP_200_OK)
-    
+        permissions = Permission.objects.all().order_by('content_type__app_label', 'codename')
+        serializer = PermissionSerializer(permissions, many=True)
+        return Response({"permissions": serializer.data}, status=status.HTTP_200_OK)
+
+class GroupViewSet(viewsets.ModelViewSet):
+    queryset = Group.objects.all()
+    serializer_class = GroupSerializer
+    permission_classes = [IsAdminUser]
+
 class LoginView(APIView):
     """
     Accepts POST requests with 'username' and 'password' in the request body.

@@ -9,7 +9,7 @@ router.register(r'documents', DocumentViewSet, basename='document')
 
 urlpatterns = [
     # Custom path for creating folders
-    path('create-folder/', create_folder, name='create-folder'),
+    path('documents/create-folder/', create_folder, name='create-folder'),
  
     # Explicit Document list and detail endpoints (for custom actions)
     path('documents/', DocumentListCreateView.as_view(), name='document-list-create'),

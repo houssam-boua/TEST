@@ -5,7 +5,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 
 from documents.models import Document
-from users.models import User
+from users.models import User, Role, Departement
+from workflows.models import Workflow
 from django.db.models import Count, F
 
 # Default cache timeout (seconds)
@@ -99,7 +100,45 @@ class DashboardView(APIView):
             cache.set("dashboard_users_count", count, timeout)
         return count
 
+    def get_departements_count(use_cache: bool = True, timeout: int = CACHE_TIMEOUT) -> int:
+        """
+        Return total number of departments. Cached by default.
+        """
+        if use_cache:
+            cached = cache.get("dashboard_departements_count")
+            if cached is not None:
+                return cached
+        count = Departement.objects.count()
+        if use_cache:
+            cache.set("dashboard_departements_count", count, timeout)
+        return count
 
+    # def get_roles_count(use_cache: bool = True, timeout: int = CACHE_TIMEOUT) -> int:
+    #     """
+    #     Return total number of roles. Cached by default.
+    #     """
+    #     if use_cache:
+    #         cached = cache.get("dashboard_roles_count")
+    #         if cached is not None:
+    #             return cached
+    #     count = Role.objects.count()
+    #     if use_cache:
+    #         cache.set("dashboard_roles_count", count, timeout)
+    #     return count
+    
+    def get_workflow_count(use_cache: bool = True, timeout: int = CACHE_TIMEOUT) -> int:
+        """
+        Return total number of workflows. Cached by default.
+        """
+        if use_cache:
+            cached = cache.get("dashboard_workflows_count")
+            if cached is not None:
+                return cached
+        count = Workflow.objects.count()
+        if use_cache:
+            cache.set("dashboard_workflows_count", count, timeout)
+        return count
+    
 def invalidate_dashboard_cache():
     """
     Helper to invalidate dashboard-related caches. Call this from relevant signals

@@ -1,19 +1,22 @@
 # views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, serializers
 from django.shortcuts import get_object_or_404
 from django.contrib.auth import get_user_model
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 from .models import Document, DocumentVersion
 from users.models import Departement
 from .serializers import DocumentSerializer, DocumentVersionSerializer
 from users.models import UserActionLog
 from django.contrib.contenttypes.models import ContentType
-
-
+ 
+ 
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
@@ -179,7 +182,7 @@ class MinioFileListView(APIView):
         return Response({
             "folders": all_directories
         }, status=status.HTTP_200_OK)
-
+    
 class DocumentVersionViewSet(viewsets.ModelViewSet):
     """
     API endpoint for DocumentVersion model.
@@ -187,34 +190,46 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
     queryset = DocumentVersion.objects.all()
     serializer_class = DocumentVersionSerializer
 
-@csrf_exempt
+class CreateFolderSerializer(serializers.Serializer):
+    path = serializers.CharField(help_text="Folder path to create, e.g. 'projects/NewProject/files'")
+
+@swagger_auto_schema(
+    method='post',
+    request_body=CreateFolderSerializer,
+    responses={
+        201: openapi.Response('Folder created successfully'),
+        400: openapi.Response('Bad request'),
+        500: openapi.Response('Server error'),
+    }
+)
+@api_view(['POST'])
 def create_folder(request):
     """
     Create a logical folder in MinIO by adding a .keep placeholder file.
     In S3/MinIO, folders don't exist; they're just prefixes in object keys.
     """
-    if request.method == 'POST':
-        import json
-        data = json.loads(request.body)
-        folder_path = data.get('path')  # e.g., "projects/NewProject/files"
-        
-        if not folder_path:
-            return Response({'error': 'Missing folder path'}, status=400)
+    serializer = CreateFolderSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=400)
 
-        # Normalize the path
-        folder_path = folder_path.strip('/').replace('\\', '/')
-        
-        # Create a placeholder file to establish the folder prefix
-        placeholder_path = f"documents/{folder_path}/.keep"
-        
-        try:
-            default_storage.save(placeholder_path, ContentFile(b""))
-            return Response({
-                'status': 'Folder created successfully',
-                'path': folder_path
-            }, status=201)
-        except Exception as e:
-            return Response({
-                'error': f'Failed to create folder: {str(e)}'
-            }, status=500)
- 
+    folder_path = serializer.validated_data.get('path')
+    if not folder_path:
+        return Response({'error': 'Missing folder path'}, status=400)
+
+    # Normalize the path
+    folder_path = folder_path.strip('/').replace('\\', '/')
+
+    # Create a placeholder file to establish the folder prefix
+    placeholder_path = f"documents/{folder_path}/.keep"
+
+    try:
+        default_storage.save(placeholder_path, ContentFile(b""))
+        return Response({
+            'status': 'Folder created successfully',
+            'path': folder_path
+        }, status=201)
+    except Exception as e:
+        return Response({
+            'error': f'Failed to create folder: {str(e)}'
+        }, status=500)
+  

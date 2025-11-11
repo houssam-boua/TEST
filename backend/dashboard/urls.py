@@ -37,6 +37,21 @@ def users_count(request):
     count = DashboardView.get_users_count()
     return Response({'data': count, 'message': 'Total users count retrieved successfully.'}, status=200)
 
+@api_view(['GET'])
+def departements_count(request):
+    count = DashboardView.get_departements_count()
+    return Response({'data': count, 'message': 'Total departments count retrieved successfully.'}, status=200)
+
+# @api_view(['GET'])
+# def roles_count(request):
+#     count = DashboardView.get_roles_count()
+#     return Response({'data': count, 'message': 'Total roles count retrieved successfully.'}, status=200)
+
+@api_view(['GET'])
+def workflows_count(request):
+    count = DashboardView.get_workflows_count()
+    return Response({'data': count, 'message': 'Total workflows count retrieved successfully.'}, status=200)
+
 @api_view(['POST'])
 def invalidate_cache(request):
     invalidate_dashboard_cache()
@@ -49,5 +64,9 @@ urlpatterns = [
     path('dashboard/documents/recent/', recent_documents, name='dashboard-documents-recent'),
     path('dashboard/validators/count/', validators_count, name='dashboard-validators-count'),
     path('dashboard/users/count/', users_count, name='dashboard-users-count'),
+    path('dashboard/departements/count/', departements_count, name='dashboard-departements-count'),
+    # path('dashboard/roles/count/', roles_count, name='dashboard-roles-count'),
+    path('dashboard/workflows/count/', workflows_count, name='dashboard-workflows-count'),
+
     path('dashboard/invalidate-cache/', invalidate_cache, name='dashboard-invalidate-cache'),
 ]
