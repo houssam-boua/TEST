@@ -16,6 +16,15 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { IconCalendar as CalendarIcon } from "@tabler/icons-react";
+
 export const description = "An interactive bar chart";
 
 const chartData = [
@@ -84,14 +93,23 @@ const chartConfig = {
 };
 
 export function ChartBarInteractive() {
-  const [activeChart, setActiveChart] = React.useState("desktop");
+  // keep the active chart key; the setter is unused for now so prefix with _ to avoid linter errors
+  const [activeChart, _setActiveChart] = React.useState("desktop");
 
-  const total = React.useMemo(
-    () => ({
-      desktop: chartData.reduce((acc, curr) => acc + curr.desktop, 0),
-    }),
-    []
-  );
+  // date range state for the calendar popover
+  const [range, setRange] = React.useState(null);
+
+  // Filter chartData by selected range (inclusive). If no range selected, show all.
+  const filteredData = React.useMemo(() => {
+    if (!range?.from || !range?.to) return chartData;
+    const from = new Date(range.from);
+    const to = new Date(range.to);
+    to.setHours(23, 59, 59, 999);
+    return chartData.filter((d) => {
+      const dt = new Date(d.date);
+      return dt >= from && dt <= to;
+    });
+  }, [range]);
 
   return (
     <Card className="py-0 border-border">
@@ -99,7 +117,35 @@ export function ChartBarInteractive() {
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 pt-4 pb-3 sm:!py-0">
           <CardTitle className="p-4">Activities by days</CardTitle>
         </div>
-        <div className="flex"></div>
+        <div className="flex items-center justify-end px-6 pt-4 pb-3 sm:!py-0">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline">
+                <CalendarIcon />
+                {range?.from && range?.to
+                  ? `${range.from.toLocaleDateString()} - ${range.to.toLocaleDateString()}`
+                  : "January 2025"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto overflow-hidden p-0" align="end">
+              <Calendar
+                className="w-full"
+                mode="range"
+                defaultMonth={range?.from}
+                selected={range}
+                onSelect={setRange}
+                startMonth={range?.from}
+                fixedWeeks
+                showOutsideDays
+                // limit selectable dates to the range covered by chartData (Apr 2024 - May 2024)
+                disabled={{
+                  before: new Date(2024, 3, 1), // April 1, 2024
+                  after: new Date(2024, 4, 31), // May 31, 2024
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
       </CardHeader>
       <CardContent className="px-2 sm:p-6">
         <ChartContainer
@@ -108,7 +154,7 @@ export function ChartBarInteractive() {
         >
           <BarChart
             accessibilityLayer
-            data={chartData}
+            data={filteredData}
             margin={{
               left: 12,
               right: 12,

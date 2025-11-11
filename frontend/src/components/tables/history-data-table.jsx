@@ -27,9 +27,8 @@ import {
   IconCircleCheckFilled,
   IconDotsVertical,
   IconGripVertical,
-  IconLayoutColumns,
+  IconDownload,
   IconLoader,
-  IconPlus,
   IconTrendingUp,
 } from "@tabler/icons-react";
 import {
@@ -43,7 +42,6 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
-import { toast } from "sonner";
 
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +80,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import useActionDescription from "@/Hooks/useActionDescription";
 import {
   Table,
   TableBody,
@@ -90,7 +89,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { ListFilter } from "lucide-react";
+import { Avatarr } from "../blocks/avatarr";
 
 // schema removed (was TypeScript-only usage)
 
@@ -147,23 +148,28 @@ const columns = [
     enableHiding: false,
   },
   {
-    accessorKey: "header",
-    header: "Header",
-    cell: ({ row }) => {
-      return <TableCellViewer item={row.original} />;
-    },
-    enableHiding: false,
-  },
-  {
-    accessorKey: "type",
-    header: "Section Type",
+    accessorKey: "user",
+    header: "User",
     cell: ({ row }) => (
-      <div className="w-32">
-        <Badge variant="outline" className="text-muted-foreground px-1.5">
-          {row.original.type}
-        </Badge>
+      <div className="flex flex-row items-center ">
+        <Avatarr fstName={row.original.user} lstName={row.original.user} />
+        <span className="text-muted-foreground text-sm pl-2"> {row.original.user}{" "}</span>
       </div>
     ),
+  },
+  
+  {
+    accessorKey: "event",
+    header: "Event",
+    cell: ({ row }) => {
+      // reuse drawer viewer but prefer event field
+      return (
+        <TableCellViewer
+          item={{ ...row.original, header: row.original.event }}
+        />
+      );
+    },
+    enableHiding: false,
   },
   {
     accessorKey: "status",
@@ -178,90 +184,6 @@ const columns = [
         {row.original.status}
       </Badge>
     ),
-  },
-  {
-    accessorKey: "target",
-    header: () => <div className="w-full text-right">Target</div>,
-    cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
-          });
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-target`} className="sr-only">
-          Target
-        </Label>
-        <Input
-          className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-          defaultValue={row.original.target}
-          id={`${row.original.id}-target`}
-        />
-      </form>
-    ),
-  },
-  {
-    accessorKey: "limit",
-    header: () => <div className="w-full text-right">Limit</div>,
-    cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
-          });
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
-          Limit
-        </Label>
-        <Input
-          className="hover:bg-input/30 focus-visible:bg-background dark:hover:bg-input/30 dark:focus-visible:bg-input/30 h-8 w-16 border-transparent bg-transparent text-right shadow-none focus-visible:border dark:bg-transparent"
-          defaultValue={row.original.limit}
-          id={`${row.original.id}-limit`}
-        />
-      </form>
-    ),
-  },
-  {
-    accessorKey: "reviewer",
-    header: "Reviewer",
-    cell: ({ row }) => {
-      const isAssigned = row.original.reviewer !== "Assign reviewer";
-
-      if (isAssigned) {
-        return row.original.reviewer;
-      }
-
-      return (
-        <>
-          <Label htmlFor={`${row.original.id}-reviewer`} className="sr-only">
-            Reviewer
-          </Label>
-          <Select>
-            <SelectTrigger
-              className="w-38 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
-              size="sm"
-              id={`${row.original.id}-reviewer`}
-            >
-              <SelectValue placeholder="Assign reviewer" />
-            </SelectTrigger>
-            <SelectContent align="end">
-              <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-              <SelectItem value="Jamik Tashpulatov">
-                Jamik Tashpulatov
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </>
-      );
-    },
   },
   {
     id: "actions",
@@ -299,7 +221,7 @@ function DraggableRow({ row }) {
       data-state={row.getIsSelected() && "selected"}
       data-dragging={isDragging}
       ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
+      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80 border-muted"
       style={{
         transform: CSS.Transform.toString(transform),
         transition: transition,
@@ -319,6 +241,7 @@ export function HistoryDataTable({ data: initialData }) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] = React.useState({});
   const [columnFilters, setColumnFilters] = React.useState([]);
+  const [selectedStatuses, setSelectedStatuses] = React.useState([]);
   const [sorting, setSorting] = React.useState([]);
   const [pagination, setPagination] = React.useState({
     pageIndex: 0,
@@ -370,10 +293,7 @@ export function HistoryDataTable({ data: initialData }) {
   }
 
   return (
-    <Tabs
-      defaultValue="outline"
-      className="w-full flex-col justify-start gap-6"
-    >
+    <Tabs defaultValue="Users" className="w-full flex-col justify-start gap-6">
       <div className="flex items-center justify-between px-4 lg:px-6">
         <Label htmlFor="view-selector" className="sr-only">
           View
@@ -393,53 +313,77 @@ export function HistoryDataTable({ data: initialData }) {
             <SelectItem value="focus-documents">Focus Documents</SelectItem>
           </SelectContent>
         </Select>
-        <TabsList className="**:data-[slot=badge]:bg-muted-foreground/30 hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:px-1 @4xl/main:flex">
-          <TabsTrigger value="Users">Users</TabsTrigger>
-          <TabsTrigger value="past-performance">
-            Past Performance <Badge variant="secondary">3</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="key-personnel">
-            Key Personnel <Badge variant="secondary">2</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
-        </TabsList>
-        <div className="flex items-center gap-2">
+        <div className="hidden gap-3 items-center sm:flex">
+          <Input
+            placeholder="Search..."
+            aria-label="Search"
+            onChange={(e) => {
+              const v = e.target.value;
+              setColumnFilters((prev) => {
+                const others = (prev || []).filter((f) => f.id !== "header");
+                if (!v) return others;
+                return [...others, { id: "header", value: v }];
+              });
+            }}
+            className="w-64"
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                <IconLayoutColumns />
-                <span className="hidden lg:inline">Customize Columns</span>
-                <span className="lg:hidden">Columns</span>
-                <IconChevronDown />
+                <ListFilter /> Filters
+                <IconChevronDown className="ml-2" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              {table
-                .getAllColumns()
-                .filter(
-                  (column) =>
-                    typeof column.accessorFn !== "undefined" &&
-                    column.getCanHide()
-                )
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
+              <DropdownMenuCheckboxItem
+                checked={selectedStatuses.includes("Done")}
+                onCheckedChange={(val) => {
+                  const checked = !!val;
+                  setSelectedStatuses((prev) => {
+                    const next = checked
+                      ? [...prev, "Done"]
+                      : prev.filter((s) => s !== "Done");
+                    return next;
+                  });
+                }}
+              >
+                Done
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={selectedStatuses.includes("In Progress")}
+                onCheckedChange={(val) => {
+                  const checked = !!val;
+                  setSelectedStatuses((prev) => {
+                    const next = checked
+                      ? [...prev, "In Progress"]
+                      : prev.filter((s) => s !== "In Progress");
+                    return next;
+                  });
+                }}
+              >
+                In Progress
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={selectedStatuses.includes("Not Started")}
+                onCheckedChange={(val) => {
+                  const checked = !!val;
+                  setSelectedStatuses((prev) => {
+                    const next = checked
+                      ? [...prev, "Not Started"]
+                      : prev.filter((s) => s !== "Not Started");
+                    return next;
+                  });
+                }}
+              >
+                Not Started
+              </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
+        </div>
+        <div className="flex items-center gap-2">
           <Button variant="outline" size="sm">
-            <IconPlus />
-            <span className="hidden lg:inline">Add Section</span>
+            <IconDownload />
+            <span className="hidden lg:inline">Export</span>
           </Button>
         </div>
       </div>
@@ -455,7 +399,7 @@ export function HistoryDataTable({ data: initialData }) {
             sensors={sensors}
             id={sortableId}
           >
-            <Table>
+            <Table className="bg-card">
               <TableHeader className="bg-muted sticky top-0 z-10  ">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow key={headerGroup.id} className="border-b-muted">
@@ -576,21 +520,6 @@ export function HistoryDataTable({ data: initialData }) {
           </div>
         </div>
       </TabsContent>
-      <TabsContent
-        value="past-performance"
-        className="flex flex-col px-4 lg:px-6"
-      >
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-      <TabsContent value="key-personnel" className="flex flex-col px-4 lg:px-6">
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-      <TabsContent
-        value="focus-documents"
-        className="flex flex-col px-4 lg:px-6"
-      >
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
     </Tabs>
   );
 }
@@ -626,12 +555,12 @@ function TableCellViewer({ item }) {
         </Button>
       </DrawerTrigger>
       <DrawerContent>
-        <DrawerHeader className="gap-1">
-          <DrawerTitle>{item.header}</DrawerTitle>
-          <DrawerDescription>
-            Showing total visitors for the last 6 months
-          </DrawerDescription>
-        </DrawerHeader>
+          <DrawerHeader className="gap-1">
+            <DrawerTitle>{item.header}</DrawerTitle>
+            <DrawerDescription>
+              {useActionDescription(item) || ""}
+            </DrawerDescription>
+          </DrawerHeader>
         <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
           {!isMobile && (
             <>
