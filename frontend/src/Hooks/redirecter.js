@@ -1,5 +1,5 @@
 export const redirectForRole = ({ role }) => {
-  switch ((role || "").toLowerCase()) {
+  switch (role) {
     case "admin":
       return "/a/acceuil";
     case "validator":

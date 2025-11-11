@@ -51,7 +51,10 @@ const authSlice = createSlice({
 
     // Login success
     loginSuccess: (state, action) => {
-      const { token, data } = action.payload;
+      // support calling loginSuccess with either the full API response { token, data }
+      // or with an object { token, data }.
+      const token = action.payload?.token ?? action.payload;
+      const data = action.payload?.data ?? action.payload?.data ?? state.user;
       state.user = data;
       state.token = token;
       state.isAuthenticated = true;
@@ -125,16 +128,18 @@ const authSlice = createSlice({
           state.error = null;
         })
         .addMatcher(loginEp.matchFulfilled, (state, action) => {
-          const { token, data } = action.payload;
+          // API response shape: { success, message, token, data }
+          const token = action.payload?.token ?? null;
+          const data = action.payload?.data ?? null;
           state.user = data;
           state.token = token;
-          state.isAuthenticated = true;
+          state.isAuthenticated = !!(token && data);
           state.isLoading = false;
           state.error = null;
 
-          // Store in localStorage
-          localStorage.setItem("token", token);
-          localStorage.setItem("user", JSON.stringify(data));
+          // Store in localStorage when available
+          if (token) localStorage.setItem("token", token);
+          if (data) localStorage.setItem("user", JSON.stringify(data));
         })
         .addMatcher(loginEp.matchRejected, (state, action) => {
           state.isLoading = false;

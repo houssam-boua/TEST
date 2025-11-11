@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { CirclePicker } from "react-color";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -41,14 +42,14 @@ const CreateDepartement = ({ onSubmit, onCancel, loading }) => {
         <label htmlFor="dep_color" className="text-sm font-medium">
           Color
         </label>
-        <input
-          id="dep_color"
-          name="dep_color"
-          type="color"
-          value={form.dep_color}
-          onChange={handleChange}
-          className="w-12 h-10 p-0 rounded-md border"
-        />
+        <div id="dep_color">
+          <CirclePicker
+            color={form.dep_color || "#2563eb"}
+            onChangeComplete={(color) =>
+              setForm((p) => ({ ...p, dep_color: color?.hex || p.dep_color }))
+            }
+          />
+        </div>
       </div>
 
       <div className="flex gap-2 justify-end">

@@ -29,6 +29,7 @@ const EditUser = ({ user, onSubmit, onCancel, loading }) => {
   const [form, setForm] = useState({
     firstName: user?.first_name || "",
     lastName: user?.last_name || "",
+    username: user?.username || "",
     email: user?.email || "",
     role: user?.role ? String(user.role) : "",
     departement: user?.departement ? String(user.departement) : "",
@@ -40,6 +41,7 @@ const EditUser = ({ user, onSubmit, onCancel, loading }) => {
       setForm({
         firstName: user.first_name || "",
         lastName: user.last_name || "",
+        username: user.username || "",
         email: user.email || "",
         role: user.role ? String(user.role) : "",
         departement: user.departement ? String(user.departement) : "",
@@ -64,6 +66,7 @@ const EditUser = ({ user, onSubmit, onCancel, loading }) => {
       id: user?.id,
       first_name: form.firstName,
       last_name: form.lastName,
+      username: form.username,
       email: form.email,
       // include password only if provided
       ...(form.password ? { password: form.password } : {}),
@@ -102,6 +105,19 @@ const EditUser = ({ user, onSubmit, onCancel, loading }) => {
             id="lastName"
             name="lastName"
             value={form.lastName}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label htmlFor="username" className="text-sm font-medium">
+            Username
+          </label>
+          <Input
+            id="username"
+            name="username"
+            value={form.username}
             onChange={handleChange}
             required
           />

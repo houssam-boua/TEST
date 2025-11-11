@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CirclePicker } from "react-color";
 
 // Simple controlled form that mirrors CreateDepartement logic.
 export default function CreateRoleForm({
@@ -49,14 +50,14 @@ export default function CreateRoleForm({
         <label htmlFor="role_color" className="text-sm font-medium">
           Couleur
         </label>
-        <input
-          id="role_color"
-          name="role_color"
-          type="color"
-          value={form.role_color}
-          onChange={handleChange}
-          className="w-12 h-10 p-0 rounded-md border"
-        />
+        <div id="role_color">
+          <CirclePicker
+            color={form.role_color || "#000000"}
+            onChangeComplete={(color) =>
+              setForm((p) => ({ ...p, role_color: color?.hex || p.role_color }))
+            }
+          />
+        </div>
       </div>
 
       <div className="flex gap-2 justify-end">

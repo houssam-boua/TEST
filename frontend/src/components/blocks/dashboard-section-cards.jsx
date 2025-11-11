@@ -14,6 +14,7 @@ import { CircleAlert, FileText } from "lucide-react";
 import useIcon from "../../Hooks/useIcon";
 import ChartBarMultiple from "../charts/chart-bar-multiple";
 import useIconColor from "../../Hooks/useIconColor";
+import useRelativeTime from "../../Hooks/useRelativeTime";
 import {
   useGetDashboardDocumentsByDepartementQuery,
   useGetDashboardDocumentsRecentQuery,
@@ -25,34 +26,11 @@ const StatusIcon = React.memo(function StatusIcon({
   className,
   IconComponent,
 }) {
-  const color = useIconColor(status);
-  const iconEl = useIcon(status, color, IconComponent, className);
+  const normalized = String(status || "").toLowerCase();
+  const color = useIconColor(normalized);
+  const iconEl = useIcon(normalized, color, IconComponent, className);
   return iconEl || null;
 });
-
-const sampleRecentDocuments = [
-  {
-    title: "Document 1",
-    size: "2MB",
-    day: "Today",
-    status: "approved",
-    icon: FileText,
-  },
-  {
-    title: "Document 2",
-    size: "1MB",
-    day: "Yesterday",
-    status: "pending",
-    icon: FileText,
-  },
-  {
-    title: "Document 3",
-    size: "3MB",
-    day: "Last Week",
-    status: "rejected",
-    icon: FileText,
-  },
-];
 
 const recentActivities = [
   {
@@ -66,6 +44,15 @@ const recentActivities = [
     time: "5 hours ago",
     status: "pending",
     icon: CircleAlert,
+  },
+];
+const sampleRecentDocuments = [
+  {
+    title: "Sample Document",
+    size: "1MB",
+    day: "-",
+    status: "pending",
+    icon: FileText,
   },
 ];
 
@@ -83,14 +70,11 @@ const DashboardSectionCards = ({ departmentCounts }) => {
     isError: byDeptError,
   } = useGetDashboardDocumentsByDepartementQuery();
 
-  const formatDate = (iso) => {
-    if (!iso) return "-";
-    try {
-      return new Date(iso).toLocaleString();
-    } catch {
-      return iso;
-    }
-  };
+  // small component that uses the `useRelativeTime` hook per-item
+  function RelativeTimeDisplay({ date }) {
+    const rel = useRelativeTime(date);
+    return <span className="text-xs text-muted-foreground">{rel}</span>;
+  }
 
   // normalize API response ({ data: [...] }) into UI-friendly items
   const recentDocs = React.useMemo(() => {
@@ -101,8 +85,8 @@ const DashboardSectionCards = ({ departmentCounts }) => {
     return (items || []).map((it) => ({
       title: it.title || it.name || "Untitled",
       size: it.size || it.filesize || "-",
-      day: formatDate(it.created_at || it.createdAt || it.created),
-      status: it.status || "pending",
+      rawDate: it.created_at || it.createdAt || it.created,
+      status: String(it.status || "pending").toLowerCase(),
       icon: it.icon || FileText,
       raw: it,
     }));
@@ -145,9 +129,7 @@ const DashboardSectionCards = ({ departmentCounts }) => {
                       {doc.size}
                     </span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {doc.day}
-                  </span>
+                  <RelativeTimeDisplay date={doc.rawDate} />
                 </li>
               ))}
             </ul>
@@ -194,7 +176,6 @@ const DashboardSectionCards = ({ departmentCounts }) => {
         <CardContent>
           <ChartBarMultiple
             data={deptItems}
-            config={{ count: { label: "Documents", color: "var(--chart-1)" } }}
           />
           {byDeptLoading && (
             <div className="text-xs text-muted-foreground mt-2">

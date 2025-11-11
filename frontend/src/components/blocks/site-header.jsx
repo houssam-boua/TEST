@@ -34,7 +34,7 @@ const sectionMap = [
   { prefix: "/a/scan", title: "OCR" },
 
   // History section
-  { prefix: "/a/history", title: "History" },
+  { prefix: "/a/activity-history", title: "History" },
   { prefix: "/a/general", title: "History" },
   { prefix: "/a/team", title: "History" },
 
@@ -45,6 +45,7 @@ const sectionMap = [
   // Permissions section
   { prefix: "/a/permissions", title: "Permissions" },
   { prefix: "/a/roles", title: "Permissions" },
+
 ];
 
 function getSectionForPath(pathname) {

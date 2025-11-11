@@ -150,7 +150,7 @@ export function CreateWorkflowForm({
   };
   return (
     <div className={cn("flex flex-col gap-6 w-full", className)} {...props}>
-      <Card className="border-4 border-border w-full md:max-w-[720px]">
+      <Card className="border-4 border-border w-full md:max-w-full">
         {/* <CardHeader className="items-center">
           <CardTitle>Créer un workflow</CardTitle>
           <CardDescription>
@@ -165,16 +165,16 @@ export function CreateWorkflowForm({
           )}
           <Form {...form}>
             <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-1 lg:grid-cols-2 lg:w-full">
                 <FormField
                   control={form.control}
                   className="col-span-1"
                   name="nom"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nom de la tâche</FormLabel>
+                      <FormLabel>Task Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Nom de la tâche" {...field} />
+                        <Input placeholder="Task Name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -187,7 +187,7 @@ export function CreateWorkflowForm({
                   className="col-span-1"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Statut</FormLabel>
+                      <FormLabel>Status</FormLabel>
                       <FormControl>
                         <Select
                           value={field.value}
@@ -198,7 +198,7 @@ export function CreateWorkflowForm({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectGroup>
-                              <SelectLabel>Statuts</SelectLabel>
+                              <SelectLabel>Status</SelectLabel>
                               <SelectItem value="in_progress">
                                 In progress
                               </SelectItem>
@@ -234,8 +234,8 @@ export function CreateWorkflowForm({
                             {field.value
                               ? documents.find(
                                   (d) => String(d.value) === String(field.value)
-                                )?.label || "Document sélectionné"
-                              : "Sélectionnez un document..."}
+                                )?.label || "Selected document"
+                              : "Select a document..."}
                             <ChevronsUpDown className="opacity-50" />
                           </Button>
                         </FormControl>
@@ -246,11 +246,11 @@ export function CreateWorkflowForm({
                       >
                         <Command>
                           <CommandInput
-                            placeholder="Rechercher un document..."
+                            placeholder="Search for a document..."
                             className="h-9"
                           />
                           <CommandList>
-                            <CommandEmpty>Aucun document trouvé.</CommandEmpty>
+                            <CommandEmpty>No document found.</CommandEmpty>
                             <CommandGroup>
                               {documents.map((doc) => (
                                 <CommandItem
@@ -282,7 +282,7 @@ export function CreateWorkflowForm({
                       </PopoverContent>
                     </Popover>
                     <FormDescription className="text-muted-foreground">
-                      Sélectionnez le document lié à ce workflow.
+                      Select the document related to this workflow.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -298,7 +298,7 @@ export function CreateWorkflowForm({
                     <FormControl>
                       <Textarea
                         rows={4}
-                        placeholder="Décrivez le workflow"
+                        placeholder="Describe the workflow"
                         {...field}
                       />
                     </FormControl>
@@ -308,25 +308,19 @@ export function CreateWorkflowForm({
               />
               <div className="flex gap-3">
                 <Button type="submit" disabled={submitting}>
-                  {submitting ? "Création..." : "Créer"}
+                  {submitting ? "Creating..." : "Create"}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => form.reset()}
                 >
-                  Réinitialiser
+                  Reset
                 </Button>
               </div>
             </form>
           </Form>
           {/* Debug panel (dev) */}
-          <div className="mt-4 p-3 bg-slate-50 rounded border text-sm">
-            <div className="font-medium text-xs mb-1">Debug (last submit)</div>
-            <pre className="whitespace-pre-wrap break-words text-xs">
-              {JSON.stringify(debug, null, 2)}
-            </pre>
-          </div>
         </CardContent>
       </Card>
     </div>

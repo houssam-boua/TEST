@@ -18,9 +18,10 @@ export const userSlice = apiSlice.injectEndpoints({
       invalidatesTags: ["User"],
     }),
     updateUser: builder.mutation({
+      // Use PATCH to allow partial updates (frontend won't be forced to resend unchanged fields such as password)
       query: ({ id, data }) => ({
         url: `/api/users/${id}/`,
-        method: "PUT",
+        method: "PATCH",
         body: data,
       }),
       invalidatesTags: ["User"],

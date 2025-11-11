@@ -40,6 +40,7 @@ import {
 import { CreateDocumentForm } from "../components/forms/create-document-form";
 import SharedWithDialog from "../components/blocks/shared-with-dialog.jsx";
 import DeleteDocument from "../components/forms/delete-document.jsx";
+import { DocumentsTable } from "../components/tables/documents-table.jsx";
 
 const comments = [
   // {
@@ -113,12 +114,7 @@ const columns = [
           size={16}
           className="fill-primary stroke-white"
         />
-        <span>
-          {row.original?.file_name ||
-            row.original?.doc_description ||
-            row.original?._path ||
-            row.original?.file}
-        </span>
+        <span>{row.original?.doc_title}</span>
       </div>
     ),
   },
@@ -320,7 +316,7 @@ const ConsulteDocuments = () => {
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
-        <DataTable
+        <DocumentsTable
           title={"Documents"}
           columns={combinedColumns}
           data={groups}
