@@ -166,6 +166,14 @@ const data = {
           title: "Roles",
           url: "/a/roles",
         },
+        {
+          title: "Permissions",
+          url: "/a/permissions",
+        },
+        {
+          title: "Permission Groups",
+          url: "/a/permission-groups",
+        },
       ],
     },
     {

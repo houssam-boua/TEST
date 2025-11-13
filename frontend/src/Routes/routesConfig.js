@@ -5,6 +5,7 @@ import ValidatorLayout from "../Layout/ValidatorLayout";
 import ActivityHistory from "../Pages/ActivityHistory";
 import AdminAccueil from "../Pages/AdminAccueil";
 import AdminDepartements from "../Pages/AdminDepartements";
+import AdminPermissions from "../Pages/AdminPermissions";
 import AdminRoles from "../Pages/AdminRoles";
 import AdminUsers from "../Pages/AdminUsers";
 import ConsulteDocuments from "../Pages/ConsulteDocuments";
@@ -51,7 +52,8 @@ export const routesConfig = {
       { path: "/a/users", component: AdminUsers },
       { path: "/a/departments", component: AdminDepartements },
       { path: "/a/roles", component: AdminRoles },
-      {path: "/a/activity-history", component: ActivityHistory, breadcrumb: "Historic activity" },
+      { path: "/a/activity-history", component: ActivityHistory, breadcrumb: "Historic activity" },
+      {path: "/a/permissions", component: AdminPermissions },
     ],
   },
 
