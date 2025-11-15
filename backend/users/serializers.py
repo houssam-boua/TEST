@@ -8,21 +8,22 @@ from django.contrib.auth.models import Group, Permission
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
-    role = serializers.SlugRelatedField(queryset=Role.objects.all(), slug_field='id')
-    departement = serializers.SlugRelatedField(queryset=Departement.objects.all(), slug_field='id')
-
+    # keep accepting IDs on write, but return nested objects on read
+    role = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all())
+    departement = serializers.PrimaryKeyRelatedField(queryset=Departement.objects.all())
+ 
     class Meta:
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password', 'role', 'departement']
         extra_kwargs = {'password': {'write_only': True}}
-
+ 
     def validate(self, data):
         if not data.get("role"):
             raise serializers.ValidationError({"role": "This field is required."})
         if not data.get("departement"):
             raise serializers.ValidationError({"departement": "This field is required."})
         return data
-
+ 
     def create(self, validated_data):
         # Extract password and required foreign keys explicitly to ensure DB NOT NULL constraints are satisfied
         password = validated_data.pop("password", None)
@@ -41,6 +42,22 @@ class UserSerializer(serializers.ModelSerializer):
             **validated_data
         )
         return user
+
+    def to_representation(self, instance):
+        """
+        Return nested representations for role and departement while keeping
+        write interface as IDs (clients still POST/PUT with role and departement IDs).
+        """
+        data = super().to_representation(instance)
+        try:
+            data['role'] = RoleSerializer(instance.role).data if getattr(instance, 'role', None) else None
+        except Exception:
+            data['role'] = None
+        try:
+            data['departement'] = DepartementSerializer(instance.departement).data if getattr(instance, 'departement', None) else None
+        except Exception:
+            data['departement'] = None
+        return data
 
 class UserActionLogSerializer(serializers.ModelSerializer):
     user_info = serializers.SerializerMethodField(read_only=True)

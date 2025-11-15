@@ -126,7 +126,7 @@ class DashboardView(APIView):
     #         cache.set("dashboard_roles_count", count, timeout)
     #     return count
     
-    def get_workflow_count(use_cache: bool = True, timeout: int = CACHE_TIMEOUT) -> int:
+    def get_workflows_count(use_cache: bool = True, timeout: int = CACHE_TIMEOUT) -> int:
         """
         Return total number of workflows. Cached by default.
         """

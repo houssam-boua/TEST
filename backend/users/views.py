@@ -31,11 +31,68 @@ def generate_password(length=12):
 def check_username_exists(username):
     return User.objects.filter(username=username).exists()
 
-def send_password_email(user_email, username, password):
-    subject = 'Your Account Credentials'
-    message = f'Hello {username},\n\nYour account has been created.\nYour password is: {password}\n\nPlease change it after logging in.'
-    print(settings.DEFAULT_FROM_EMAIL)
-    send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user_email])
+def send_password_email(first_name, last_name, user_email, username, password):
+    site_name = getattr(settings, "SITE_NAME", "Our service")
+    frontend_url = getattr(settings, "FRONTEND_URL", None)
+    support_email = getattr(settings, "SUPPORT_EMAIL", settings.DEFAULT_FROM_EMAIL)
+
+    subject = f"[{site_name}] Your account has been created — temporary password"
+
+    plain_message = (
+        f"Hello {first_name} {last_name},\n\n"
+        f"An account has been created for you on {site_name}.\n\n"
+        f"Temporary credentials:\n"
+        f"  Username: {username}\n"
+        f"  Password: {password}\n\n"
+        "IMPORTANT: This password is temporary. Please change it immediately after logging in.\n\n"
+    )
+
+    if frontend_url:
+        change_pw_url = f"{frontend_url.rstrip('/')}/change-password"
+        plain_message += f"To change your password, visit: {change_pw_url}\n\n"
+    else:
+        plain_message += "To change your password, log in and go to your account settings.\n\n"
+
+    plain_message += (
+        f"If you did not request this account or need help, contact {support_email}.\n\n"
+        f"Best regards,\n{site_name} Team"
+    )
+
+    html_message = (
+        f"<p>Hello {first_name} {last_name},</p>"
+        f"<p>An account has been created for you on <strong>{site_name}</strong>.</p>"
+        f"<p><strong>Temporary credentials</strong></p>"
+        f"<ul><li><strong>Username:</strong> {username}</li>"
+        f"<li><strong>Temporary password:</strong> {password}</li></ul>"
+        f"<p><strong>Important:</strong> Change this temporary password immediately after logging in.</p>"
+    )
+
+    if frontend_url:
+        html_message += (
+            f"<p>Change your password here: "
+            f"<a href=\"{change_pw_url}\">{change_pw_url}</a></p>"
+        )
+    else:
+        html_message += "<p>Change your password from your account settings after logging in.</p>"
+
+    html_message += (
+        f"<p>If you did not request this account or need assistance, contact "
+        f"<a href=\"mailto:{support_email}\">{support_email}</a>.</p>"
+        f"<p>Best regards,<br/>{site_name} Team</p>"
+    )
+
+    sent = send_mail(
+        subject,
+        plain_message,
+        settings.DEFAULT_FROM_EMAIL,
+        [user_email],
+        html_message=html_message,
+    )
+
+    if sent:
+        print(f"Password email sent to {user_email}")
+    else:
+        print(f"Failed to send password email to {user_email}")
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -65,8 +122,8 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.validated_data['password'] = generate_password()
 
         user = serializer.save()
-
-        send_password_email(user.email, user.username, serializer.validated_data['password'])
+    
+        send_password_email(user.first_name, user.last_name, user.email, user.username, serializer.validated_data['password'])
 
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,

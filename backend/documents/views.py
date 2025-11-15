@@ -202,6 +202,7 @@ class CreateFolderSerializer(serializers.Serializer):
         500: openapi.Response('Server error'),
     }
 )
+
 @api_view(['POST'])
 def create_folder(request):
     """
