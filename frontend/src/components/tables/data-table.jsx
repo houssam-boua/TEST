@@ -245,6 +245,7 @@ export function DataTable({
   onAdd,
   title,
   rowActions, // optional global row actions (array or function(row) => actions)
+  toolbarActions = null, // optional: React node, array of nodes, or render function ({table}) => node
 }) {
   // Remove local state for data, always use the data prop
   const [rowSelection, setRowSelection] = React.useState({});
@@ -342,6 +343,23 @@ export function DataTable({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+          {/* Render any custom toolbar actions passed by the parent. Supports:
+              - a React node
+              - an array of React nodes
+              - a render function: ({ table }) => ReactNode
+          */}
+          {toolbarActions
+            ? Array.isArray(toolbarActions)
+              ? toolbarActions.map((act, i) => (
+                  <span key={i} className="inline-flex">
+                    {typeof act === "function" ? act({ table }) : act}
+                  </span>
+                ))
+              : typeof toolbarActions === "function"
+              ? toolbarActions({ table })
+              : toolbarActions
+            : null}
+
           {onAdd && (
             <Button variant="outline" size="sm" onClick={onAdd}>
               <IconPlus />

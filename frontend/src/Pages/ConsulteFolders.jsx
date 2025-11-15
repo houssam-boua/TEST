@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
 import useRelativeTime from "../Hooks/useRelativeTime";
 import { useGetDocumentsQuery } from "@/Slices/documentSlice";
@@ -18,13 +18,27 @@ import {
   FileText,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
-
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import CreateFolder from "../components/forms/create-folder";
+import { useCreateFolderMutation } from "../Slices/documentSlice";
+// (columns are defined inside component so we can use hooks/components safely)
 // (columns are defined inside component so we can use hooks/components safely)
 
 // folder rows will be built dynamically from documents
 
 const ConsulteFolders = () => {
   const { folderId } = useParams();
+  const [newPathOpen, setNewPathOpen] = React.useState(false);
+  const [newPathValue, setNewPathValue] = React.useState("");
+
+  const [createFolder, { createFolderLoading }] = useCreateFolderMutation();
   const currentPath = folderId ? decodeURIComponent(folderId) : ""; // '' means root
   const { data: documents = [] } = useGetDocumentsQuery();
   const [favorites, setFavorites] = React.useState({});
@@ -262,6 +276,20 @@ const ConsulteFolders = () => {
     defaultColumns[2],
   ];
 
+  function openNewPathDialog() {
+    setNewPathValue("");
+    setNewPathOpen(true);
+  }
+
+  const handleCreateFolder = async (data) => {
+    try {
+      await createFolder(data).unwrap();
+      setNewPathOpen(false);
+    } catch (err) {
+      console.error("Create folder failed", err);
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
@@ -274,8 +302,28 @@ const ConsulteFolders = () => {
           onAdd={() => {}}
           pageSize={20}
           rowActions={rowActions}
+          toolbarActions={
+            <Button variant="outline" size="sm" onClick={openNewPathDialog}>
+              New Path
+            </Button>
+          }
         />
       </div>
+
+      <Dialog open={newPathOpen} onOpenChange={setNewPathOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Path</DialogTitle>
+          </DialogHeader>
+
+          <CreateFolder
+            onCancel={() => setNewPathOpen(false)}
+            onCreate={handleCreateFolder}
+            loading={createFolderLoading}
+            prefix={currentPath ? currentPath + "/" : "/"}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

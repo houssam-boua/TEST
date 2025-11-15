@@ -92,6 +92,7 @@ import {
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { ListFilter } from "lucide-react";
 import { Avatarr } from "../blocks/avatarr";
+import StatusBadge from "../../Hooks/useStatusBadge";
 
 // schema removed (was TypeScript-only usage)
 
@@ -153,11 +154,14 @@ const columns = [
     cell: ({ row }) => (
       <div className="flex flex-row items-center ">
         <Avatarr fstName={row.original.user} lstName={row.original.user} />
-        <span className="text-muted-foreground text-sm pl-2"> {row.original.user}{" "}</span>
+        <span className="text-muted-foreground text-sm pl-2">
+          {" "}
+          {row.original.user}{" "}
+        </span>
       </div>
     ),
   },
-  
+
   {
     accessorKey: "event",
     header: "Event",
@@ -174,16 +178,7 @@ const columns = [
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => (
-      <Badge variant="outline" className="text-muted-foreground px-1.5">
-        {row.original.status === "Done" ? (
-          <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-        ) : (
-          <IconLoader />
-        )}
-        {row.original.status}
-      </Badge>
-    ),
+    cell: ({ row }) => <StatusBadge status={row.original.status} />,
   },
   {
     id: "actions",
@@ -327,14 +322,14 @@ export function HistoryDataTable({ data: initialData }) {
             }}
             className="w-64"
           />
-          <DropdownMenu>
+          <DropdownMenu >
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
                 <ListFilter /> Filters
                 <IconChevronDown className="ml-2" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="start" className="w-56 bg-muted border-border">
               <DropdownMenuCheckboxItem
                 checked={selectedStatuses.includes("Done")}
                 onCheckedChange={(val) => {
@@ -347,7 +342,13 @@ export function HistoryDataTable({ data: initialData }) {
                   });
                 }}
               >
-                Done
+                <span className="inline-flex w-fit shrink-0 items-center justify-start gap-1 px-2 py-0.5 text-xs font-medium whitespace-nowrap">
+                  <span
+                    className="bg-chart-2 size-2 rounded-full"
+                    aria-hidden="true"
+                  />
+                  Done
+                </span>
               </DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem
                 checked={selectedStatuses.includes("In Progress")}
@@ -555,12 +556,12 @@ function TableCellViewer({ item }) {
         </Button>
       </DrawerTrigger>
       <DrawerContent>
-          <DrawerHeader className="gap-1">
-            <DrawerTitle>{item.header}</DrawerTitle>
-            <DrawerDescription>
-              {useActionDescription(item) || ""}
-            </DrawerDescription>
-          </DrawerHeader>
+        <DrawerHeader className="gap-1">
+          <DrawerTitle>{item.header}</DrawerTitle>
+          <DrawerDescription>
+            {useActionDescription(item) || ""}
+          </DrawerDescription>
+        </DrawerHeader>
         <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
           {!isMobile && (
             <>

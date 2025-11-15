@@ -3,60 +3,60 @@
     "id": 1,
     "event": "Cover page",
     "user": "Cover page",
-    "status": "In Process"
+    "status": "pending"
   },
   {
     "id": 2,
     "event": "Table of contents",
     "user": "Table of contents",
-    "status": "Done"
+    "status": "approved"
   },
   {
     "id": 3,
     "event": "Executive summary",
     "user": "Narrative",
-    "status": "Done"
+    "status": "approved"
   },
   {
     "id": 4,
     "event": "Technical approach",
     "user": "Narrative",
-    "status": "Done"
+    "status": "approved"
   },
   {
     "id": 5,
     "event": "Design",
     "user": "Narrative",
-    "status": "In Process"
+    "status": "pending"
   },
   {
     "id": 6,
     "event": "Capabilities",
     "user": "Narrative",
-    "status": "In Process"
+    "status": "pending"
   },
   {
     "id": 7,
     "event": "Integration with existing systems",
     "user": "Narrative",
-    "status": "In Process"
+    "status": "pending"
   },
   {
     "id": 8,
     "event": "Innovation and Advantages",
     "user": "Narrative",
-    "status": "Done"
+    "status": "approved"
   },
   {
     "id": 9,
     "event": "Overview of EMR's Innovative Solutions",
     "user": "Technical content",
-    "status": "Done"
+    "status": "approved"
   },
   {
     "id": 10,
     "event": "Advanced Algorithms and Machine Learning",
     "user": "Narrative",
-    "status": "Done"
+    "status": "approved"
   }
 ]

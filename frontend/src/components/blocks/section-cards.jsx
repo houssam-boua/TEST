@@ -14,6 +14,12 @@ import {
   useGetDashboardUsersCountQuery,
   useGetDashboardDocumentsCountQuery,
 } from "@/Slices/dashboardSlices";
+import {
+  useGetDashboardDepartementsCountQuery,
+  useGetDashboardWorkflowsCountQuery,
+} from "../../Slices/dashboardSlices";
+import IconAvatar from "./icon-avatar";
+import { Building, FileText, Icon, Route, User } from "lucide-react";
 
 const safeExtractCount = (data) => {
   if (data == null) return null;
@@ -38,9 +44,18 @@ const SectionCards = () => {
   // Users count
   const { data: usersCountData, isLoading: loadingUsers } =
     useGetDashboardUsersCountQuery();
+
+  const { data: departementsCountData, isLoading: loadingDepartements } =
+    useGetDashboardDepartementsCountQuery();
+
+  const { data: workflowsCountData, isLoading: loadingWorkflows } =
+    useGetDashboardWorkflowsCountQuery();
+
   console.log("Users count data:", usersCountData);
   const usersCount = safeExtractCount(usersCountData);
   const docsCount = safeExtractCount(docsCountData);
+  const departementsCount = safeExtractCount(departementsCountData);
+  const workflowsCount = safeExtractCount(workflowsCountData);
 
   return (
     <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 px-4  *:data-[slot=card]:shadow-xs *:data-[slot=card]:bg-card *:data-[slot=card]:border-border lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
@@ -53,29 +68,38 @@ const SectionCards = () => {
             {loadingUsers ? "…" : usersCount ?? "-"}
           </CardTitle>
           <CardAction>
-            <Badge variant="secondary">Users</Badge>
+            <IconAvatar
+              icon={<User strokeWidth={1.25} />}
+              className="bg-chart-2/15 text-chart-2"
+            />
           </CardAction>
         </CardHeader>
       </Card>
       <Card className="@container/card ">
         <CardHeader>
-          <CardDescription>Units</CardDescription>
+          <CardDescription>Departement</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            3
+            {loadingDepartements ? "…" : departementsCount ?? "-"}
           </CardTitle>
           <CardAction>
-            <Badge variant="secondary">Teams</Badge>
+            <IconAvatar
+              icon={<Building strokeWidth={1.25} />}
+              className="bg-chart-3/15 text-chart-3"
+            />
           </CardAction>
         </CardHeader>
       </Card>
       <Card className="@container/card ">
         <CardHeader>
-          <CardDescription>Teams</CardDescription>
+          <CardDescription>Workflow</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            3
+            {loadingWorkflows ? "…" : workflowsCount ?? "-"}
           </CardTitle>
           <CardAction>
-            <Badge variant="secondary">Users</Badge>
+            <IconAvatar
+              icon={<Route strokeWidth={1.25} />}
+              className="bg-chart-5/10 text-chart-5"
+            />
           </CardAction>
         </CardHeader>
       </Card>
@@ -86,7 +110,10 @@ const SectionCards = () => {
             {loadingDocs ? "…" : docsCount ?? "-"}
           </CardTitle>
           <CardAction>
-            <Badge variant="secondary">File</Badge>
+            <IconAvatar
+              icon={<FileText strokeWidth={1.25} />}
+              className="bg-chart-1/15 text-chart-1"
+            />
           </CardAction>
         </CardHeader>
       </Card>
