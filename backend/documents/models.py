@@ -26,7 +26,7 @@ class Document(models.Model):
     # Use a relative upload_to string. The actual storage backend is configured via
     # DEFAULT_FILE_STORAGE in settings.py (e.g. MinIO backend). Avoid passing a
     # storage instance here because that can get serialized into migrations.
-    doc_path = models.FileField(upload_to='documents/', max_length=2048)
+    doc_path = models.FileField(upload_to='', max_length=2048)
 
     doc_status = models.CharField(max_length=50, choices=DOC_STATUS_CHOICES)
     doc_size = models.FloatField()

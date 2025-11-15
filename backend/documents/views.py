@@ -26,6 +26,7 @@ class DocumentListCreateView(APIView):
         # Extract file and custom path
         file = request.FILES.get('file')
         custom_path = request.data.get('doc_path', '')  # Folder prefix (e.g., "projects/2024")
+        print(f"DIAGNOSTIC: Received custom_path = '{custom_path}'")
 
         format_and_types = {
             'pdf': 'PDF',
@@ -91,7 +92,7 @@ class DocumentListCreateView(APIView):
             doc_format=doc_format,
             doc_size=doc_size,
             doc_description=request.data['doc_description'],
-            doc_comment=request.data.get('doc_comment', ''),
+            # doc_comment=request.data.get('doc_comment', ''),
         )
  
         # DIAGNOSTIC: Print storage backend type

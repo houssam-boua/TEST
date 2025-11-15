@@ -23,9 +23,6 @@ import string
 
 def generate_password(length=12):
     alphabet = string.ascii_letters + string.digits + string.punctuation
-
-    print(f"Generating password of length {length} using alphabet: {alphabet}")  # Debug log
-
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 def check_username_exists(username):
@@ -105,7 +102,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         request.data["username"] = request.data.get("username", "").replace(" ", "")
-
+        request.data["password"] = generate_password()
         # print(f"Received create user request with username: {request.data}")  # Debug log
 
         serializer = self.get_serializer(data=request.data)
@@ -119,12 +116,11 @@ class UserViewSet(viewsets.ModelViewSet):
                 "error": "Username already exists."
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        serializer.validated_data['password'] = generate_password()
+        # serializer.validated_data['password'] = generate_password()
 
         user = serializer.save()
     
-        send_password_email(user.first_name, user.last_name, user.email, user.username, serializer.validated_data['password'])
-
+        send_password_email(user.first_name, user.last_name, user.email, user.username, request.data['password'])
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="create",
