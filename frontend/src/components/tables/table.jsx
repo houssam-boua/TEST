@@ -11,7 +11,7 @@ import {
 import { ChevronRight } from "lucide-react";
 import { useGetDashboardDocumentsRecentQuery } from "@/Slices/dashboardSlices";
 import React from "react";
-import DepartmentBadge from "../../Hooks/useDepartmentBadge";
+import StatusBadge from "../../Hooks/useStatusBadge";
 import useTitleSplit from "../../Hooks/useTitleSplit";
 
 // Map API recent documents to table rows. Handles several possible response shapes.
@@ -47,28 +47,6 @@ const mapRecentToRows = (data) => {
     };
   });
 };
-
-function StatusBadge({ status }) {
-  const s = String(status || "")
-    .toLowerCase()
-    .trim();
-
-  // map normalized statuses to friendly names and hex colors
-  const map = {
-    approved: { name: "Approved", color: "#16A34A" }, // green-600
-    pending: { name: "Pending", color: "#F59E0B" }, // amber-500
-    rejected: { name: "Rejected", color: "#EF4444" }, // red-500
-    "in review": { name: "In Review", color: "#3B82F6" }, // blue-500
-    draft: { name: "Draft", color: "#6B7280" }, // gray-500
-  };
-
-  const entry = map[s] || {
-    name: (s && s[0]?.toUpperCase() + s.slice(1)) || "-",
-    color: "#6B7280",
-  };
-
-  return <DepartmentBadge color={entry.color} name={entry.name} />;
-}
 
 const TableDemo = () => {
   const { data, isLoading, isError, error } =
@@ -158,7 +136,9 @@ function TitleCell({ title }) {
   return (
     <>
       <TableCell className="font-medium ">{name}</TableCell>
-      <TableCell className="font-medium text-muted-foreground/60">{type || ""}</TableCell>
+      <TableCell className="font-medium text-muted-foreground/60">
+        {type || ""}
+      </TableCell>
     </>
   );
 }

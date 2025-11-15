@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { IconCalendar as CalendarIcon } from "@tabler/icons-react";
+import { ChartNoAxesColumn } from "lucide-react";
 
 export const description = "An interactive bar chart";
 
@@ -115,7 +116,10 @@ export function ChartBarInteractive() {
     <Card className="py-0 border-border">
       <CardHeader className="flex flex-col items-stretch border-b border-muted/95 !p-0 sm:flex-row">
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 pt-4 pb-3 sm:!py-0">
-          <CardTitle className="p-4">Activities by days</CardTitle>
+          <CardTitle className="p-4 flex flex-row items-center gap-2">
+            <ChartNoAxesColumn strokeWidth={1.5} size={16} stroke="var(--chart-4)"/>
+            Activity chart
+          </CardTitle>
         </div>
         <div className="flex items-center justify-end px-6 pt-4 pb-3 sm:!py-0">
           <Popover>

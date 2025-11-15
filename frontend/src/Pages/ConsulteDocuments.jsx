@@ -7,6 +7,8 @@ import {
   History,
   Download,
   Copy,
+  Folder,
+  ChevronRight,
   Share2,
   Share2Icon,
   SquareArrowOutUpRight,
@@ -17,10 +19,11 @@ import {
   Trash,
 } from "lucide-react";
 import { SheetDemo } from "../components/blocks/sheet";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
 import {
   useGetDocumentsQuery,
   useDeleteDocumentMutation,
+  useGetFolderContentQuery,
 } from "@/Slices/documentSlice";
 import { Button } from "@/components/ui/button";
 import useRelativeTime from "../Hooks/useRelativeTime";
@@ -109,11 +112,19 @@ const columns = [
     header: "Nom",
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
-        <FileText
-          strokeWidth={1.5}
-          size={16}
-          className="fill-primary stroke-white"
-        />
+        {row.original?.isFolder ? (
+          <Folder
+            strokeWidth={1.5}
+            size={16}
+            className="fill-primary stroke-none"
+          />
+        ) : (
+          <FileText
+            strokeWidth={1.5}
+            size={16}
+            className="fill-primary stroke-white"
+          />
+        )}
         <span>{row.original?.doc_title}</span>
       </div>
     ),
@@ -158,10 +169,23 @@ const ConsulteDocuments = () => {
     [folderId]
   );
   const { data: documents = [] } = useGetDocumentsQuery(queryArg);
+  const { data: folderData } = useGetFolderContentQuery();
   const [groups, setGroups] = React.useState([]);
   const [createOpen, setCreateOpen] = React.useState(false);
   const [DeleteOpen, setDeleteOpen] = React.useState(false);
   const [deleteLoading, setDeleteLoading] = React.useState(false);
+  const navigate = useNavigate();
+
+  const handleOpenFolder = React.useCallback(
+    (row) => {
+      const item = row?.original ?? row?.data ?? row ?? null;
+      const path = item?.doc_path || item?.path || null;
+      if (!path) return;
+      // navigate to a route that lists that folder; encode the folder path
+      navigate(`/documents/${encodeURIComponent(path)}`);
+    },
+    [navigate]
+  );
   const handleDetails = (row) => {
     // set the selected row data and open the sheet
     // Some table implementations pass either the table row wrapper or the raw item.
@@ -217,6 +241,17 @@ const ConsulteDocuments = () => {
   };
 
   const rowActions = (row) => [
+    // For folder rows, show a dedicated Open action first
+    ...(row?.original?.isFolder
+      ? [
+          {
+            key: "open",
+            icon: <ChevronRight className="w-4 h-4" />,
+            label: "Open",
+            onClick: () => handleOpenFolder(row),
+          },
+        ]
+      : []),
     {
       key: "details",
       icon: <Info className="w-4 h-4" />,
@@ -313,13 +348,65 @@ const ConsulteDocuments = () => {
     }
   }, [documents]);
 
+  // Build folder rows from folder-contents API for display in the table
+  const folderRows = React.useMemo(() => {
+    const fs = folderData?.folders || [];
+    return fs.map((f) => ({
+      id: `folder-${f.path}`,
+      doc_title: f.name,
+      doc_path: f.path,
+      file_size: f.size,
+      isFolder: true,
+      folder_count: f.count,
+    }));
+  }, [folderData]);
+
+  // Combine folders first, then document rows
+  const tableRows = React.useMemo(() => {
+    return [...folderRows, ...(groups || [])];
+  }, [folderRows, groups]);
+
+  // Add an inline 'Open' column for folder rows (not part of the three-dots actions)
+  const tableColumns = React.useMemo(() => {
+    const openCol = {
+      id: "open",
+      header: "",
+      cell: ({ row }) => {
+        if (!row?.original?.isFolder) return null;
+        const idOrPath = row.original?.doc_path || row.original?.id;
+        return (
+          <RouterLink
+            to={`/a/consulter/${encodeURIComponent(idOrPath)}/`}
+            className="text-primary-"
+            rel="noopener noreferrer"
+          >
+            <Button variant="secondary" className="w-6 h-6">
+              <ChevronRight
+                strokeWidth={1.5}
+                size={20}
+                className="stroke-muted-foreground/50"
+              />
+            </Button>
+          </RouterLink>
+        );
+      },
+    };
+
+    // Insert the open column after the first two default columns
+    return [
+      ...combinedColumns.slice(0, 2),
+      openCol,
+      ...combinedColumns.slice(2),
+    ];
+  }, []);
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
         <DocumentsTable
           title={"Documents"}
-          columns={combinedColumns}
-          data={groups}
+          columns={tableColumns}
+          data={tableRows}
           onEdit={() => {}}
           onDelete={() => {}}
           onAdd={handleAdd}

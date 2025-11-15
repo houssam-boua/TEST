@@ -4,7 +4,9 @@ import CostumeTableHeader from "../components/collection/costume-table-header";
 import CollapsibleCard from "../components/collection/collapsible-card";
 import { useGetTasksQuery } from "@/Slices/taskSlice";
 import { useGetWorkflowsQuery } from "@/Slices/workflowSlice";
-
+import { Card, CardHeader } from "../components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import TaskCard from "../components/blocks/task-card";
 const ConsulteTaks = () => {
   const { data: tasksData = {} } = useGetTasksQuery();
   const { data: workflowsData = {} } = useGetWorkflowsQuery();
@@ -27,52 +29,42 @@ const ConsulteTaks = () => {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4  space-y-4">
-        <CostumeCardTitle title="Tâches en cours" />
-        <CostumeTableHeader />
+      <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4  ">
+        <CostumeCardTitle title="Tasks" />
+        {/* Render one TaskCard per fetched task */}
+        <Card className="p-4 border-border">
+          <div className="space-y-3 w-full">
+            {tasks.length === 0 ? (
+              <div className="text-muted-foreground/80">No tasks found</div>
+            ) : (
+              tasks.map((t) => {
+                const id = t.id ?? t.pk ?? t._id ?? "";
+                const created_at =
+                  t.created_at ?? t.createdAt ?? t.created_at ?? "";
+                const task_name = t.task_name ?? t.name ?? t.title ?? "";
+                const task_assigned_to =
+                  t.task_assigned_to ?? t.assigned_to ?? t.validator ?? "";
+                const task_priorite = t.task_priorite ?? t.priority ?? "";
+                const task_statut = t.task_statut ?? t.status ?? t.statut ?? "";
+                const task_date_echeance =
+                  t.task_date_echeance ?? t.due_date ?? t.dueDate ?? "";
 
-        {/* Render a CollapsibleCard per task */}
-        {tasks.map((task) => {
-          const workflowId =
-            task.task_workflow &&
-            (typeof task.task_workflow === "object"
-              ? task.task_workflow.id || task.task_workflow.pk
-              : task.task_workflow);
-          const workflow =
-            workflowsById[workflowId] ||
-            (typeof task.task_workflow === "object"
-              ? task.task_workflow
-              : null);
-          const assigned =
-            task.task_assigned_to &&
-            (typeof task.task_assigned_to === "object"
-              ? `${task.task_assigned_to.first_name || ""} ${
-                  task.task_assigned_to.last_name || ""
-                }`.trim()
-              : String(task.task_assigned_to));
-          const step = stepMap[task.task_statut] || 1;
-          const date = task.task_date_echeance
-            ? new Date(task.task_date_echeance).toLocaleString()
-            : "";
-
-          return (
-            <CollapsibleCard
-              key={task.id || task.pk || `${task.task_name}-${workflowId}`}
-              title={task.task_name}
-              defaultOpen={false}
-              currentStep={step}
-              stepDescriptions={workflow?.nom || assigned || ""}
-              stepDate={date}
-              className="border-b-2 border-muted"
-            >
-              <div className="px-4 py-2 text-sm text-muted-foreground">
-                <div>Priority: {task.task_priorite}</div>
-                <div>Workflow: {workflow?.nom || workflowId}</div>
-                <div>Assigned to: {assigned || "-"}</div>
-              </div>
-            </CollapsibleCard>
-          );
-        })}
+                return (
+                  <TaskCard
+                    key={id || Math.random()}
+                    id={id}
+                    created_at={created_at}
+                    task_name={task_name}
+                    task_assigned_to={task_assigned_to}
+                    task_priorite={task_priorite}
+                    task_statut={task_statut}
+                    task_date_echeance={task_date_echeance}
+                  />
+                );
+              })
+            )}
+          </div>
+        </Card>
       </div>
     </div>
   );

@@ -59,6 +59,22 @@ export const dashboardSlice = apiSlice.injectEndpoints({
       query: () => ({ url: "/api/dashboard/validators/count/", method: "GET" }),
       providesTags: ["Dashboard"],
     }),
+
+    getDashboardDepartementsCount: builder.query({
+      query: () => ({
+        url: "/api/dashboard/departements/count/",
+        method: "GET",
+      }),
+      providesTags: ["Dashboard"],
+    }),
+
+    getDashboardWorkflowsCount: builder.query({
+      query: () => ({
+        url: "/api/dashboard/workflows/count/",
+        method: "GET",
+      }),
+      providesTags: ["Dashboard"],
+    }),
   }),
   overrideExisting: false,
 });
@@ -71,4 +87,6 @@ export const {
   useInvalidateDashboardCacheMutation,
   useGetDashboardUsersCountQuery,
   useGetDashboardValidatorsCountQuery,
+  useGetDashboardDepartementsCountQuery,
+  useGetDashboardWorkflowsCountQuery,
 } = dashboardSlice;

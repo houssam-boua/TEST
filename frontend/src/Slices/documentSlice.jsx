@@ -39,9 +39,22 @@ export const documentSlice = apiSlice.injectEndpoints({
       invalidatesTags: ["Document"],
     }),
 
-    
+    createFolder: builder.mutation({
+      query: (body) => ({
+        url: "/api/documents/create-folder/",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Document"],
+    }),
 
-    
+    getFolderContent: builder.query({
+      query: () => ({
+        url: "/api/documents/folder-contents/",
+        method: "GET",
+      }),
+      providesTags: ["Document"],
+    }),
   }),
   overrideExisting: false,
 });
@@ -52,5 +65,6 @@ export const {
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
   useDeleteDocumentMutation,
-  useGetRecentDocumentsQuery,
+  useCreateFolderMutation,
+  useGetFolderContentQuery
 } = documentSlice;
