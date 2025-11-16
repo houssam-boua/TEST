@@ -59,6 +59,11 @@ class UserSerializer(serializers.ModelSerializer):
             data['departement'] = None
         return data
 
+class UserMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name']
+
 class UserActionLogSerializer(serializers.ModelSerializer):
     user_info = serializers.SerializerMethodField(read_only=True)
     target = serializers.SerializerMethodField(read_only=True)

@@ -1,5 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
+from rest_framework import status
+from rest_framework.response import Response
 from .models import Workflow, Task
 from .serializers import WorkflowSerializer, TaskSerializer
 
@@ -12,7 +14,9 @@ class WorkflowViewSet(viewsets.ModelViewSet):
     queryset = Workflow.objects.all()
     serializer_class = WorkflowSerializer
 
-    def create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         workflow = serializer.save()
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
@@ -21,7 +25,8 @@ class WorkflowViewSet(viewsets.ModelViewSet):
             object_id=workflow.id,
             extra_info={"nom": workflow.nom},
         )
-
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
     def update(self, serializer):
         workflow = serializer.save()
         UserActionLog.objects.create(
@@ -59,7 +64,9 @@ class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
 
-    def create(self, serializer):
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         task = serializer.save()
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
@@ -68,6 +75,7 @@ class TaskViewSet(viewsets.ModelViewSet):
             object_id=task.id,
             extra_info={"task_name": task.task_name},
         )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def update(self, serializer):
         task = serializer.save()
