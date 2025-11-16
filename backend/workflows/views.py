@@ -2,6 +2,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.decorators import action
 from .models import Workflow, Task
 from .serializers import WorkflowSerializer, TaskSerializer
 
@@ -26,6 +27,17 @@ class WorkflowViewSet(viewsets.ModelViewSet):
             extra_info={"nom": workflow.nom},
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], url_path='tasks')
+    def tasks(self, request, pk=None):
+        """
+        Return tasks for this workflow.
+        Accessible at: GET /workflows/{pk}/tasks/
+        """
+        workflow = self.get_object()
+        tasks = Task.objects.filter(task_workflow=workflow)
+        serializer = TaskSerializer(tasks, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
         
     def update(self, serializer):
         workflow = serializer.save()
