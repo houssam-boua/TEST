@@ -14,6 +14,18 @@ class DocumentSerializer(serializers.ModelSerializer):
         model = Document
         fields = "__all__"
 
+class DocumentMiniSerializer(serializers.ModelSerializer):
+    '''Minimal Document serializer for nested representations'''
+    doc_path = serializers.SerializerMethodField(read_only=True)
+
+    def get_doc_path(self, obj):
+        # Return only the relative file path, not the full URL
+        return str(obj.doc_path)
+    
+    class Meta:
+        model = Document
+        fields = ['id', 'doc_title', 'doc_path']
+
 class DocumentVersionSerializer(serializers.ModelSerializer):
     '''Serializer for DocumentVersion model'''
     class Meta:

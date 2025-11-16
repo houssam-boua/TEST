@@ -2,15 +2,41 @@ from rest_framework import serializers
 from .models import Workflow, Task
 from users.models import User
 from users.serializers import UserMiniSerializer
+from documents.models import Document
+from documents.serializers import DocumentMiniSerializer
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
 class WorkflowSerializer(serializers.ModelSerializer):
     '''Workflow serializer for serializing workflow data'''
+    document = serializers.PrimaryKeyRelatedField(queryset=Document.objects.all())\
+    
     class Meta:
         model = Workflow
-        fields = "__all__"
+        fields = [
+            "id",
+            "nom",
+            "description",
+            "etat",
+            "document",
+            "created_at",
+            "updated_at",
+        ]
+    
+    def to_representation(self, instance):
+        """Return nested objects for `task_assigned_to` and `task_workflow`
+        while keeping the fields writable as PKs for POST/PUT.
+        """
+        ret = super().to_representation(instance)
+
+        # Replace the PK values with nested serialized data (read-only)
+        # Protect against None values
+        if instance.document is not None:
+            ret['document'] = DocumentMiniSerializer(instance.document).data
+        else:
+            ret['document'] = None
+        return ret
 
 class TaskSerializer(serializers.ModelSerializer):
     """Task serializer for serializing task data"""
