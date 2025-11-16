@@ -29,7 +29,7 @@ def check_username_exists(username):
     return User.objects.filter(username=username).exists()
 
 def send_password_email(first_name, last_name, user_email, username, password):
-    site_name = getattr(settings, "SITE_NAME", "Our service")
+    site_name = getattr(settings, "SITE_NAME", "SmartDocs Pro")
     frontend_url = getattr(settings, "FRONTEND_URL", None)
     support_email = getattr(settings, "SUPPORT_EMAIL", settings.DEFAULT_FROM_EMAIL)
 
