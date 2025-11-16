@@ -11,10 +11,11 @@ class UserSerializer(serializers.ModelSerializer):
     # keep accepting IDs on write, but return nested objects on read
     role = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all())
     departement = serializers.PrimaryKeyRelatedField(queryset=Departement.objects.all())
- 
+    # allow assigning groups via API (list of group PKs)
+    groups = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all(), many=True, required=False)
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password', 'role', 'departement']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password', 'role', 'departement', 'groups']
         extra_kwargs = {'password': {'write_only': True}}
  
     def validate(self, data):
@@ -29,6 +30,8 @@ class UserSerializer(serializers.ModelSerializer):
         password = validated_data.pop("password", None)
         role = validated_data.pop("role")
         departement = validated_data.pop("departement")
+        # pop groups if present (PrimaryKeyRelatedField returns Group instances)
+        groups = validated_data.pop("groups", [])
         # Remove username/email from validated_data to avoid passing them twice
         username = validated_data.pop("username", None)
         email = validated_data.pop("email", None)
@@ -41,6 +44,9 @@ class UserSerializer(serializers.ModelSerializer):
             departement=departement,
             **validated_data
         )
+        # assign any provided groups after user creation
+        if groups:
+            user.groups.set(groups)
         return user
 
     def to_representation(self, instance):
