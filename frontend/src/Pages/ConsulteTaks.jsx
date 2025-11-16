@@ -42,8 +42,19 @@ const ConsulteTaks = () => {
                 const created_at =
                   t.created_at ?? t.createdAt ?? t.created_at ?? "";
                 const task_name = t.task_name ?? t.name ?? t.title ?? "";
-                const task_assigned_to =
+                const rawAssigned =
                   t.task_assigned_to ?? t.assigned_to ?? t.validator ?? "";
+                let task_assigned_to = "";
+                if (rawAssigned && typeof rawAssigned === "object") {
+                  task_assigned_to =
+                    (rawAssigned.first_name || rawAssigned.firstName
+                      ? `${rawAssigned.first_name || rawAssigned.firstName} ${
+                          rawAssigned.last_name || rawAssigned.lastName || ""
+                        }`.trim()
+                      : rawAssigned.username || rawAssigned.email || "") || "";
+                } else {
+                  task_assigned_to = rawAssigned;
+                }
                 const task_priorite = t.task_priorite ?? t.priority ?? "";
                 const task_statut = t.task_statut ?? t.status ?? t.statut ?? "";
                 const task_date_echeance =

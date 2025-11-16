@@ -16,6 +16,7 @@ import CreateDocument from "../Pages/CreateDocument";
 import CreateDocumentsBatch from "../Pages/CreateDocumentsBatch";
 import CreateWorkflow from "../Pages/CreateWorkflow";
 import LoginPage from "../Pages/LoginPage";
+import PermissionGroups from "../Pages/PermissionGroups";
 import UnauthorizedPage from "../Pages/UnauthorizedPage";
 
 export const routesConfig = {
@@ -36,7 +37,11 @@ export const routesConfig = {
     layout: AdminLayout,
     requiredRoles: ["admin"],
     routes: [
-      { path: "/a/acceuil", component: AdminAccueil, breadcrumb: "Accuefgbdil" },
+      {
+        path: "/a/acceuil",
+        component: AdminAccueil,
+        breadcrumb: "Accuefgbdil",
+      },
       { path: "/a/consulter", component: ConsulteFolders },
       {
         path: "/a/consulter/:folderId/documents/",
@@ -52,8 +57,13 @@ export const routesConfig = {
       { path: "/a/users", component: AdminUsers },
       { path: "/a/departments", component: AdminDepartements },
       { path: "/a/roles", component: AdminRoles },
-      { path: "/a/activity-history", component: ActivityHistory, breadcrumb: "Historic activity" },
-      {path: "/a/permissions", component: AdminPermissions },
+      {
+        path: "/a/activity-history",
+        component: ActivityHistory,
+        breadcrumb: "Historic activity",
+      },
+      { path: "/a/permissions", component: AdminPermissions },
+      { path: "/a/permission-groups", component: PermissionGroups },
     ],
   },
 

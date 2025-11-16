@@ -21,11 +21,11 @@ import EditDepartement from "../components/forms/edit-departement";
 
 const columns = [
   { id: "id", accessorKey: "id", header: "ID" },
-  { id: "dep_name", accessorKey: "dep_name", header: "Nom" },
+  { id: "dep_name", accessorKey: "dep_name", header: "Name" },
   {
     id: "dep_color",
     accessorKey: "dep_color",
-    header: "Couleur",
+    header: "Color",
     cell: ({ row }) => {
       const color = row?.original?.dep_color;
       const name = row?.original?.dep_name;
@@ -33,11 +33,11 @@ const columns = [
     },
   },
   {
-    id: "created_at",
-    accessorKey: "created_at",
-    header: "Créé le",
+    id: "createdAt",
+    accessorKey: "createdAt",
+    header: "Created",
     cell: ({ row }) => {
-      const d = row?.original?.created_at;
+      const d = row?.original?.createdAt;
       if (!d) return "-";
       return new Date(d).toLocaleDateString("fr-FR");
     },
@@ -133,7 +133,7 @@ const AdminDepartements = () => {
           onAdd={handleAdd}
           rowActions={rowActions}
           pageSize={20}
-          title={"Départements"}
+          title={"Departements"}
         />
 
         <Dialog open={createOpen} onOpenChange={(v) => setCreateOpen(v)}>
