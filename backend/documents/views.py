@@ -40,7 +40,7 @@ class DocumentListCreateView(APIView):
         }
         # Validate required fields
         required_fields = [
-            "file", "doc_category", "doc_status", "doc_owner", 
+            "file", "doc_path", "doc_status", "doc_owner", 
             "doc_departement", "doc_description"
         ]
         for field in required_fields:
@@ -182,6 +182,34 @@ class MinioFileListView(APIView):
         all_directories = get_all_directories()
         return Response({
             "folders": all_directories
+        }, status=status.HTTP_200_OK)
+    
+class FolderDocumentsView(APIView):
+    """
+    API endpoint to list documents under a specific folder (including nested subfolders).
+    Provide the folder path as a query parameter: ?folder=path/to/folder
+
+    Example:
+      GET /api/documents/by-folder/?folder=projects/2024/reports
+    """
+    def get(self, request):
+        folder = request.query_params.get('folder', '').strip()
+        if not folder:
+            return Response(
+                {'error': 'Missing folder query parameter. Use ?folder=path/to/folder'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Normalize path: remove leading/trailing slashes and convert backslashes
+        folder = folder.strip('/').replace('\\', '/')
+        prefix = f"{folder}/" if not folder.endswith('/') else folder
+
+        # Query documents whose stored path starts with the folder prefix
+        documents = Document.objects.filter(doc_path__startswith=prefix)
+        serializer = DocumentSerializer(documents, many=True)
+        return Response({
+            'folder': folder,
+            'documents': serializer.data
         }, status=status.HTTP_200_OK)
     
 class DocumentVersionViewSet(viewsets.ModelViewSet):
