@@ -48,9 +48,16 @@ export function LoginForm({ className, ...props }) {
   return (
     <div className={cn("flex flex-col gap-6 ", className)} {...props}>
       <Card className="border-4 border-border ">
-        <CardHeader className="items-center">
-          <CardTitle>Connexion</CardTitle>
-          <CardDescription>Votre espace document intelligente</CardDescription>
+        <CardHeader className="flex flex-col items-center gap-4 text-center">
+          <img
+            src="/public/full-logo-primary.svg"
+            alt="Company Logo"
+            className="mx-auto"
+          />
+          <CardTitle className=" text-2xl">Login</CardTitle>
+          <CardDescription className="pt-0 text-base">
+            Your smart document space
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="p-6 md:p-8" onSubmit={handleSubmit}>
@@ -93,7 +100,7 @@ export function LoginForm({ className, ...props }) {
                 <Button type="submit" disabled={loading}>
                   {loading ? "Connexion..." : "Login"}
                 </Button>
-                
+
                 <FieldDescription className="text-center">
                   Don&apos;t have an account? <a href="#">Sign up</a>
                 </FieldDescription>

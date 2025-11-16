@@ -18,7 +18,7 @@ const sectionMap = [
 
   // Documents section
   { prefix: "/a/creer-document", title: "New document" },
-  { prefix: "/a/consulter", title: "Documents" },
+  { prefix: "/a/consulter", title: "Documents list" },
   { prefix: "/a/consulter/:id/documents", title: "Document details" },
   { prefix: "/a/quantum", title: "Documents" },
 
@@ -34,18 +34,19 @@ const sectionMap = [
   { prefix: "/a/scan", title: "OCR" },
 
   // History section
-  { prefix: "/a/activity-history", title: "History" },
+  { prefix: "/a/activity-history", title: "History activity" },
   { prefix: "/a/general", title: "History" },
   { prefix: "/a/team", title: "History" },
 
   // User management section
   { prefix: "/a/users", title: "User Management" },
   { prefix: "/a/user-management", title: "User Management" },
-
+  { prefix: "/a/departments", title: "Departments" },
+  { prefix: "/a/roles", title: "Roles" },
   // Permissions section
   { prefix: "/a/permissions", title: "Permissions" },
-  { prefix: "/a/roles", title: "Permissions" },
-
+  { prefix: "/a/permission-groups", title: "Permissions groups" },
+  {},
 ];
 
 function getSectionForPath(pathname) {

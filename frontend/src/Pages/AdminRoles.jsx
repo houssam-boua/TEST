@@ -20,11 +20,11 @@ import { Pencil, Trash2 } from "lucide-react";
 
 const columns = [
   { id: "id", accessorKey: "id", header: "ID" },
-  { id: "role_name", accessorKey: "role_name", header: "Nom du rôle" },
+  { id: "role_name", accessorKey: "role_name", header: "Role name" },
   {
     id: "role_color",
     accessorKey: "role_color",
-    header: "Couleur",
+    header: "Color",
     cell: ({ row }) => {
       const color = row?.original?.role_color;
       const name = row?.original?.role_name;
@@ -130,9 +130,9 @@ const AdminRoles = () => {
         <Dialog open={createOpen} onOpenChange={(v) => setCreateOpen(v)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Créer un rôle</DialogTitle>
+              <DialogTitle>Create Role</DialogTitle>
               <DialogDescription>
-                Remplissez les informations du rôle.
+                Fill in the role information.
               </DialogDescription>
             </DialogHeader>
             <CreateRoleForm

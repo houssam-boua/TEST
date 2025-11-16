@@ -26,7 +26,7 @@ import {
 import { NavMain } from "@/components/blocks/nav-main";
 import { NavProjects } from "@/components/blocks/nav-projects";
 import { NavUser } from "@/components/blocks/nav-user";
-import { TeamSwitcher } from "@/components/blocks/team-switcher";
+// logo/header will use Avatarr component instead of the TeamSwitcher
 import {
   Sidebar,
   SidebarContent,
@@ -34,17 +34,18 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { Avatarr } from "./avatarr";
 
 // This is sample data.
 const data = {
   user: {
     name: "shadcn",
     email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+    avatar: <Avatarr name="shadcn" size={32} />,
   },
   teams: [
     {
-      name: "Acme Inc",
+      name: "Manager Area",
       logo: GalleryVerticalEnd,
       plan: "Enterprise",
     },
@@ -61,7 +62,7 @@ const data = {
   ],
   navMain: [
     {
-      title: "Accueill",
+      title: "Home",
       url: "#",
       icon: House,
       isActive: true,
@@ -78,7 +79,7 @@ const data = {
       icon: FileText,
       items: [
         {
-          title: "Créer",
+          title: "New",
           url: "/a/creer-documents",
         },
         {
@@ -93,7 +94,7 @@ const data = {
       icon: Workflow,
       items: [
         {
-          title: "Créer",
+          title: "New",
           url: "/a/creer-workflow",
         },
         {
@@ -102,29 +103,29 @@ const data = {
         },
       ],
     },
-    {
-      title: "OCR",
-      url: "#",
-      icon: ScanEye,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
+    // {
+    //   title: "OCR",
+    //   url: "#",
+    //   icon: ScanEye,
+    //   items: [
+    //     {
+    //       title: "Introduction",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Get Started",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Tutorials",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Changelog",
+    //       url: "#",
+    //     },
+    //   ],
+    // },
     {
       title: "History",
       url: "#",
@@ -134,18 +135,18 @@ const data = {
           title: "Acitivity Log",
           url: "/a/activity-history",
         },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
+        // {
+        //   title: "Team",
+        //   url: "#",
+        // },
+        // {
+        //   title: "Billing",
+        //   url: "#",
+        // },
+        // {
+        //   title: "Limits",
+        //   url: "#",
+        // },
       ],
     },
     {
@@ -176,29 +177,29 @@ const data = {
         },
       ],
     },
-    {
-      title: "Permissions",
-      url: "#",
-      icon: Lock,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
+    // {
+    //   title: "Permissions",
+    //   url: "#",
+    //   icon: Lock,
+    //   items: [
+    //     {
+    //       title: "General",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Team",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Billing",
+    //       url: "#",
+    //     },
+    //     {
+    //       title: "Limits",
+    //       url: "#",
+    //     },
+    //   ],
+    // },
   ],
   // projects: [
   //   {
@@ -223,14 +224,16 @@ const AppSidebar = ({ ...props }) => {
   return (
     <Sidebar collapsible="icon" {...props} className="bg-sidebar-primary">
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <div className="flex items-center gap-3 px-3 py-2">
+        <img src="/full-logo-primary.svg" alt="Docarea Logo" className=""/>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
         {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

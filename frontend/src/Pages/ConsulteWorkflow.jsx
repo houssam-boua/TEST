@@ -198,9 +198,9 @@ const ConsulteWorkflow = () => {
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Créer un workflow</DialogTitle>
+              <DialogTitle>Create a workflow</DialogTitle>
               <DialogDescription>
-                Remplissez les informations pour ajouter un nouveau workflow.
+                Fill in the information to add a new workflow.
               </DialogDescription>
             </DialogHeader>
             <CreateWorkflowForm

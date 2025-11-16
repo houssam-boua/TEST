@@ -133,7 +133,10 @@ const columns = [
     accessorKey: "role",
     header: "Role",
     cell: ({ row }) => {
-      return <RoleBadge role={row.original.role} />;
+      // support nested role object: { role_name, role_color }
+      const roleObj = row.original.role || {};
+      const roleName = roleObj.role_name ?? roleObj.role ?? roleObj;
+      return <RoleBadge role={roleName} />;
     },
   },
   {
@@ -141,8 +144,11 @@ const columns = [
     accessorKey: "departement",
     header: "Department",
     cell: ({ row }) => {
-      const color = row.original.departement_color;
-      const name = row?.original?.departement;
+      // support nested departement object: { dep_name, dep_color }
+      const depObj = row.original.departement || {};
+      const color =
+        depObj.dep_color ?? row.original.departement_color ?? undefined;
+      const name = depObj.dep_name ?? row.original.departement ?? undefined;
       return <DepartmentBadge color={color} name={name} />;
     },
   },
