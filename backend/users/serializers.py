@@ -130,9 +130,63 @@ class DepartementSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class PermissionSerializer(serializers.ModelSerializer):
+    action = serializers.SerializerMethodField(read_only=True)
+    target = serializers.SerializerMethodField(read_only=True)
+    label = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Permission
-        fields = "__all__"
+        # include core permission fields and friendly helpers
+        fields = [
+            'id', 'name', 'codename', 'content_type', 'action', 'target', 'label'
+        ]
+
+    def get_action(self, obj):
+        """Derive a friendly action from the permission codename.
+
+        Common Django codenames follow the pattern: add_model, change_model, delete_model, viewmodel.
+        We map those to create/update/delete/view. For custom codenames we fall back to the first
+        token (before underscore) when available.
+        """
+        codename = getattr(obj, 'codename', '') or ''
+        # Defensive handling: avoid ValueError from using an empty separator in split.
+        # Split on '_' (Django codenames use underscore) and handle missing/atypical values.
+        if not codename:
+            # Return empty action when codename is missing to avoid breaking callers
+            return ''
+        if '_' in codename:
+            verb = codename.split('_', 1)[0].lower()
+        else:
+            # No underscore present: treat the whole codename as the action
+            verb = codename.lower()
+        mapping = {
+            'add': 'create',
+            'change': 'update',
+            'delete': 'delete',
+            'view': 'view',
+        }
+        return mapping.get(verb, verb)
+
+    def get_target(self, obj):
+        """Return the model name targeted by this permission (e.g. 'document', 'workflow')."""
+        try:
+            ct = getattr(obj, 'content_type', None)
+            if ct is None:
+                return None
+            # return the model string; also include app_label if helpful
+            model = getattr(ct, 'model', None)
+            app = getattr(ct, 'app_label', None)
+            if app and model:
+                return f"{app}.{model}"
+            return model
+        except Exception:
+            return None
+    def get_label(self, obj):
+        """Return a short human label like 'can create document'."""
+        action = self.get_action(obj) or 'perform'
+        target = self.get_target(obj) or ''
+        # use nicer phrasing
+        return f"can {action} {target}".strip()
 
 class GroupSerializer(serializers.ModelSerializer):
     permissions = serializers.ListField(
