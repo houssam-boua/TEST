@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useGetDepartementsQuery } from "@/Slices/departementSlice";
+import { useGetFoldersQuery } from "@/Slices/documentSlice";
 import {
   Trash2,
   ChevronDown,
@@ -30,6 +31,7 @@ import {
  */
 export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
   const { data: departements } = useGetDepartementsQuery();
+  const { data: folders } = useGetFoldersQuery();
   const [items, setItems] = useState([]);
   const [error, setError] = useState(null);
 
@@ -51,7 +53,7 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
       id: `${Date.now()}_${f.name}`,
       file: f,
       doc_title: "",
-      doc_category: "Technical",
+      doc_path: "",
       doc_status: "pending",
       doc_departement: departements?.[0]?.id ? String(departements[0].id) : "",
       doc_description: "",
@@ -88,14 +90,14 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
         ({
           file,
           doc_title,
-          doc_category,
+          doc_path,
           doc_status,
           doc_departement,
           doc_description,
         }) => ({
           file,
           doc_title,
-          doc_category,
+          doc_path,
           doc_status,
           doc_departement,
           doc_description,
@@ -104,6 +106,7 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
 
       await onSubmit(payload, { setItems });
     } catch (err) {
+      console.error("BatchCreateDocumentsForm submit error:", err);
       setError(err?.message || String(err));
       throw err;
     }
@@ -249,11 +252,11 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
                           </Select>
                         </div>
                         <div>
-                          <label className="block text-sm mb-1">Category</label>
+                          <label className="block text-sm mb-1">Folder</label>
                           <Select
-                            value={it.doc_category}
+                            value={it.doc_path}
                             onValueChange={(v) =>
-                              updateItem(it.id, { doc_category: v })
+                              updateItem(it.id, { doc_path: v })
                             }
                           >
                             <SelectTrigger className="w-full">
@@ -261,15 +264,19 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectGroup>
-                                <SelectLabel>Catégories</SelectLabel>
-                                <SelectItem value="Technical">
-                                  Technique
-                                </SelectItem>
-                                <SelectItem value="Financial">
-                                  Financier
-                                </SelectItem>
-                                <SelectItem value="HR">RH</SelectItem>
-                                <SelectItem value="Legal">Légal</SelectItem>
+                                <SelectLabel>Folders</SelectLabel>
+                                {(folders?.folders || []).length === 0 ? (
+                                  <SelectItem value="">Root</SelectItem>
+                                ) : (
+                                  (folders?.folders || []).map((f) => (
+                                    <SelectItem
+                                      key={String(f)}
+                                      value={String(f)}
+                                    >
+                                      {String(f)}
+                                    </SelectItem>
+                                  ))
+                                )}
                               </SelectGroup>
                             </SelectContent>
                           </Select>

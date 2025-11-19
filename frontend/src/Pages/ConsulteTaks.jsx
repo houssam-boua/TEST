@@ -7,8 +7,11 @@ import { useGetWorkflowsQuery } from "@/Slices/workflowSlice";
 import { Card, CardHeader } from "../components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import TaskCard from "../components/blocks/task-card";
+import { useGetTasksofWorkflowQuery } from "../Slices/taskSlice";
+import { useParams } from "react-router-dom";
 const ConsulteTaks = () => {
-  const { data: tasksData = {} } = useGetTasksQuery();
+  const { workflowId } = useParams();
+  const { data: tasksData = {} } = useGetTasksofWorkflowQuery(workflowId);
   const { data: workflowsData = {} } = useGetWorkflowsQuery();
 
   const tasks = Array.isArray(tasksData) ? tasksData : tasksData?.results || [];

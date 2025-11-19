@@ -36,6 +36,14 @@ export const taskSlice = apiSlice.injectEndpoints({
       query: (id) => ({ url: `/api/tasks/${id}/`, method: "DELETE" }),
       invalidatesTags: ["Task"],
     }),
+
+    getTasksofWorkflow: builder.query({
+      query: (workflowId) => ({
+        url: `/api/workflows/${workflowId}/tasks/`,
+        method: "GET",
+      }),
+      providesTags: ["Task"],
+    }),
   }),
   overrideExisting: false,
 });
@@ -46,4 +54,5 @@ export const {
   useCreateTaskMutation,
   useUpdateTaskMutation,
   useDeleteTaskMutation,
+  useGetTasksofWorkflowQuery,
 } = taskSlice;
