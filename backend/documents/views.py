@@ -10,11 +10,23 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import api_view
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+import logging
+import json
 from .models import Document, DocumentVersion
 from users.models import Departement
 from .serializers import DocumentSerializer, DocumentVersionSerializer
 from users.models import UserActionLog
 from django.contrib.contenttypes.models import ContentType
+from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.decorators import permission_classes
+import requests
+from django.views.decorators.csrf import csrf_exempt
+from django.conf import settings
+import os
+import jwt
+import datetime
+from django.http import HttpResponse
  
  
 class DocumentViewSet(viewsets.ModelViewSet):
@@ -38,25 +50,28 @@ class DocumentListCreateView(APIView):
             'jpg': 'JPEG Image',
             'jpeg': 'JPEG Image',
         }
-        # Validate required fields
-        required_fields = [
-            "file", "doc_path", "doc_status", "doc_owner", 
-            "doc_departement", "doc_description"
-        ]
-        for field in required_fields:
-            value = request.FILES.get(field) if field == "file" else request.data.get(field)
-            if not value:
-                return Response({'error': f'Missing field: {field}'}, status=400)
+        # Validate required fields. Only `file` is strictly required from the
+        # client; other fields are optional or can be inferred server-side.
+        if not file:
+            return Response({'error': 'Missing field: file'}, status=400)
  
         if not file:
             return Response({'error': 'Missing file'}, status=400)
  
-        # Get owner
+        # Get owner: prefer explicit doc_owner, otherwise fall back to
+        # authenticated user if available.
         owner_id = request.data.get('doc_owner')
-        try:
-            owner = get_user_model().objects.get(id=owner_id)
-        except get_user_model().DoesNotExist:
-            return Response({'error': 'Invalid owner ID'}, status=400)
+        owner = None
+        if owner_id:
+            try:
+                owner = get_user_model().objects.get(id=owner_id)
+            except get_user_model().DoesNotExist:
+                return Response({'error': 'Invalid owner ID'}, status=400)
+        else:
+            if request.user and request.user.is_authenticated:
+                owner = request.user
+            else:
+                return Response({'error': 'Missing field: doc_owner'}, status=400)
  
         # Get department
         departement_id = request.data.get('doc_departement')
@@ -69,6 +84,9 @@ class DocumentListCreateView(APIView):
         doc_size = file.size
         doc_format = file.name.split('.')[-1] if '.' in file.name else ''
         doc_title = request.data.get('doc_title', '')
+        # Use sensible defaults for optional fields
+        doc_status_val = request.data.get('doc_status', 'draft')
+        doc_description_val = request.data.get('doc_description', '')
  
         # Build the upload path: custom_path + filename
         # Normalize slashes and ensure no leading/trailing slashes cause issues
@@ -86,12 +104,12 @@ class DocumentListCreateView(APIView):
             doc_title=doc_title,
             doc_type=format_and_types.get(doc_format.lower(), 'Unknown'),
             # doc_category=request.data['doc_category'],
-            doc_status=request.data['doc_status'],
+            doc_status=doc_status_val,
             doc_owner=owner,
             doc_departement=departement,
             doc_format=doc_format,
             doc_size=doc_size,
-            doc_description=request.data['doc_description'],
+            doc_description=doc_description_val,
             # doc_comment=request.data.get('doc_comment', ''),
         )
  
@@ -218,6 +236,193 @@ class DocumentVersionViewSet(viewsets.ModelViewSet):
     """
     queryset = DocumentVersion.objects.all()
     serializer_class = DocumentVersionSerializer
+
+
+# OnlyOffice integration endpoints
+@api_view(["GET"])
+def onlyoffice_config(request, pk):
+    """Return OnlyOffice editor configuration for the given document id."""
+    document = get_object_or_404(Document, pk=pk)
+
+    # Build a URL that Document Server can reach. Use storage.url() so backends
+    # that return presigned urls (e.g. S3/MinIO configured) will work.
+    try:
+        file_path = getattr(document.doc_path, "name", str(document.doc_path))
+    except Exception:
+        file_path = str(document.doc_path)
+
+    try:
+        file_url = default_storage.url(file_path)
+    except Exception:
+        # Fallback to building a simple URL assuming MinIO on localhost
+        file_url = request.build_absolute_uri(f"/media/{file_path}")
+    
+
+    # Unique key which should change when the file changes (used by OnlyOffice caching)
+    doc_key = f"{document.id}-{int(document.updated_at.timestamp())}"
+
+    # Allow overriding the callback host for Docker-based Document Server
+    # Example: set ONLYOFFICE_CALLBACK_HOST=host.docker.internal:8000
+    callback_host = os.getenv("ONLYOFFICE_CALLBACK_HOST")
+    if callback_host:
+        # If host contains scheme, use it directly; otherwise assume http
+        if callback_host.startswith("http://") or callback_host.startswith("https://"):
+            callback_url = f"{callback_host.rstrip('/')}/api/documents/{document.id}/onlyoffice-callback/"
+        else:
+            callback_url = f"http://{callback_host.rstrip('/')}/api/documents/{document.id}/onlyoffice-callback/"
+    else:
+        callback_url = request.build_absolute_uri(f"/api/documents/{document.id}/onlyoffice-callback/")
+
+    config = {
+        "document": {
+            "title": document.doc_title,
+            "url": file_url,
+            "fileType": (document.doc_format or "").lower(),
+            "key": doc_key,
+        },
+        "editorConfig": {
+            "mode": "edit",
+            "callbackUrl": callback_url,
+            "user": {
+                "id": str(request.user.id) if request.user.is_authenticated else "anon",
+                "name": request.user.get_full_name() if request.user.is_authenticated else "Guest",
+            },
+            "customization": {
+                "forcesave": False,
+                "hideRightMenu": True,
+                "compactHeader": True,
+            },
+        },
+    }
+
+    # If an ONLYOFFICE JWT secret is configured, sign the config as a token
+    # so Document Server (if configured to require JWT) can verify requests.
+    # The token payload is wrapped under the 'payload' key per OnlyOffice connector conventions.
+    secret = getattr(settings, "ONLYOFFICE_JWT_SECRET", None) or os.getenv("ONLYOFFICE_JWT_SECRET") or os.getenv("ONLYOFFICE_SECRET")
+    if secret:
+        try:
+            # Token expires shortly to reduce replay window
+            exp = datetime.datetime.utcnow() + datetime.timedelta(minutes=5)
+            # Many OnlyOffice setups expect the signed JWT to contain the
+            # `document` and `editorConfig` keys at the top level (not wrapped
+            # under a `payload` key). Sign those explicitly so the Document
+            # Server can validate the token structure.
+            token_payload = {
+                "document": config.get("document"),
+                "editorConfig": config.get("editorConfig"),
+                "exp": exp,
+            }
+            token = jwt.encode(token_payload, secret, algorithm="HS256")
+            # Include token at top level and also inside document for compatibility
+            config["token"] = token
+            config["document"]["token"] = token
+        except Exception as exc:
+            # Don't fail the whole request if signing fails; log and continue without token
+            print(f"ONLYOFFICE: token signing failed: {exc}")
+
+    return Response(config)
+
+
+@api_view(["GET"])
+def onlyoffice_script_proxy(request):
+    """Fetch the OnlyOffice client script from the Document Server and return it
+    with permissive CORS headers to avoid browser blocking in development.
+    """
+    # Source Document Server base URL (allow override via env)
+    docserver = os.getenv("ONLYOFFICE_URL") or os.getenv("VITE_ONLYOFFICE_URL") or "http://localhost:8080"
+    script_url = f"{docserver.rstrip('/')}/web-apps/apps/api/documents/api.js"
+    try:
+        r = requests.get(script_url, timeout=10)
+    except Exception as exc:
+        return Response({"error": f"Failed to fetch script from Document Server: {exc}"}, status=502)
+
+    if r.status_code != 200:
+        return Response({"error": f"Document Server returned {r.status_code}"}, status=502)
+
+    resp = HttpResponse(r.content, content_type="application/javascript")
+    # Permissive CORS for local development; in production narrow this to your frontend origin.
+    resp["Access-Control-Allow-Origin"] = "*"
+    resp["Cache-Control"] = "public, max-age=3600"
+    return resp
+
+
+@csrf_exempt
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def onlyoffice_callback(request, pk):
+    """Handle OnlyOffice save callbacks. Downloads updated file when supplied and replaces stored file.
+
+    This handler now logs incoming payloads and download probe results to the Django logger.
+    Optionally set the env var `ONLYOFFICE_CALLBACK_LOG_FILE` to append JSON debug lines to a file.
+    """
+    logger = logging.getLogger(__name__)
+
+    # Raw body for diagnostics
+    try:
+        raw_body = request.body.decode("utf-8") if hasattr(request, "body") else ""
+    except Exception:
+        raw_body = "<unreadable>"
+
+    data = request.data if hasattr(request, "data") else {}
+    client_addr = request.META.get("REMOTE_ADDR")
+
+    log_entry = {
+        "time": datetime.datetime.utcnow().isoformat(),
+        "client": client_addr,
+        "path": request.path,
+        "headers": {k: v for k, v in request.META.items() if k.startswith("HTTP_")},
+        "raw_body": raw_body,
+        "parsed": data,
+    }
+
+    # Log to console/standard logger for easy viewing
+    try:
+        logger.info("ONLYOFFICE CALLBACK: %s", json.dumps(log_entry))
+    except Exception:
+        logger.exception("Failed to log onlyoffice callback payload")
+
+    # Optionally persist to a file for easier post-mortem
+    log_file = os.getenv("ONLYOFFICE_CALLBACK_LOG_FILE")
+    if log_file:
+        try:
+            with open(log_file, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(log_entry) + "\n")
+        except Exception:
+            logger.exception("Failed to write onlyoffice callback log file")
+
+    status_code = data.get("status")
+
+    # status 2 = document is ready to be saved (see OnlyOffice docs)
+    if status_code in (2, 3, 4, "2", "3", "4"):
+        download_url = data.get("url") or data.get("downloadUri")
+        if download_url:
+            # Probe the download URL with a HEAD request first (may fail faster)
+            try:
+                head = requests.head(download_url, allow_redirects=True, timeout=10)
+                logger.info("OnlyOffice callback HEAD %s -> %s", download_url, head.status_code)
+            except Exception:
+                logger.exception("HEAD to download URL failed; will attempt GET")
+
+            try:
+                r = requests.get(download_url, stream=True, timeout=30)
+                logger.info("OnlyOffice callback GET %s -> %s (len=%s)", download_url, r.status_code, r.headers.get("Content-Length"))
+                if r.status_code == 200:
+                    document = get_object_or_404(Document, pk=pk)
+                    content = r.content
+                    name = getattr(document.doc_path, "name", None) or f"documents/{document.doc_title}"
+                    document.doc_path.save(name, ContentFile(content), save=True)
+                    logger.info("OnlyOffice callback: saved document %s", pk)
+                    return Response({"error": 0})
+                else:
+                    logger.error("OnlyOffice callback: download GET returned %s", r.status_code)
+            except Exception as exc:
+                logger.exception("OnlyOffice callback: error downloading file: %s", exc)
+                return Response({"error": 1, "message": str(exc)})
+
+        logger.error("OnlyOffice callback: no download url provided in payload")
+        return Response({"error": 1, "message": "no download url"})
+
+    return Response({"error": 0})
 
 class CreateFolderSerializer(serializers.Serializer):
     path = serializers.CharField(help_text="Folder path to create, e.g. 'projects/NewProject/files'")

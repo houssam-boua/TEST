@@ -35,9 +35,13 @@ SECRET_KEY = "django-insecure-4rman5(hp!xg5)h@x&60gvh4!7^)he(7u2g-nb)%ngeowbxiad
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# ALLOWED_HOSTS = []
-# ALLOWED_HOSTS = ["*"]
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "stirling.ramaqs.com", "http://localhost:5174/"]
+# Development: when DEBUG is True, allow connections from Docker and local networks
+# - Docker Desktop on Windows exposes the host as `host.docker.internal` inside containers.
+# - For quick local testing we allow all hosts when DEBUG=True. In production set strict ALLOWED_HOSTS.
+if DEBUG:
+    ALLOWED_HOSTS = ["*"]
+else:
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost", "stirling.ramaqs.com", "localhost:5174"]
 
 
 
@@ -209,6 +213,20 @@ STORAGES = {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
+
+# Development-friendly MEDIA_ROOT fallback so files saved by the callback
+# go to a local `media/` directory when DEBUG is enabled. In production the
+# MinIO storage backend will be used as configured above.
+if DEBUG:
+    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+    # Ensure MEDIA_URL is defined for local development
+    MEDIA_URL = "/media/"
+
+# ONLYOFFICE JWT secret used to sign document config tokens when Document Server
+# requires JWT. In development you can set this here or export ONLYOFFICE_JWT_SECRET
+# in your environment. For production, prefer setting an env var instead of
+# committing secrets to source control.
+ONLYOFFICE_JWT_SECRET = os.getenv("ONLYOFFICE_JWT_SECRET", "xnxsezWUInkVkg2veAKTechnmI803B3L")
 
 # --------------------------------------------------------------------
 # LEGACY STORAGE SETTING (for Django < 4.2)
