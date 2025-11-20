@@ -35,9 +35,13 @@ SECRET_KEY = "django-insecure-4rman5(hp!xg5)h@x&60gvh4!7^)he(7u2g-nb)%ngeowbxiad
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-# ALLOWED_HOSTS = []
-# ALLOWED_HOSTS = ["*"]
-ALLOWED_HOSTS = ["127.0.0.1", "localhost", "stirling.ramaqs.com", "http://localhost:5174/"]
+# Development: when DEBUG is True, allow connections from Docker and local networks
+# - Docker Desktop on Windows exposes the host as `host.docker.internal` inside containers.
+# - For quick local testing we allow all hosts when DEBUG=True. In production set strict ALLOWED_HOSTS.
+if DEBUG:
+    ALLOWED_HOSTS = ["*"]
+else:
+    ALLOWED_HOSTS = ["127.0.0.1", "localhost", "stirling.ramaqs.com", "localhost:5174"]
 
 
 
@@ -184,18 +188,18 @@ STATIC_ROOT = './static_files/'
 # --------------------------------------------------------------------
 # MINIO CONFIGURATION
 # --------------------------------------------------------------------
-MINIO_STORAGE_ENDPOINT = "127.0.0.1:9000"  # NO http:// prefix
-MINIO_STORAGE_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_STORAGE_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_STORAGE_ENDPOINT = "s3.ramaqs.com"  # NO http:// prefix
+MINIO_STORAGE_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "wWdV6G6VSoG7KBHQprVl")
+MINIO_STORAGE_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "nKTDOM5I6lxYqnzo1K6QqDBXn9M8S1dGFESH2uEz")
 MINIO_STORAGE_USE_HTTPS = False
 
 # Bucket configuration
-MINIO_STORAGE_MEDIA_BUCKET_NAME = "documents"
+MINIO_STORAGE_MEDIA_BUCKET_NAME = "smartdocspro"
 MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
 MINIO_STORAGE_AUTO_CREATE_STATIC_BUCKET = True
 
 # Optional: Direct MinIO URLs for serving files
-MINIO_STORAGE_MEDIA_URL = "http://127.0.0.1:9000/"
+MINIO_STORAGE_MEDIA_URL = "s3.ramaqs.com"
 
 # --------------------------------------------------------------------
 # STORAGE BACKENDS (Django 4.2+)
@@ -209,6 +213,20 @@ STORAGES = {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
+
+# Development-friendly MEDIA_ROOT fallback so files saved by the callback
+# go to a local `media/` directory when DEBUG is enabled. In production the
+# MinIO storage backend will be used as configured above.
+if DEBUG:
+    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+    # Ensure MEDIA_URL is defined for local development
+    MEDIA_URL = "/media/"
+
+# ONLYOFFICE JWT secret used to sign document config tokens when Document Server
+# requires JWT. In development you can set this here or export ONLYOFFICE_JWT_SECRET
+# in your environment. For production, prefer setting an env var instead of
+# committing secrets to source control.
+ONLYOFFICE_JWT_SECRET = os.getenv("ONLYOFFICE_JWT_SECRET", "xnxsezWUInkVkg2veAKTechnmI803B3L")
 
 # --------------------------------------------------------------------
 # LEGACY STORAGE SETTING (for Django < 4.2)

@@ -15,6 +15,7 @@ import ConsulteWorkflow from "../Pages/ConsulteWorkflow";
 import CreateDocument from "../Pages/CreateDocument";
 import CreateDocumentsBatch from "../Pages/CreateDocumentsBatch";
 import CreateWorkflow from "../Pages/CreateWorkflow";
+import EditDocument from "../Pages/EditDocument";
 import LoginPage from "../Pages/LoginPage";
 import PermissionGroups from "../Pages/PermissionGroups";
 import UnauthorizedPage from "../Pages/UnauthorizedPage";
@@ -54,6 +55,7 @@ export const routesConfig = {
         component: ConsulteTaks,
       },
       { path: "/a/creer-workflow", component: CreateWorkflow },
+      { path: "/a/edit-document/:id", component: EditDocument },
       { path: "/a/users", component: AdminUsers },
       { path: "/a/departments", component: AdminDepartements },
       { path: "/a/roles", component: AdminRoles },

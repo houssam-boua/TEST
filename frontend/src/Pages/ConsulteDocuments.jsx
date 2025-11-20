@@ -272,7 +272,7 @@ const ConsulteDocuments = () => {
       key: "edit",
       icon: <Edit className="w-4 h-4" />,
       label: "Edit",
-      onClick: () => console.warn("edit action not implemented", row),
+      onClick: () => navigate(`/a/edit-document/${row.original.id}`),
     },
     {
       key: "download",

@@ -1,3 +1,4 @@
+import os
 from django.core.management.base import BaseCommand
 from django.db import IntegrityError
 
@@ -26,12 +27,13 @@ class Command(BaseCommand):
         created = []
 
         # Admin (superuser)
+        admin_password = os.environ.get("ADMIN_PASSWORD", "admin")
         if not User.objects.filter(username="admin").exists():
             try:
                 User.objects.create_superuser(
                     username="admin",
                     email="admin@example.com",
-                    password="adminpass",
+                    password=admin_password,
                     first_name="Admin",
                     last_name="User",
                     role=admin_role,
@@ -42,7 +44,7 @@ class Command(BaseCommand):
                 admin = User.objects.create_user(
                     username="admin",
                     email="admin@example.com",
-                    password="adminpass",
+                    password=admin_password,
                     first_name="Admin",
                     last_name="User",
                     role=admin_role,

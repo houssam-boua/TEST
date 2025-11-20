@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
 import { ChevronRight, Eye } from "lucide-react";
 import {
@@ -30,6 +30,45 @@ const columns = [
     id: "document",
     header: "Document",
     accessorKey: "document",
+    cell: ({ row }) => {
+      const doc = row?.original?.document;
+      const title = doc?.doc_title ?? doc?.title ?? (doc ? String(doc) : "-");
+
+      const minioBase = (import.meta.env?.VITE_MINIO_BASE_URL || "").replace(
+        /\/$/,
+        ""
+      );
+      const toAbsolute = (p) => {
+        if (!p) return null;
+        if (String(p).startsWith("http://") || String(p).startsWith("https://"))
+          return p;
+        if (minioBase)
+          return `${minioBase.replace(/\/$/, "")}/${String(p).replace(
+            /^\/+/,
+            ""
+          )}`;
+        return `http://127.0.0.1:9000/${String(p).replace(/^\/+/, "")}`;
+      };
+
+      const url = doc?.doc_path ? toAbsolute(doc.doc_path) : null;
+
+      return (
+        <div className="flex items-center gap-2">
+          <span className="truncate">{title}</span>
+          {url ? (
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground/60 hover:text-primary"
+              title="Open document"
+            >
+              {" "}
+            </a>
+          ) : null}
+        </div>
+      );
+    },
   },
 
   {
@@ -40,7 +79,6 @@ const columns = [
       const etat = row?.original?.etat;
 
       // Normalize and compute a friendly label + color
-    
 
       return <StatusBadge status={etat} />;
     },
@@ -176,6 +214,12 @@ const ConsulteWorkflow = () => {
     return cols;
   }, [expanded]);
 
+  const navigate = useNavigate();
+
+  const redirectAdd = () => {
+    navigate("/a/creer-workflow");
+  };
+
   return (
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
@@ -184,7 +228,7 @@ const ConsulteWorkflow = () => {
           data={displayed}
           onEdit={() => {}}
           onDelete={() => {}}
-          onAdd={handleAdd}
+          onAdd={redirectAdd}
           title={"Workflows"}
           pageSize={20}
         />

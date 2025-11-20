@@ -8,6 +8,8 @@ from .views import (
     MinioFileListView,
     FolderDocumentsView,
     DocumentVersionViewSet,
+    onlyoffice_config,
+    onlyoffice_callback,
 )
 
 router = DefaultRouter()
@@ -26,6 +28,7 @@ urlpatterns = [
     path('documents/by-folder/', FolderDocumentsView.as_view(), name='documents-by-folder'),
 
     path('documents/<int:pk>/', DocumentDetailView.as_view(), name='document-detail'),
-
+    path('documents/<int:pk>/onlyoffice-config/', onlyoffice_config, name='onlyoffice-config'),
+    path('documents/<int:pk>/onlyoffice-callback/', onlyoffice_callback, name='onlyoffice-callback'),
     path('', include(router.urls)),
 ]

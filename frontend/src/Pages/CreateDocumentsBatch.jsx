@@ -49,7 +49,7 @@ export default function CreateDocumentsBatch() {
             fd.append("doc_departement", it.doc_departement);
           fd.append("doc_description", it.doc_description || "");
           // Optional: custom path or category if backend supports it
-          if (it.doc_category) fd.append("doc_category", it.doc_category);
+          // if (it.doc_category) fd.append("doc_category", it.doc_category);
           // Ensure the current authenticated user id is set as doc_owner
           if (userId) fd.set("doc_owner", String(userId));
 

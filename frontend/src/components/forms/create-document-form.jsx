@@ -32,15 +32,16 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { CloudUpload } from "lucide-react";
 import { useGetDepartementsQuery } from "../../Slices/departementSlice";
+import { useGetFoldersQuery } from "../../Slices/documentSlice";
 
 export function CreateDocumentForm({ onSubmit, loading }) {
   const [localError, setLocalError] = useState(null);
   const { data: departements } = useGetDepartementsQuery();
-
+  const { data: folders } = useGetFoldersQuery();
   const form = useForm({
     defaultValues: {
       file: null,
-      doc_category: "Technical",
+      // doc_category: "Technical",
       doc_title: "",
       doc_status: "",
       doc_path: "",
@@ -160,7 +161,7 @@ export function CreateDocumentForm({ onSubmit, loading }) {
 
                 <FormField
                   control={form.control}
-                  name="doc_category"
+                  name="doc_path"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Catégorie</FormLabel>
