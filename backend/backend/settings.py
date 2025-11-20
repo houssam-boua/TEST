@@ -188,18 +188,18 @@ STATIC_ROOT = './static_files/'
 # --------------------------------------------------------------------
 # MINIO CONFIGURATION
 # --------------------------------------------------------------------
-MINIO_STORAGE_ENDPOINT = "127.0.0.1:9000"  # NO http:// prefix
-MINIO_STORAGE_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_STORAGE_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
+MINIO_STORAGE_ENDPOINT = "s3.ramaqs.com"  # NO http:// prefix
+MINIO_STORAGE_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "wWdV6G6VSoG7KBHQprVl")
+MINIO_STORAGE_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "nKTDOM5I6lxYqnzo1K6QqDBXn9M8S1dGFESH2uEz")
 MINIO_STORAGE_USE_HTTPS = False
 
 # Bucket configuration
-MINIO_STORAGE_MEDIA_BUCKET_NAME = "documents"
+MINIO_STORAGE_MEDIA_BUCKET_NAME = "smartdocspro"
 MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
 MINIO_STORAGE_AUTO_CREATE_STATIC_BUCKET = True
 
 # Optional: Direct MinIO URLs for serving files
-MINIO_STORAGE_MEDIA_URL = "http://127.0.0.1:9000/"
+MINIO_STORAGE_MEDIA_URL = "s3.ramaqs.com"
 
 # --------------------------------------------------------------------
 # STORAGE BACKENDS (Django 4.2+)
