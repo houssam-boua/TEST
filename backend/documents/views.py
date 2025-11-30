@@ -455,7 +455,8 @@ def create_folder(request):
     folder_path = folder_path.strip('/').replace('\\', '/')
 
     # Create a placeholder file to establish the folder prefix
-    placeholder_path = f"documents/{folder_path}/.keep"
+    # placeholder_path = f"documents/{folder_path}/.keep"
+    placeholder_path = f"{folder_path}/.keep" if folder_path else ".keep"
 
     try:
         default_storage.save(placeholder_path, ContentFile(b""))
