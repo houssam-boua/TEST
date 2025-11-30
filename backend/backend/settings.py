@@ -66,6 +66,9 @@ INSTALLED_APPS = [
     "documents",
     "workflows",
 
+    # third-party for object-level permissions
+    "guardian",
+
     # Storage
     'minio_storage',
 ]
@@ -80,6 +83,32 @@ REST_FRAMEWORK = {
     ],
 }
 
+# Authentication backends: include guardian for object-permissions support.
+# Order matters: ObjectPermissionBackend should be before ModelBackend so
+# guardian's checks are consulted when evaluating object permissions.
+AUTHENTICATION_BACKENDS = [
+    "guardian.backends.ObjectPermissionBackend",
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+# django-guardian recommended settings
+ANONYMOUS_USER_NAME = "AnonymousUser"
+# GUARDIAN_RAISE_403 = True  # Uncomment to raise 403 when permission checks fail (optional)
+# For production you may want to enable caching for guardian (see docs).
+
+# Cache settings (example using Redis). Configure per-environment and uncomment
+# only after installing and configuring Redis. This is a recommended snippet.
+# CACHES = {
+#     "default": {
+#         "BACKEND": "django_redis.cache.RedisCache",
+#         "LOCATION": os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1"),
+#         "OPTIONS": {
+#             "CLIENT_CLASS": "django_redis.client.DefaultClient",
+#         }
+#     }
+# }
+# Note: configure SESSION_ENGINE / CELERY / other services separately to use Redis as needed.
+
 
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
@@ -90,6 +119,8 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Per-request permission caching and lightweight auditing helper
+    "users.middleware.PermissionMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
