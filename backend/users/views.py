@@ -314,6 +314,44 @@ class UserViewSet(viewsets.ModelViewSet):
         perm_serializer = PermissionSerializer(perms, many=True)
         return Response({"permissions": sorted(list(perm_strings)), "permission_objs": perm_serializer.data}, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=["get"], permission_classes=[IsAuthenticated])
+    def me(self, request):
+        """
+        GET /api/users/me/ -> return current user's data plus effective permissions, groups and role.
+        Useful for frontend to cache permission decisions client-side while server stays authoritative.
+        """
+        user = request.user
+        serializer = UserSerializer(user)
+
+        # compute effective permissions using utility (prefer user's method)
+        try:
+            if hasattr(user, "get_effective_permissions"):
+                perm_strings = sorted(list(user.get_effective_permissions()))
+            else:
+                from .utils import get_effective_permissions
+                perm_strings = sorted(list(get_effective_permissions(user)))
+        except Exception:
+            perm_strings = serializer.data.get("permissions", []) or []
+
+        # groups and role
+        groups = [g.name for g in user.groups.all()]
+        role = None
+        try:
+            if getattr(user, "role", None):
+                role = {"id": user.role.id, "role_name": user.role.role_name}
+        except Exception:
+            role = None
+
+        return Response(
+            {
+                "user": serializer.data,
+                "permissions": perm_strings,
+                "groups": groups,
+                "role": role,
+            },
+            status=status.HTTP_200_OK,
+        )
+
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["username", "email", "first_name", "last_name"]
     #  GET /users/?username=John
