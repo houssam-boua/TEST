@@ -8,8 +8,9 @@ import AdminDepartements from "../Pages/AdminDepartements";
 import AdminPermissions from "../Pages/AdminPermissions";
 import AdminRoles from "../Pages/AdminRoles";
 import AdminUsers from "../Pages/AdminUsers";
-import ConsulteDocuments from "../Pages/ConsulteDocuments";
-import ConsulteFolders from "../Pages/ConsulteFolders";
+// import ConsulteDocuments from "../Pages/ConsulteDocuments";
+// import ConsulteFolders from "../Pages/ConsulteFolders";
+import ConsulteFoldersManager from "../Pages/ConsulteFoldersManager";
 import ConsulteTaks from "../Pages/ConsulteTaks";
 import ConsulteWorkflow from "../Pages/ConsulteWorkflow";
 import CreateDocument from "../Pages/CreateDocument";
@@ -36,36 +37,37 @@ export const routesConfig = {
 
   admin: {
     layout: AdminLayout,
-    requiredRoles: ["admin"],
+    requiredRoles: ["admin", "validator", "user"],
     routes: [
       {
-        path: "/a/acceuil",
+        path: "/acceuil",
         component: AdminAccueil,
-        breadcrumb: "Accuefgbdil",
+        breadcrumb: "Dashboard",
       },
-      { path: "/a/consulter", component: ConsulteFolders },
+      { path: "/consulter", component: ConsulteFoldersManager },
+      { path: "/consulter/:folderId", component: ConsulteFoldersManager },
+      // {
+      //   path: "/consulter/:folderId/documents/",
+      //   component: ConsulteDocuments,
+      // },
+      { path: "/creer-documents", component: CreateDocumentsBatch },
+      { path: "/consulter-workflow", component: ConsulteWorkflow },
       {
-        path: "/a/consulter/:folderId/documents/",
-        component: ConsulteDocuments,
-      },
-      { path: "/a/creer-documents", component: CreateDocumentsBatch },
-      { path: "/a/consulter-workflow", component: ConsulteWorkflow },
-      {
-        path: "/a/consulter-workflow/:workflowId/tasks",
+        path: "/consulter-workflow/:workflowId/tasks",
         component: ConsulteTaks,
       },
-      { path: "/a/creer-workflow", component: CreateWorkflow },
-      { path: "/a/edit-document/:id", component: EditDocument },
-      { path: "/a/users", component: AdminUsers },
-      { path: "/a/departments", component: AdminDepartements },
-      { path: "/a/roles", component: AdminRoles },
+      { path: "/creer-workflow", component: CreateWorkflow },
+      { path: "/edit-document/:id", component: EditDocument },
+      { path: "/users", component: AdminUsers },
+      { path: "/departments", component: AdminDepartements },
+      { path: "/roles", component: AdminRoles },
       {
-        path: "/a/activity-history",
+        path: "/activity-history",
         component: ActivityHistory,
         breadcrumb: "Historic activity",
       },
-      { path: "/a/permissions", component: AdminPermissions },
-      { path: "/a/permission-groups", component: PermissionGroups },
+      { path: "/permissions", component: AdminPermissions },
+      { path: "/permission-groups", component: PermissionGroups },
     ],
   },
 

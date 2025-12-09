@@ -20,11 +20,12 @@ const columns = [
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => <span className="italic">#{row?.original?.id}</span>,
   },
   {
     id: "nom",
     accessorKey: "nom",
-    header: "Title",
+    header: "Document Title",
   },
   {
     id: "document",
@@ -70,7 +71,11 @@ const columns = [
       );
     },
   },
-
+  {
+    id: "created_at",
+    header: "Created At",
+    accessorKey: "created_at",
+  },
   {
     id: "etat",
     header: "Status",
@@ -83,17 +88,13 @@ const columns = [
       return <StatusBadge status={etat} />;
     },
   },
-  {
-    id: "description",
-    header: "Description",
-    accessorKey: "description",
-  },
+
   {
     id: "seeDetails",
     header: "",
     cell: ({ row }) => (
       <Link
-        to={`/a/consulter-workflow/${row.original.id}/tasks`}
+        to={`/consulter-workflow/${row.original.id}/tasks`}
         className="text-muted-foreground/50"
         rel="noopener noreferrer"
       >
@@ -197,7 +198,7 @@ const ConsulteWorkflow = () => {
     if (idx !== -1) {
       cols[idx].cell = ({ row }) => (
         <Link
-          to={`/a/consulter-workflow/${row.original.id}/tasks`}
+          to={`/consulter-workflow/${row.original.id}/tasks`}
           className="text-muted-foreground/50"
           rel="noopener noreferrer"
         >
@@ -217,12 +218,12 @@ const ConsulteWorkflow = () => {
   const navigate = useNavigate();
 
   const redirectAdd = () => {
-    navigate("/a/creer-workflow");
+    navigate("/creer-workflow");
   };
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
+      <div className="flex flex-1 flex-col gap-2 md:py-6 px-4">
         <DataTable
           columns={localColumns}
           data={displayed}

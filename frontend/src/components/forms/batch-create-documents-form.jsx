@@ -53,7 +53,7 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
       id: `${Date.now()}_${f.name}`,
       file: f,
       doc_title: "",
-      doc_path: "",
+      doc_path: "/",
       doc_status: "pending",
       doc_departement: departements?.[0]?.id ? String(departements[0].id) : "",
       doc_description: "",
@@ -266,16 +266,21 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
                               <SelectGroup>
                                 <SelectLabel>Folders</SelectLabel>
                                 {(folders?.folders || []).length === 0 ? (
-                                  <SelectItem value="">Root</SelectItem>
+                                  <SelectItem value="/">Root</SelectItem>
                                 ) : (
-                                  (folders?.folders || []).map((f) => (
-                                    <SelectItem
-                                      key={String(f)}
-                                      value={String(f)}
-                                    >
-                                      {String(f)}
-                                    </SelectItem>
-                                  ))
+                                  [
+                                    <SelectItem key="/" value="/">
+                                      Root
+                                    </SelectItem>,
+                                    ...(folders?.folders || []).map((f) => (
+                                      <SelectItem
+                                        key={String(f)}
+                                        value={String(f)}
+                                      >
+                                        {String(f)}
+                                      </SelectItem>
+                                    )),
+                                  ]
                                 )}
                               </SelectGroup>
                             </SelectContent>

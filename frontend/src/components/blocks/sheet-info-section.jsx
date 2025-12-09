@@ -69,7 +69,7 @@ const SheetInfoSection = ({ infos = [] }) => {
             const fileUrl = filePath
               ? filePath.startsWith("http")
                 ? filePath
-                : `http://127.0.0.1:9000/${filePath}`
+                : `${import.meta.env.VITE_MINIO_BASE_URL}/${filePath}`
               : null;
 
             const ext = fileUrl

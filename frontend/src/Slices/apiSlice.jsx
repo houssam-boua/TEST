@@ -42,7 +42,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Document", "Workflow", "Task"],
+  tagTypes: ["Document", "Workflow", "Task", "User"],
   endpoints: (builder) => ({
     // Auth endpoints
     login: builder.mutation({
@@ -52,6 +52,10 @@ export const apiSlice = createApi({
         body: { username, password },
       }),
     }),
+    getMe: builder.query({
+      query: () => ({ url: "/api/me/", method: "GET" }),
+      providesTags: ["User"],
+    }),
   }),
 });
 
@@ -59,4 +63,5 @@ export const apiSlice = createApi({
 export const {
   // Auth hooks
   useLoginMutation,
+  useGetMeQuery,
 } = apiSlice;

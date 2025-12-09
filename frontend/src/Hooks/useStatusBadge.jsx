@@ -9,73 +9,73 @@ const StatusBadge = ({ status }) => {
   switch ((status || "").toLowerCase()) {
     case "approved":
       return (
-        <Badge
-          variant="outline"
-          className="border-green-600 text-green-600 dark:border-green-400 dark:text-green-400 [a&]:hover:bg-green-600/10 [a&]:hover:text-green-600/90 dark:[a&]:hover:bg-green-400/10 dark:[a&]:hover:text-green-400/90"
-        >
-          <CheckCircleIcon className="size-3" />
+        <Badge className="border-none bg-green-600/10 text-green-600 focus-visible:ring-green-600/20 focus-visible:outline-none dark:bg-green-400/10 dark:text-green-400 dark:focus-visible:ring-green-400/40 [a&]:hover:bg-green-600/5 dark:[a&]:hover:bg-green-400/5">
+          <span
+            className="size-1.5 rounded-full bg-green-600 dark:bg-green-400"
+            aria-hidden="true"
+          />
           Successful
         </Badge>
       );
 
     case "accepted":
       return (
-        <Badge
-          variant="outline"
-          className="border-green-600 text-green-600 dark:border-green-400 dark:text-green-400 [a&]:hover:bg-green-600/10 [a&]:hover:text-green-600/90 dark:[a&]:hover:bg-green-400/10 dark:[a&]:hover:text-green-400/90"
-        >
-          <CheckCircleIcon className="size-3" />
+        <Badge className="border-none bg-green-600/10 text-green-600 focus-visible:ring-green-600/20 focus-visible:outline-none dark:bg-green-400/10 dark:text-green-400 dark:focus-visible:ring-green-400/40 [a&]:hover:bg-green-600/5 dark:[a&]:hover:bg-green-400/5">
+          <span
+            className="size-1.5 rounded-full bg-green-600 dark:bg-green-400"
+            aria-hidden="true"
+          />
           Accepted
         </Badge>
       );
 
     case "completed":
       return (
-        <Badge
-          variant="outline"
-          className="border-green-600 text-green-600 dark:border-green-400 dark:text-green-400 [a&]:hover:bg-green-600/10 [a&]:hover:text-green-600/90 dark:[a&]:hover:bg-green-400/10 dark:[a&]:hover:text-green-400/90"
-        >
-          <CheckCircleIcon className="size-3" />
+        <Badge className="border-none bg-green-600/10 text-green-600 focus-visible:ring-green-600/20 focus-visible:outline-none dark:bg-green-400/10 dark:text-green-400 dark:focus-visible:ring-green-400/40 [a&]:hover:bg-green-600/5 dark:[a&]:hover:bg-green-400/5">
+          <span
+            className="size-1.5 rounded-full bg-green-600 dark:bg-green-400"
+            aria-hidden="true"
+          />
           Completed
         </Badge>
       );
     case "in_progress":
       return (
-        <Badge
-          variant="outline"
-          className="border-amber-600 text-amber-600 dark:border-amber-400 dark:text-amber-400 [a&]:hover:bg-amber-600/10 [a&]:hover:text-amber-600/90 dark:[a&]:hover:bg-amber-400/10 dark:[a&]:hover:text-amber-400/90"
-        >
-          <AlertCircleIcon className="size-3" />
+        <Badge className="border-none bg-amber-600/10 text-amber-600 focus-visible:ring-amber-600/20 focus-visible:outline-none dark:bg-amber-400/10 dark:text-amber-400 dark:focus-visible:ring-amber-400/40 [a&]:hover:bg-amber-600/5 dark:[a&]:hover:bg-amber-400/5">
+          <span
+            className="size-1.5 rounded-full bg-amber-600 dark:bg-amber-400"
+            aria-hidden="true"
+          />
           In Progress
         </Badge>
       );
     case "pending":
       return (
-        <Badge
-          variant="outline"
-          className="border-amber-600 text-amber-600 dark:border-amber-400 dark:text-amber-400 [a&]:hover:bg-amber-600/10 [a&]:hover:text-amber-600/90 dark:[a&]:hover:bg-amber-400/10 dark:[a&]:hover:text-amber-400/90"
-        >
-          <AlertCircleIcon className="size-3" />
+        <Badge className="border-none bg-amber-600/10 text-amber-600 focus-visible:ring-amber-600/20 focus-visible:outline-none dark:bg-amber-400/10 dark:text-amber-400 dark:focus-visible:ring-amber-400/40 [a&]:hover:bg-amber-600/5 dark:[a&]:hover:bg-amber-400/5">
+          <span
+            className="size-1.5 rounded-full bg-amber-600 dark:bg-amber-400"
+            aria-hidden="true"
+          />
           Pending
         </Badge>
       );
     case "not_started":
       return (
-        <Badge
-          variant="outline"
-          className="border-amber-600 text-amber-600 dark:border-amber-400 dark:text-amber-400 [a&]:hover:bg-amber-600/10 [a&]:hover:text-amber-600/90 dark:[a&]:hover:bg-amber-400/10 dark:[a&]:hover:text-amber-400/90"
-        >
-          <AlertCircleIcon className="size-3" />
+        <Badge className="border-none bg-amber-600/10 text-amber-600 focus-visible:ring-amber-600/20 focus-visible:outline-none dark:bg-amber-400/10 dark:text-amber-400 dark:focus-visible:ring-amber-400/40 [a&]:hover:bg-amber-600/5 dark:[a&]:hover:bg-amber-400/5">
+          <span
+            className="size-1.5 rounded-full bg-amber-600 dark:bg-amber-400"
+            aria-hidden="true"
+          />
           Not Started
         </Badge>
       );
     case "rejected":
       return (
-        <Badge
-          variant="outline"
-          className="text-destructive [a&]:hover:bg-destructive/10 [a&]:hover:text-destructive/90 border-destructive"
-        >
-          <BanIcon className="size-3" />
+        <Badge className="bg-destructive/10 [a&]:hover:bg-destructive/5 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 text-destructive border-none focus-visible:outline-none">
+          <span
+            className="bg-destructive size-1.5 rounded-full"
+            aria-hidden="true"
+          />
           Failed
         </Badge>
       );

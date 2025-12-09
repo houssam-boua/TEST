@@ -62,7 +62,7 @@ const CreateWorkflow = () => {
 
   return (
     <div className="flex min-h-svh w-full items-start justify-center p-6 md:p-10 ">
-      <Card className="w-full p-5  space-y-4 border-border ">
+    <div className="w-full p-5  space-y-4 border-none ">
         <div className="w-96 mx-auto">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-medium">Workflow</h2>
@@ -100,7 +100,7 @@ const CreateWorkflow = () => {
             workflowDocumentId={workflowPayload?.document}
           />
         )}
-      </Card>
+      </div>
     </div>
   );
 };

@@ -12,8 +12,9 @@ import {
   initializeAuth,
   logout,
   setLoading,
+  loginSuccess,
 } from "../Slices/authSlice";
-import { useLoginMutation } from "../Slices/apiSlice";
+import { useLoginMutation, apiSlice } from "../Slices/apiSlice";
 import { AuthContext } from "./AuthContextDefinition";
 
 export const AuthProvider = ({ children }) => {
@@ -42,7 +43,8 @@ export const AuthProvider = ({ children }) => {
       if (!token || !isAuthenticated) return;
       dispatch(setLoading(true));
       try {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+        const baseUrl =
+          import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
         const res = await fetch(`${baseUrl}/api/users/`, {
           method: "HEAD",
           headers: {
@@ -53,7 +55,7 @@ export const AuthProvider = ({ children }) => {
           // Invalid token -> logout locally
           dispatch(logout());
         }
-      } catch (e) {
+      } catch {
         // Network error: don't logout automatically
         // You can surface a toast here if desired
         // console.error("Token validation error", e);
@@ -69,13 +71,33 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     dispatch(setLoading(true));
     try {
-      const result = await loginMutation(credentials).unwrap();
-      // Expected backend shape from users.views.LoginView: { success, message, token, data }
+      // Option A: server returns token; fetch /api/me/ to get canonical user+permissions
+      const loginResult = await loginMutation(credentials).unwrap();
+      const token = loginResult?.token ?? loginResult;
+
+      if (!token) {
+        return { success: false, error: "Login did not return a token" };
+      }
+
+      // Store token temporarily so the next request includes it in headers
+      dispatch(loginSuccess({ token, data: null }));
+
+      // fetch canonical user (force refetch to avoid stale cached user)
+      const meAction = apiSlice.endpoints.getMe.initiate(undefined, {
+        forceRefetch: true,
+      });
+      const meResult = await dispatch(meAction);
+      const meData = meResult?.data ?? null;
+
+      // persist full auth (token + user)
+      dispatch(loginSuccess({ token, data: meData }));
+
+      // return normalized shape
       return {
-        success: !!result?.success,
-        token: result?.token,
-        user: result?.data,
-        message: result?.message || "Login successful",
+        success: true,
+        token,
+        user: meData,
+        message: "Login successful",
       };
     } catch (err) {
       return {
@@ -89,7 +111,14 @@ export const AuthProvider = ({ children }) => {
 
   const logoutUser = () => {
     // Server has a logout endpoint, but apiSlice no longer exports it. Local logout is fine.
+    // Clear auth state and also reset RTK Query cache to avoid serving stale data
     dispatch(logout());
+    try {
+      // resetApiState clears RTK Query cache and subscriptions
+      dispatch(apiSlice.util.resetApiState());
+    } catch {
+      // ignore errors during reset
+    }
   };
 
   const clearAuthError = () => dispatch(clearError());
@@ -108,13 +137,27 @@ export const AuthProvider = ({ children }) => {
     return userDepartment.dep_name?.toLowerCase() === String(dep).toLowerCase();
   };
 
-  const isAdmin = () => user?.is_staff || user?.is_superuser || hasRole(["admin", "administrator"]);
+  const isAdmin = () =>
+    user?.is_staff || user?.is_superuser || hasRole(["admin", "administrator"]);
 
   const ownsResource = (ownerId) => user?.id === ownerId;
 
+  // Permission helper: supports string or array, mode "any" (default) or "all"
+  const hasPermission = (required, mode = "any") => {
+    if (isAdmin()) return true;
+    const perms = user?.permissions || user?.user_permissions || [];
+    const list = Array.isArray(required)
+      ? required.filter(Boolean)
+      : [required].filter(Boolean);
+    if (list.length === 0) return true;
+    if (mode === "all") return list.every((p) => perms.includes(p));
+    return list.some((p) => perms.includes(p));
+  };
+
   const getUserDisplayName = () => {
     if (!user) return "";
-    if (user.first_name || user.last_name) return `${user.first_name || ""} ${user.last_name || ""}`.trim();
+    if (user.first_name || user.last_name)
+      return `${user.first_name || ""} ${user.last_name || ""}`.trim();
     return user.username || user.email || "";
   };
 
@@ -144,11 +187,15 @@ export const AuthProvider = ({ children }) => {
 
     // helpers
     hasRole,
+    hasPermission,
     belongsToDepartment,
     isAdmin,
     ownsResource,
     getUserDisplayName,
     getUserInitials,
+
+    // raw permission list for convenience
+    permissions: user?.permissions || user?.user_permissions || [],
 
     // convenience
     isStaff: !!user?.is_staff,
@@ -162,5 +209,10 @@ export const AuthProvider = ({ children }) => {
     departmentName: userDepartment?.dep_name,
   };
 
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+  );
 };
+
+// Default export for compatibility with AuthTokenProvider alias
+export default AuthProvider;
