@@ -17,6 +17,8 @@ router.register(r'document-versions', DocumentVersionViewSet, basename='document
 router.register(r'documents', DocumentViewSet, basename='document')
 
 urlpatterns = [
+    path('', include(router.urls)),
+
     # Custom path for creating folders
     path('documents/create-folder/', create_folder, name='create-folder'),
  
@@ -30,5 +32,4 @@ urlpatterns = [
     path('documents/<int:pk>/', DocumentDetailView.as_view(), name='document-detail'),
     path('documents/<int:pk>/onlyoffice-config/', onlyoffice_config, name='onlyoffice-config'),
     path('documents/<int:pk>/onlyoffice-callback/', onlyoffice_callback, name='onlyoffice-callback'),
-    path('', include(router.urls)),
 ]
