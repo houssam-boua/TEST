@@ -1,4 +1,7 @@
 # views.py
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets, serializers
@@ -27,8 +30,28 @@ import os
 import jwt
 import datetime
 from django.http import HttpResponse
- 
- 
+from django.shortcuts import get_object_or_404
+from .models import (
+    Document, DocumentCategory, DocumentNature
+)
+from .serializers import (
+    DocumentSerializer, DocumentCategorySerializer, DocumentNatureSerializer
+)
+from .utils import generate_document_code, validate_document_code
+from django.utils import timezone
+from django.db import transaction
+from users.models import User
+
+class DocumentCategoryViewSet(viewsets.ModelViewSet):
+    queryset = DocumentCategory.objects.all()
+    serializer_class = DocumentCategorySerializer
+
+class DocumentNatureViewSet(viewsets.ModelViewSet):
+    queryset = DocumentNature.objects.all()
+    serializer_class = DocumentNatureSerializer
+
+# Removed DocumentVersionViewSet, DocumentDistributionViewSet, and DocumentArchiveViewSet as part of ISMS simplification.
+
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer

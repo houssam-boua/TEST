@@ -3,43 +3,61 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from users.models import User, Departement
 
+class DocumentCategory(models.Model):
+    """
+    Stores document categories (RH, MT, AC, GD).
+    """
+    code = models.CharField(max_length=2, unique=True, default='GD')
+    name = models.CharField(max_length=128)
+    description = models.TextField()
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+class DocumentNature(models.Model):
+    """
+    Stores document types (PR, PS, IT, EQ, FI).
+    """
+    code = models.CharField(max_length=2, unique=True, default='PR')
+    name = models.CharField(max_length=128)
+    description = models.TextField()
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
 
 class Document(models.Model):
     """
     Represents a document in the system.
     Includes metadata such as title, type, status, and owner.
     """
-    DOC_STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-        ('archived', 'Archived'),
+    DOC_STATUS_TYPE_CHOICES = [
+        ('ORIGINAL', 'Original'),
+        ('COPIE', 'Copie'),
+        ('PERIME', 'Périmé'),
     ]
 
     doc_title = models.CharField(max_length=1024)
     doc_type = models.CharField(max_length=50) # e.g., PDF, Word Document, Excel Spreadsheet
-    # doc_deletion_date = models.DateTimeField(null=True, blank=True)
-    
-    # Uses Django's default storage (configured in settings.py, e.g., Minio/S3 via DEFAULT_FILE_STORAGE)
-    # Set max_length=2048 for Minio/S3 compatibility (object key length limit)
-    # Use a relative upload_to string. The actual storage backend is configured via
-    # DEFAULT_FILE_STORAGE in settings.py (e.g. MinIO backend). Avoid passing a
-    # storage instance here because that can get serialized into migrations.
     doc_path = models.FileField(upload_to='', max_length=2048)
-
-    doc_status = models.CharField(max_length=50, choices=DOC_STATUS_CHOICES)
     doc_size = models.FloatField()
     doc_format = models.CharField(max_length=20)  # e.g., PDF, DOCX, XLSX
-    # doc_category = models.CharField(max_length=50)
     doc_description = models.TextField()
-    # doc_comment = models.TextField(blank=True)
-
     doc_owner = models.ForeignKey(User, on_delete=models.CASCADE)
     doc_departement = models.ForeignKey(Departement, on_delete=models.CASCADE)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # ISMS fields to keep:
+    doc_code = models.CharField(max_length=20, unique=True, db_index=True)
+    doc_category = models.ForeignKey(DocumentCategory, on_delete=models.PROTECT)
+    doc_nature = models.ForeignKey(DocumentNature, on_delete=models.PROTECT)
+    parent_document = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
+    sequential_number = models.PositiveIntegerField()
+    doc_status_type = models.CharField(
+        max_length=10,
+        choices=DOC_STATUS_TYPE_CHOICES,
+        default='ORIGINAL'
+    )
 
     def delete(self, *args, **kwargs):
         # Delete file from storage
