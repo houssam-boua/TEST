@@ -24,9 +24,29 @@ class DocumentNatureSerializer(serializers.ModelSerializer):
 class DocumentSerializer(serializers.ModelSerializer):
     doc_path = serializers.SerializerMethodField(read_only=True)
     doc_category = DocumentCategorySerializer(read_only=True)
-    doc_nature = DocumentNatureSerializer(read_only=True)
+    doc_nature = serializers.PrimaryKeyRelatedField(queryset=DocumentNature.objects.all(), required=True)
     parent_document = serializers.PrimaryKeyRelatedField(read_only=True)
+    doc_nature_order = serializers.IntegerField(required=False, allow_null=True)
+    doc_type = serializers.CharField(required=False, allow_blank=True)
+    doc_format = serializers.CharField(required=False, allow_blank=True)
+    doc_size = serializers.FloatField(required=False, allow_null=True)
+    doc_code = serializers.CharField(required=False, allow_blank=True)
 
+    def validate_doc_code(self, value):
+        if not value or value.strip() == '':
+            raise serializers.ValidationError('doc_code cannot be empty.')
+        # Exclude current instance when updating
+        qs = Document.objects.filter(doc_code=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('doc_code must be unique.')
+        return value
+
+    def get_doc_path(self, obj):
+        # Return only the relative file path, not the full URL
+        return str(obj.doc_path)
+    
     class Meta:
         model = Document
         fields = "__all__"

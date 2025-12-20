@@ -16,11 +16,19 @@ class DocumentCategory(models.Model):
 
 class DocumentNature(models.Model):
     """
-    Stores document types (PR, PS, IT, EQ, FI).
+    Stores document types (IT, ET, FI).
     """
-    code = models.CharField(max_length=2, unique=True, default='PR')
+    code = models.CharField(max_length=2, unique=True)
     name = models.CharField(max_length=128)
     description = models.TextField()
+
+    @staticmethod
+    def get_default_natures():
+        return [
+            {"code": "IT", "name": "Instruction de travail", "description": "Instruction de travail"},
+            {"code": "ET", "name": "Enregistrement", "description": "Enregistrement"},
+            {"code": "FI", "name": "Fiche", "description": "Fiche"},
+        ]
 
     def __str__(self):
         return f"{self.code} - {self.name}"
@@ -37,27 +45,28 @@ class Document(models.Model):
     ]
 
     doc_title = models.CharField(max_length=1024)
-    doc_type = models.CharField(max_length=50) # e.g., PDF, Word Document, Excel Spreadsheet
     doc_path = models.FileField(upload_to='', max_length=2048)
-    doc_size = models.FloatField()
+    doc_type = models.CharField(max_length=50) # e.g., PDF, Word Document, Excel Spreadsheet
     doc_format = models.CharField(max_length=20)  # e.g., PDF, DOCX, XLSX
+    doc_size = models.FloatField(null=True, blank=True)
     doc_description = models.TextField()
+
     doc_owner = models.ForeignKey(User, on_delete=models.CASCADE)
     doc_departement = models.ForeignKey(Departement, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    # ISMS fields to keep:
+    
     doc_code = models.CharField(max_length=20, unique=True, db_index=True)
-    doc_category = models.ForeignKey(DocumentCategory, on_delete=models.PROTECT)
+    # doc_category = models.ForeignKey(DocumentCategory, on_delete=models.PROTECT)
     doc_nature = models.ForeignKey(DocumentNature, on_delete=models.PROTECT)
+    doc_nature_order = models.PositiveIntegerField(null=True, blank=True)
     parent_document = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
-    sequential_number = models.PositiveIntegerField()
     doc_status_type = models.CharField(
         max_length=10,
         choices=DOC_STATUS_TYPE_CHOICES,
         default='ORIGINAL'
     )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def delete(self, *args, **kwargs):
         # Delete file from storage
@@ -101,7 +110,8 @@ class Folder(models.Model):
     """
     fol_name = models.CharField(max_length=255)
     fol_path = models.CharField(max_length=1024)
-    fol_index = models.CharField(max_length=2, default='GD')  # Not unique, allows multiple folders per index
+    fol_index = models.CharField(max_length=5, default='GD')  # Not unique, allows multiple folders per index
+    fol_order = models.PositiveIntegerField(null=True, blank=True, help_text='Order of PR folders within the parent folder')
     parent_folder = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subfolders')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
