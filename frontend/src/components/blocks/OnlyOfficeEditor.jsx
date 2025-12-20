@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import authStorage from "../../lib/authStorage";
 import { useParams } from "react-router-dom";
 
 // Default to 8080 because your Document Server is running on http://localhost:8080
@@ -20,7 +21,7 @@ export default function OnlyOfficeEditor({ docId }) {
 
     const start = async () => {
       try {
-        const token = localStorage.getItem("token");
+        const token = authStorage.getToken();
         // The backend uses DRF TokenAuthentication which expects the header: 'Authorization: Token <key>'
         const headers = token
           ? {

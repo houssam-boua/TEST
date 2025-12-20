@@ -1,5 +1,6 @@
 import React from "react";
 import SectionCards from "../components/blocks/section-cards";
+import { PermissionGate } from "../Hooks/useHasPermission";
 import ChartAreaInteractive from "../components/charts/chart-area-interactive";
 import TableDemo from "../components/tables/table";
 import ChartPieDonutText from "../components/charts/chart-pie-donut-text";
@@ -12,7 +13,9 @@ const AdminAccueil = () => {
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2">
         <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-          <SectionCards />
+          <PermissionGate required="view_departement">
+            <SectionCards />
+          </PermissionGate>
           {/* <div className="px-4 lg:px-6">
             <ChartAreaInteractive />
           </div> */}

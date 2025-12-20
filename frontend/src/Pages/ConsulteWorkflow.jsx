@@ -15,62 +15,43 @@ import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import DepartmentBadge from "../Hooks/useDepartmentBadge";
 import StatusBadge from "../Hooks/useStatusBadge";
+import { SheetDemo } from "../components/blocks/sheet";
+
+// Small helper component used inside the table cell so we can use hooks
+function DocumentCell({ row }) {
+  const [open, setOpen] = useState(false);
+
+  // prefer nested task_workflow.document if present, otherwise fall back to document
+  const taskWorkflow = row?.original?.task_workflow || row?.original;
+  const doc = taskWorkflow?.document || row?.original?.document || null;
+
+  const infos = doc ? [doc] : [];
+
+  return (
+    <>
+      <Button
+        variant="secondary"
+        className="w-6 h-6"
+        onClick={() => setOpen(true)}
+      >
+        <Eye strokeWidth={1.5} size={16} />
+      </Button>
+      <SheetDemo open={open} onOpenChange={setOpen} infos={infos} />
+    </>
+  );
+}
 const columns = [
   {
     id: "id",
     accessorKey: "id",
     header: "ID",
+    cell: ({ row }) => <span className="italic">#{row?.original?.id}</span>,
   },
   {
     id: "nom",
     accessorKey: "nom",
-    header: "Title",
+    header: "Document Title",
   },
-  {
-    id: "document",
-    header: "Document",
-    accessorKey: "document",
-    cell: ({ row }) => {
-      const doc = row?.original?.document;
-      const title = doc?.doc_title ?? doc?.title ?? (doc ? String(doc) : "-");
-
-      const minioBase = (import.meta.env?.VITE_MINIO_BASE_URL || "").replace(
-        /\/$/,
-        ""
-      );
-      const toAbsolute = (p) => {
-        if (!p) return null;
-        if (String(p).startsWith("http://") || String(p).startsWith("https://"))
-          return p;
-        if (minioBase)
-          return `${minioBase.replace(/\/$/, "")}/${String(p).replace(
-            /^\/+/,
-            ""
-          )}`;
-        return `http://127.0.0.1:9000/${String(p).replace(/^\/+/, "")}`;
-      };
-
-      const url = doc?.doc_path ? toAbsolute(doc.doc_path) : null;
-
-      return (
-        <div className="flex items-center gap-2">
-          <span className="truncate">{title}</span>
-          {url ? (
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground/60 hover:text-primary"
-              title="Open document"
-            >
-              {" "}
-            </a>
-          ) : null}
-        </div>
-      );
-    },
-  },
-
   {
     id: "etat",
     header: "Status",
@@ -83,17 +64,30 @@ const columns = [
       return <StatusBadge status={etat} />;
     },
   },
+
   {
-    id: "description",
-    header: "Description",
-    accessorKey: "description",
+    id: "created_at",
+    header: "Created At",
+    accessorKey: "created_at",
+    cell: ({ row }) => {
+      const date = row?.original?.created_at;
+      if (!date) return "-";
+      return new Date(date).toLocaleDateString("fr-FR");
+    },
   },
+  {
+    id: "document",
+    header: "Document",
+    accessorKey: "document",
+    cell: ({ row }) => <DocumentCell row={row} />,
+  },
+
   {
     id: "seeDetails",
     header: "",
     cell: ({ row }) => (
       <Link
-        to={`/a/consulter-workflow/${row.original.id}/tasks`}
+        to={`/consulter-workflow/${row.original.id}/tasks`}
         className="text-muted-foreground/50"
         rel="noopener noreferrer"
       >
@@ -197,7 +191,7 @@ const ConsulteWorkflow = () => {
     if (idx !== -1) {
       cols[idx].cell = ({ row }) => (
         <Link
-          to={`/a/consulter-workflow/${row.original.id}/tasks`}
+          to={`/consulter-workflow/${row.original.id}/tasks`}
           className="text-muted-foreground/50"
           rel="noopener noreferrer"
         >
@@ -217,12 +211,12 @@ const ConsulteWorkflow = () => {
   const navigate = useNavigate();
 
   const redirectAdd = () => {
-    navigate("/a/creer-workflow");
+    navigate("/creer-workflow");
   };
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
+      <div className="flex flex-1 flex-col gap-2 md:py-6 px-4">
         <DataTable
           columns={localColumns}
           data={displayed}
