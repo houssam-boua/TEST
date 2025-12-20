@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import nodata from "../../assets/nodata.svg";
+import CostumeCardTitle from "../collection/costume-card-title";
 
 /**
  * ExpandableDataTable Component
@@ -168,6 +169,8 @@ export function ExpandableDataTable({
 
   return (
     <div className="space-y-4">
+      <CostumeCardTitle title={"Tasks"} />
+
       {enableSearch && (
         <div className="flex flex-wrap items-center gap-2">
           <Input
@@ -186,7 +189,10 @@ export function ExpandableDataTable({
             </Button>
           )}
         </div>
+
       )}
+
+      
 
       <div className="overflow-hidden rounded-lg border border-muted bg-white">
         <Table className="bg-white">
