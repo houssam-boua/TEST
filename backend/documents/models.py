@@ -68,7 +68,6 @@ class Document(models.Model):
     def __str__(self):
         return f"{self.doc_title} ({self.doc_type})"
 
-
 class DocumentVersion(models.Model):
     """
     Represents a version of a document.
@@ -94,3 +93,36 @@ class DocumentVersion(models.Model):
 
     def __str__(self):
         return f"Version {self.version_number} of {self.document.doc_title}"
+
+class Folder(models.Model):
+    """
+    Represents a folder in the document management system.
+    Supports hierarchical parent-child relationships and index tracking.
+    """
+    fol_name = models.CharField(max_length=128)
+    fol_path = models.CharField(max_length=1024)
+    fol_index = models.CharField(max_length=2, default='GD')  # Not unique, allows multiple folders per index
+    parent_folder = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subfolders')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+
+    def __str__(self):
+        return self.fol_name
+
+    class Meta:
+        ordering = ['fol_index', 'fol_name']
+        verbose_name = 'Folder'
+        verbose_name_plural = 'Folders'
+
+    def get_full_path(self):
+        """
+        Returns the full folder path hierarchy as a string.
+        """
+        parts = [self.fol_name]
+        parent = self.parent_folder
+        while parent:
+            parts.insert(0, parent.fol_name)
+            parent = parent.parent_folder
+        return '/'.join(parts)
+    
