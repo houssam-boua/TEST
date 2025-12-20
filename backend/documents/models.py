@@ -99,13 +99,21 @@ class Folder(models.Model):
     Represents a folder in the document management system.
     Supports hierarchical parent-child relationships and index tracking.
     """
-    fol_name = models.CharField(max_length=128)
+    fol_name = models.CharField(max_length=255)
     fol_path = models.CharField(max_length=1024)
     fol_index = models.CharField(max_length=2, default='GD')  # Not unique, allows multiple folders per index
     parent_folder = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subfolders')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        ordering = ['fol_index', 'fol_name']
+        verbose_name = 'Folder'
+        verbose_name_plural = 'Folders'
+        constraints = [
+            models.UniqueConstraint(fields=['fol_name', 'parent_folder'], name='unique_folder_name_in_parent')
+        ]
 
     def __str__(self):
         return self.fol_name

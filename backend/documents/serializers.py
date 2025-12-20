@@ -77,6 +77,13 @@ class FolderSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         parent = data.get('parent_folder') or getattr(self.instance, 'parent_folder', None)
+        fol_name = data.get('fol_name')
+        if fol_name:
+            qs = Folder.objects.filter(fol_name=fol_name, parent_folder=parent)
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+            if qs.exists():
+                raise serializers.ValidationError({'fol_name': 'A folder with this name already exists in the selected parent.'})
         if self.instance:
             # Editing: prevent setting self or descendant as parent
             if parent and (parent == self.instance or self._is_descendant(parent, self.instance)):
