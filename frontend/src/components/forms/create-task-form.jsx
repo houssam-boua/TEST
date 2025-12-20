@@ -29,14 +29,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ChevronDown, ChevronsUpDown, Check } from "lucide-react";
 import { useGetUsersQuery } from "@/Slices/userSlice";
@@ -113,178 +106,195 @@ export default function CreateTaskForm({
   };
 
   return (
-    <div className={cn("flex flex-col gap-6", className)} {...props}>
-      {submitError && (
-        <Alert variant="destructive" className="mb-2">
-          <AlertDescription>{submitError}</AlertDescription>
-        </Alert>
-      )}
-      <Form {...form}>
-        <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <FormField
-              control={form.control}
-              name="task_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nom de la tâche</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Nom de la tâche" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+    <div className={cn("flex flex-col gap-6  w-full", className)} {...props}>
+      <Card className="border-4 border-border w-full md:max-w-full">
+        <CardContent>
+          {submitError && (
+            <Alert variant="destructive" className="mb-2">
+              <AlertDescription>{submitError}</AlertDescription>
+            </Alert>
+          )}
+          <Form {...form}>
+            <form className="space-y-6" onSubmit={form.handleSubmit(onSubmit)}>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="task_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Task name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Nom de la tâche" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="task_date_echeance"
-              render={({ field }) => {
-                const dateObj = field.value ? new Date(field.value) : undefined;
-                return (
-                  <FormItem>
-                    <FormLabel>Date d'échéance</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant="outline"
-                            className="w-full justify-between font-normal"
-                          >
-                            {dateObj
-                              ? dateObj.toLocaleDateString()
-                              : "Sélectionnez une date"}
-                            <ChevronDown className="h-4 w-4 opacity-60" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={dateObj}
-                          captionLayout="dropdown"
-                          onSelect={(d) =>
-                            field.onChange(
-                              d ? d.toISOString().slice(0, 10) : ""
-                            )
-                          }
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                <FormField
+                  control={form.control}
+                  name="task_date_echeance"
+                  render={({ field }) => {
+                    const dateObj = field.value
+                      ? new Date(field.value)
+                      : undefined;
+                    return (
+                      <FormItem>
+                        <FormLabel>Due date</FormLabel>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className="w-full justify-between font-normal"
+                              >
+                                {dateObj
+                                  ? dateObj.toLocaleDateString()
+                                  : "Sélectionnez une date"}
+                                <ChevronDown className="h-4 w-4 opacity-60" />
+                              </Button>
+                            </FormControl>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={dateObj}
+                              captionLayout="dropdown"
+                              onSelect={(d) =>
+                                field.onChange(
+                                  d ? d.toISOString().slice(0, 10) : ""
+                                )
+                              }
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
 
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
+                />
 
-            <FormField
-              control={form.control}
-              name="task_priorite"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Priorité</FormLabel>
-                  <FormControl>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Sélectionnez une priorité" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Priorités</SelectLabel>
-                          <SelectItem value="urgent">Urgent</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
-                          <SelectItem value="normal">Normal</SelectItem>
-                          <SelectItem value="low">Low</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
+                <FormField
+                  control={form.control}
+                  name="task_priorite"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Priorité</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Sélectionnez une priorité" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectLabel>...</SelectLabel>
+                              <SelectItem value="urgent">Urgent</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                              <SelectItem value="normal">Normal</SelectItem>
+                              <SelectItem value="low">Low</SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <FormField
-              control={form.control}
-              name="task_statut"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Statut</FormLabel>
-                  <FormControl>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Sélectionnez un statut" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Statuts</SelectLabel>
-                          <SelectItem value="not_started">
-                            Not started
-                          </SelectItem>
-                          <SelectItem value="in_progress">
-                            In progress
-                          </SelectItem>
-                          <SelectItem value="completed">Completed</SelectItem>
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="task_statut"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Sélectionnez un statut" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectLabel>Statuts</SelectLabel>
+                              <SelectItem value="not_started">
+                                Not started
+                              </SelectItem>
+                              <SelectItem value="in_progress">
+                                In progress
+                              </SelectItem>
+                              <SelectItem value="completed">
+                                Completed
+                              </SelectItem>
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name="task_assigned_to"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assigné à</FormLabel>
-                  <FormControl>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue
-                          placeholder={
-                            usersLoading
-                              ? "Loading users..."
-                              : "Sélectionnez un utilisateur"
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectGroup>
-                          <SelectLabel>Utilisateurs</SelectLabel>
-                          {users.map((u) => (
-                            <SelectItem key={u.id} value={String(u.id)}>
-                              {u.first_name} {u.last_name} ({u.username})
-                            </SelectItem>
-                          ))}
-                        </SelectGroup>
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name="task_assigned_to"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Assigned to</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue
+                              placeholder={
+                                usersLoading
+                                  ? "Loading users..."
+                                  : "Select a user"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectGroup>
+                              <SelectLabel>Users</SelectLabel>
+                              {users.map((u) => (
+                                <SelectItem key={u.id} value={String(u.id)}>
+                                  {u.first_name} {u.last_name} ({u.username})
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            {/* Document selector removed — document id comes from the workflow */}
-          </div>
+                {/* Document selector removed — document id comes from the workflow */}
+              </div>
 
-          <div className="flex justify-between gap-3">
-            <Button type="button" variant="secondary" onClick={onBack}>
-              Retour
-            </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? "Création..." : "Créer la tâche"}
-            </Button>
-          </div>
-        </form>
-      </Form>
+              <div className="flex justify-between gap-3">
+                <Button type="button" variant="secondary" onClick={onBack}>
+                  Retour
+                </Button>
+                <Button type="submit" disabled={submitting}>
+                  {submitting ? "Creating..." : "Create Task"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   );
 }

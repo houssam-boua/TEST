@@ -56,7 +56,11 @@ export const routesConfig = {
         path: "/consulter-workflow/:workflowId/tasks",
         component: ConsulteTaks,
       },
-      { path: "/creer-workflow", component: CreateWorkflow },
+      {
+        path: "/creer-workflow",
+        component: CreateWorkflow,
+        breadcrumb: "Create Workflow",
+      },
       { path: "/edit-document/:id", component: EditDocument },
       { path: "/users", component: AdminUsers },
       { path: "/departments", component: AdminDepartements },

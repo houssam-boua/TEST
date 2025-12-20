@@ -33,7 +33,7 @@ const TaskCard = ({
         <div className="pr-4">
           <ul className="flex flex-col gap-1 p-4 items-center justify-center">
             <li className="text-muted-foreground/70 text-sm">Task</li>
-            <li className="text-primary text-3xl font-semibold">{id}</li>
+            <li className="text-primary text-xl font-semibold">{id}</li>
             <li className="text-muted-foreground/80 text-sm">
               {createdFormatted}
             </li>

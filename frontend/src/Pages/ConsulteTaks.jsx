@@ -9,6 +9,67 @@ import { Separator } from "@/components/ui/separator";
 import TaskCard from "../components/blocks/task-card";
 import { useGetTasksofWorkflowQuery } from "../Slices/taskSlice";
 import { useParams } from "react-router-dom";
+import { DataTable, defaultColumns } from "../components/tables/data-table";
+import { ExpandableDataTable } from "../components/tables/expandable-data-table";
+import StepperIcons from "../components/blocks/stepper-icon";
+import PriorityBadge from "../Hooks/usePriority";
+import StatusBadge from "../Hooks/useStatusBadge";
+
+const columns = [
+  { id: "id", accessorKey: "id", header: "ID", size: 50 },
+  { id: "task_name", accessorKey: "task_name", header: "Task Name" },
+  {
+    id: "task_assigned_to",
+    accessorKey: "task_assigned_to",
+    header: "Assigned To",
+    cell: ({ row }) => {
+      const assignedTo = row.getValue("task_assigned_to");
+      if (!assignedTo) return "Unassigned";
+      const fullName = `${assignedTo.first_name || ""} ${
+        assignedTo.last_name || ""
+      }`.trim();
+      return fullName || assignedTo.username || "Unassigned";
+    },
+    size: 150,
+  },
+  {
+    id: "task_priorite",
+    accessorKey: "task_priorite",
+    header: "Priority",
+    cell: ({ row }) => (
+      <PriorityBadge priority={row.getValue("task_priorite")} />
+    ),
+  },
+  {
+    id: "task_statut",
+    accessorKey: "task_statut",
+    header: "Status",
+    cell: ({ row }) => <StatusBadge status={row.getValue("task_statut")} />,
+  },
+  {
+    id: "task_date_echeance",
+    accessorKey: "task_date_echeance",
+    header: "Due Date",
+    cell: ({ row }) => {
+      const date = row.getValue("task_date_echeance");
+      if (!date) return "N/A";
+      const dateObj = new Date(date);
+      const day = String(dateObj.getDate()).padStart(2, "0");
+      const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+      const year = dateObj.getFullYear();
+      return `${day}-${month}-${year}`;
+    },
+  },
+];
+
+const renderSubComponent = ({ row }) => (
+  <div className="p-4">
+    <StepperIcons task={row.original} />
+  </div>
+);
+
+const combinedColumns = [...defaultColumns.slice(0, 2), ...columns];
+
 const ConsulteTaks = () => {
   const { workflowId } = useParams();
   const { data: tasksData = {} } = useGetTasksofWorkflowQuery(workflowId);
@@ -24,61 +85,15 @@ const ConsulteTaks = () => {
     return acc;
   }, {});
 
-  const stepMap = {
-    not_started: 1,
-    in_progress: 2,
-    completed: 3,
-  };
-
   return (
     <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4  ">
-        <CostumeCardTitle title="Tasks" />
-        {/* Render one TaskCard per fetched task */}
-        <Card className="p-4 border-border">
-          <div className="space-y-3 w-full">
-            {tasks.length === 0 ? (
-              <div className="text-muted-foreground/80">No tasks found</div>
-            ) : (
-              tasks.map((t) => {
-                const id = t.id ?? t.pk ?? t._id ?? "";
-                const created_at =
-                  t.created_at ?? t.createdAt ?? t.created_at ?? "";
-                const task_name = t.task_name ?? t.name ?? t.title ?? "";
-                const rawAssigned =
-                  t.task_assigned_to ?? t.assigned_to ?? t.validator ?? "";
-                let task_assigned_to = "";
-                if (rawAssigned && typeof rawAssigned === "object") {
-                  task_assigned_to =
-                    (rawAssigned.first_name || rawAssigned.firstName
-                      ? `${rawAssigned.first_name || rawAssigned.firstName} ${
-                          rawAssigned.last_name || rawAssigned.lastName || ""
-                        }`.trim()
-                      : rawAssigned.username || rawAssigned.email || "") || "";
-                } else {
-                  task_assigned_to = rawAssigned;
-                }
-                const task_priorite = t.task_priorite ?? t.priority ?? "";
-                const task_statut = t.task_statut ?? t.status ?? t.statut ?? "";
-                const task_date_echeance =
-                  t.task_date_echeance ?? t.due_date ?? t.dueDate ?? "";
-
-                return (
-                  <TaskCard
-                    key={id || Math.random()}
-                    id={id}
-                    created_at={created_at}
-                    task_name={task_name}
-                    task_assigned_to={task_assigned_to}
-                    task_priorite={task_priorite}
-                    task_statut={task_statut}
-                    task_date_echeance={task_date_echeance}
-                  />
-                );
-              })
-            )}
-          </div>
-        </Card>
+      <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
+        <ExpandableDataTable
+          columns={combinedColumns}
+          data={tasks}
+          renderSubComponent={renderSubComponent}
+          pageSize={20}
+        />
       </div>
     </div>
   );

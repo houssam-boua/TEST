@@ -1,5 +1,6 @@
 import React from "react";
 ("use client");
+import FilePreview from "reactjs-file-preview";
 import { TabsContent } from "@/components/ui/tabs";
 const fmtValue = (v) => {
   if (v === null || typeof v === "undefined") return "";
@@ -47,7 +48,7 @@ const formatCreated = (item) => {
 const SheetInfoSection = ({ infos = [] }) => {
   return (
     <TabsContent value="info">
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 ">
         {!Array.isArray(infos) || infos.length === 0 ? (
           <span className="text-sm text-muted-foreground">
             Aucune information.
@@ -77,41 +78,8 @@ const SheetInfoSection = ({ infos = [] }) => {
               : null;
 
             return (
-              <div
-                key={idx}
-                className="border rounded p-3 bg-white/60 dark:bg-slate-800/60"
-              >
-                {fileUrl ? (
-                  ext === "png" ||
-                  ext === "jpg" ||
-                  ext === "jpeg" ||
-                  ext === "gif" ||
-                  ext === "webp" ? (
-                    <img
-                      src={fileUrl}
-                      alt={name}
-                      className="w-full max-h-64 object-contain mb-2"
-                    />
-                  ) : ext === "pdf" ? (
-                    <iframe
-                      src={fileUrl}
-                      title={name}
-                      className="w-full h-64 mb-2"
-                    />
-                  ) : (
-                    <div className="mb-2">
-                      <a
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-primary underline"
-                      >
-                        Open file
-                      </a>
-                    </div>
-                  )
-                ) : null}
-
+              <div key={idx} className=" rounded p-3 bg-white w-fit ">
+                {fileUrl ? <FilePreview url={fileUrl} filename={name} /> : null}
                 <div className="flex items-center justify-between mb-2">
                   <div className="font-medium">{name}</div>
                   <div className="text-sm text-muted-foreground">
