@@ -522,8 +522,28 @@ class FolderViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """
         Set the created_by field to the current user on creation.
+        Also create a logical folder in MinIO by adding a .keep placeholder file.
+        The folder path will be parent_path + current folder name.
         """
-        serializer.save(created_by=self.request.user)
+        folder = serializer.save(created_by=self.request.user)
+        from django.core.files.base import ContentFile
+        from django.core.files.storage import default_storage
+        # Build the full path: parent path + current folder name
+        parent_path = ''
+        if folder.parent_folder:
+            parent_path = folder.parent_folder.fol_path.strip('/').replace('\\', '/')
+        folder_name = folder.fol_name.strip('/').replace('\\', '/')
+        full_path = f"{parent_path}/{folder_name}" if parent_path else folder_name
+        # Update the folder's fol_path if needed
+        if folder.fol_path != full_path:
+            folder.fol_path = full_path
+            folder.save(update_fields=["fol_path"])
+        placeholder_path = f"{full_path}/.keep" if full_path else ".keep"
+        try:
+            default_storage.save(placeholder_path, ContentFile(b""))
+        except Exception as e:
+            # Optionally log or handle the error
+            pass
 
     @action(detail=False, methods=['get'], url_path='roots')
     def roots(self, request):

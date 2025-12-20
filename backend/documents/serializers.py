@@ -58,6 +58,7 @@ class FolderSerializer(serializers.ModelSerializer):
     parent_folder = serializers.PrimaryKeyRelatedField(
         queryset=Folder.objects.all(), required=False, allow_null=True
     )
+    fol_path = serializers.CharField(required=False, allow_blank=True)
     created_by = UserMiniSerializer(read_only=True)
     children = serializers.SerializerMethodField(read_only=True)
 
