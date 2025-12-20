@@ -27,7 +27,7 @@ export const taskSlice = apiSlice.injectEndpoints({
     updateTask: builder.mutation({
       query: ({ id, data }) => ({
         url: `/api/tasks/${id}/`,
-        method: "PUT",
+        method: "PATCH",
         body: data,
       }),
       invalidatesTags: ["Task"],

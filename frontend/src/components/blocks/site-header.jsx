@@ -14,43 +14,38 @@ import { House } from "lucide-react";
 
 // Map URL prefixes to sidebar section titles based on your navigation
 const sectionMap = [
-  { prefix: "/a/acceuil", title: "Dashboard" },
+  { prefix: "/acceuil", title: "Dashboard" },
 
   // Documents section
-  { prefix: "/a/creer-document", title: "New document" },
-  { prefix: "/a/consulter", title: "Documents list" },
-  { prefix: "/a/consulter/:id/documents", title: "Document details" },
-  { prefix: "/a/quantum", title: "Documents" },
+  { prefix: "/creer-documents", title: "New documents" },
+  { prefix: "/consulter", title: "Documents list" },
+  { prefix: "/consulter/:id/documents", title: "Document details" },
 
   // Workflow section
-  { prefix: "/a/workflow", title: "Workflow" },
-  { prefix: "/a/introduction", title: "Workflow" },
-  { prefix: "/a/get-started", title: "Workflow" },
-  { prefix: "/a/tutorials", title: "Workflow" },
-  { prefix: "/a/changelog", title: "Workflow" },
+  { prefix: "/workflow", title: "Workflow" },
+  { prefix: "/introduction", title: "Workflow" },
 
   // OCR section
-  { prefix: "/a/ocr", title: "OCR" },
-  { prefix: "/a/scan", title: "OCR" },
+  { prefix: "/ocr", title: "OCR" },
+  { prefix: "/scan", title: "OCR" },
 
   // History section
-  { prefix: "/a/activity-history", title: "History activity" },
-  { prefix: "/a/general", title: "History" },
-  { prefix: "/a/team", title: "History" },
+  { prefix: "/activity-history", title: "History activity" },
+  { prefix: "/general", title: "History" },
+  { prefix: "/team", title: "History" },
 
   // User management section
-  { prefix: "/a/users", title: "User Management" },
-  { prefix: "/a/user-management", title: "User Management" },
-  { prefix: "/a/departments", title: "Departments" },
-  { prefix: "/a/roles", title: "Roles" },
+  { prefix: "/users", title: "User Management" },
+  { prefix: "/user-management", title: "User Management" },
+  { prefix: "/departments", title: "Departments" },
+  { prefix: "/roles", title: "Roles" },
   // Permissions section
-  { prefix: "/a/permissions", title: "Permissions" },
-  { prefix: "/a/permission-groups", title: "Permissions groups" },
+  { prefix: "/permissions", title: "Permissions" },
+  { prefix: "/permission-groups", title: "Permissions groups" },
   {},
 ];
 
 function getSectionForPath(pathname) {
-  if (!pathname?.startsWith("/a")) return null;
   // Choose the longest matching prefix for specificity
   const match = sectionMap
     .filter((s) => pathname.startsWith(s.prefix))
@@ -61,13 +56,12 @@ function getSectionForPath(pathname) {
 function getAdminBreadcrumbs(pathname) {
   if (!pathname) return [];
 
-  // Only handle /a/* routes
-  if (!pathname.startsWith("/a")) return [];
+  // Only handle /* routes
 
   const crumbs = [
     {
       label: <House size={16} strokeWidth={1.25} />,
-      to: "/a/acceuil",
+      to: "/acceuil",
     },
   ];
 

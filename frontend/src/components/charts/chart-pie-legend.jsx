@@ -15,6 +15,8 @@ import {
   ChartContainer,
   ChartLegend,
   ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
 } from "@/components/ui/chart";
 import CostumeCardTitle from "../collection/costume-card-title";
 
@@ -149,6 +151,13 @@ export function ChartPieLegend({ data: propData }) {
         >
           <PieChart>
             <Pie data={mapped} dataKey="documents" nameKey="name" />
+            <ChartTooltip
+              content={
+                <ChartTooltipContent labelKey="activities" indicator="line" />
+              }
+              cursor={false}
+              defaultIndex={1}
+            />
             <ChartLegend
               content={<ChartLegendContent nameKey="label" />}
               className="-translate-y-2 flex-wrap gap-2 *:basis-1/4 *:justify-center"

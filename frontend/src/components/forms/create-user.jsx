@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { useGetRolesQuery } from "@/Slices/rolesSlices";
 import { useGetDepartementsQuery } from "@/Slices/departementSlice";
+import { useGetPermissionGroupsQuery } from "@/Slices/permissionSlice";
 
 const CreateUserForm = ({
   onSubmit,
@@ -26,6 +27,15 @@ const CreateUserForm = ({
 
   const { data: rolesData } = useGetRolesQuery();
   const { data: depsData } = useGetDepartementsQuery();
+  const { data: permGroupsData } = useGetPermissionGroupsQuery();
+
+  const permissionGroups = useMemo(
+    () =>
+      Array.isArray(permGroupsData) && permGroupsData.length
+        ? permGroupsData
+        : [],
+    [permGroupsData]
+  );
 
   // prefer API data, fall back to props passed from parent (mock data)
   const roles = useMemo(
@@ -51,12 +61,12 @@ const CreateUserForm = ({
     firstName: "",
     lastName: "",
     email: "",
-    password: "",
     role: "",
     departement: "",
+    group: "",
   });
 
-  // Set defaults when roles/departements load
+  // Set defaults when roles/departements/groups load
   useEffect(() => {
     setForm((prev) => ({
       ...prev,
@@ -64,8 +74,11 @@ const CreateUserForm = ({
       departement:
         prev.departement ||
         (departements[0]?.id ? String(departements[0].id) : ""),
+      group:
+        prev.group ||
+        (permissionGroups[0]?.id ? String(permissionGroups[0].id) : ""),
     }));
-  }, [roles, departements]);
+  }, [roles, departements, permissionGroups]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -79,10 +92,8 @@ const CreateUserForm = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (submitHandler) {
-      // Map to backend expected keys: username, password, email, first_name, last_name, role, departement
       const payload = {
         username: `${form.firstName}${form.lastName}`.toLowerCase(),
-        password: form.password || `${form.firstName}${form.lastName}123`,
         email: form.email,
         first_name: form.firstName,
         last_name: form.lastName,
@@ -91,6 +102,8 @@ const CreateUserForm = ({
         departement: form.departement ? Number(form.departement) : null,
         // some backends expect *_id keys — include both to be safe
         role_id: form.role ? Number(form.role) : null,
+        // include groups as array of ids (backend expects list)
+        groups: form.group ? [Number(form.group)] : [],
       };
 
       // basic client-side validation
@@ -151,26 +164,13 @@ const CreateUserForm = ({
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="password" className="text-sm font-medium">
-            Password
-          </label>
-          <Input
-            id="password"
-            name="password"
-            type="password"
-            value={form.password}
-            onChange={handleChange}
-            placeholder="auto-generated if left blank"
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">Role</label>
           <Select
+            className="w-full"
             value={form.role}
             onValueChange={(v) => handleSelect("role", v)}
           >
-            <SelectTrigger id="role">
+            <SelectTrigger id="role" className="w-full">
               <SelectValue placeholder="Select role" />
             </SelectTrigger>
             <SelectContent>
@@ -189,10 +189,11 @@ const CreateUserForm = ({
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium">Departement</label>
           <Select
+            className="w-full"
             value={form.departement}
             onValueChange={(v) => handleSelect("departement", v)}
           >
-            <SelectTrigger id="departement">
+            <SelectTrigger id="departement" className="w-full">
               <SelectValue placeholder="Select departement" />
             </SelectTrigger>
             <SelectContent>
@@ -201,6 +202,29 @@ const CreateUserForm = ({
                 {departements.map((d) => (
                   <SelectItem key={String(d.id)} value={String(d.id)}>
                     {d.dep_name}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className=" flex flex-col gap-1">
+          <label className="text-sm font-medium">Group</label>
+          <Select
+            className="w-full"
+            value={form.group}
+            onValueChange={(v) => handleSelect("group", v)}
+          >
+            <SelectTrigger id="group" className="w-full">
+              <SelectValue placeholder="Select group" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Permission Groups</SelectLabel>
+                {permissionGroups.map((g) => (
+                  <SelectItem key={String(g.id)} value={String(g.id)}>
+                    {g.name || g.title || g.id}
                   </SelectItem>
                 ))}
               </SelectGroup>

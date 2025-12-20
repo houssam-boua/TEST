@@ -15,10 +15,12 @@ import useIcon from "../../Hooks/useIcon";
 import ChartBarMultiple from "../charts/chart-bar-multiple";
 import useIconColor from "../../Hooks/useIconColor";
 import useRelativeTime from "../../Hooks/useRelativeTime";
+import useActionLog from "../../Hooks/useActionLog";
 import {
   useGetDashboardDocumentsByDepartementQuery,
   useGetDashboardDocumentsRecentQuery,
 } from "../../Slices/dashboardSlices";
+import { useGetLogsQuery } from "../../Slices/logsSlice";
 
 // Render a status-based icon using hooks inside a proper component
 const StatusIcon = React.memo(function StatusIcon({
@@ -32,20 +34,7 @@ const StatusIcon = React.memo(function StatusIcon({
   return iconEl || null;
 });
 
-const recentActivities = [
-  {
-    title: "User A uploaded Document 1",
-    time: "2 hours ago",
-    status: "approved",
-    icon: CircleAlert,
-  },
-  {
-    title: "User B commented on Document 2",
-    time: "5 hours ago",
-    status: "pending",
-    icon: CircleAlert,
-  },
-];
+
 const sampleRecentDocuments = [
   {
     title: "Sample Document",
@@ -70,10 +59,36 @@ const DashboardSectionCards = ({ departmentCounts }) => {
     isError: byDeptError,
   } = useGetDashboardDocumentsByDepartementQuery();
 
+  // Fetch user action logs
+  const {
+    data: logsResponse,
+    isLoading: logsLoading,
+    isError: logsError,
+  } = useGetLogsQuery();
+
   // small component that uses the `useRelativeTime` hook per-item
   function RelativeTimeDisplay({ date }) {
     const rel = useRelativeTime(date);
     return <span className="text-xs text-muted-foreground">{rel}</span>;
+  }
+
+  // Component to render a single activity from a log entry
+  function ActivityItem({ log }) {
+    const sentence = useActionLog(log);
+    const action = String(log.action || "").toLowerCase();
+    return (
+      <li className="mb-2 flex items-center justify-start gap-2">
+        <StatusIcon
+          status={action}
+          className="h-6 w-6 stroke-primary"
+          IconComponent={CircleAlert}
+        />
+        <div className="flex-1 flex flex-col ">
+          <span className="text-xs">{sentence}</span>
+        </div>
+        <RelativeTimeDisplay date={log.timestamp} />
+      </li>
+    );
   }
 
   // normalize API response ({ data: [...] }) into UI-friendly items
@@ -143,29 +158,26 @@ const DashboardSectionCards = ({ departmentCounts }) => {
         </CardHeader>
 
         <CardContent>
-          <ul>
-            {recentActivities.map((doc, index) => (
-              <li
-                key={index}
-                className="mb-2 flex items-center justify-start gap-2"
-              >
-                <StatusIcon
-                  status={doc.status}
-                  className="h-6 w-6"
-                  IconComponent={doc.icon}
-                />
-                <div className="flex-1 flex flex-col ">
-                  <span className="text-xs">{doc.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {doc.status}
-                  </span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {doc.time}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {logsLoading ? (
+            <div className="text-sm text-muted-foreground">
+              Loading activities...
+            </div>
+          ) : logsError ? (
+            <div className="text-sm text-destructive">
+              Unable to load activities
+            </div>
+          ) : (
+            <ul>
+              {(Array.isArray(logsResponse)
+                ? logsResponse
+                : logsResponse?.data || []
+              )
+                .slice(0, 5)
+                .map((log, index) => (
+                  <ActivityItem key={log.id || index} log={log} />
+                ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
       <Card className="@container/card ">
@@ -174,9 +186,7 @@ const DashboardSectionCards = ({ departmentCounts }) => {
         </CardHeader>
 
         <CardContent>
-          <ChartBarMultiple
-            data={deptItems}
-          />
+          <ChartBarMultiple data={deptItems} />
           {byDeptLoading && (
             <div className="text-xs text-muted-foreground mt-2">
               Loading department stats...

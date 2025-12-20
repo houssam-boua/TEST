@@ -1,29 +1,29 @@
 import React from "react";
 import { Badge } from "@/components/ui/badge";
-import { User } from "lucide-react";
+import { CheckLine, PenLine, User } from "lucide-react";
 
 const useRoleBadge = ({ role }) => {
   switch (role) {
     case "admin":
       return (
-        <Badge className="rounded-full pl-1 gap-1.5">
-          <User className="h-4 w-4" />
+        <span className="rounded-full pl-1 gap-1.5   flex items-center">
+          <User className="h-4 w-4 stroke-accent/80 " />
           Admin
-        </Badge>
+        </span>
       );
     case "validator":
       return (
-        <Badge  className="rounded-full pl-1 gap-1.5">
-          <User className="h-4 w-4" />
+        <span className="rounded-full pl-1 gap-1.5   flex items-center">
+          <CheckLine className="h-4 w-4 stroke-blue-400/80" />
           validator
-        </Badge>
+        </span>
       );
     case "user":
       return (
-        <Badge className="rounded-full pl-1 gap-1.5">
-          <User className="h-4 w-4" />
+        <span className="rounded-full pl-1 gap-1.5   flex items-center">
+          <PenLine className="h-4 w-4 stroke-emerald-400/80" />
           user
-        </Badge>
+        </span>
       );
     default:
       return (
