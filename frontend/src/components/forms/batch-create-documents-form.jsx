@@ -22,6 +22,10 @@ import {
   CloudUpload,
   FileUp,
 } from "lucide-react";
+import {
+  useGetDocumentNatureQuery,
+  useCreateDocumentMutation,
+} from "@/Slices/documentSlice";
 
 /**
  * BatchCreateDocumentsForm
@@ -29,9 +33,15 @@ import {
  * - Renders a collapsible card for every selected file with per-file inputs
  * - Calls `onSubmit(items)` where items is an array of { file, doc_title, doc_category, doc_status, doc_departement, doc_description }
  */
-export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
+export default function BatchCreateDocumentsForm({
+  onSubmit,
+  disabled,
+  currentUser,
+  currentUserId,
+}) {
   const { data: departements } = useGetDepartementsQuery();
   const { data: folders } = useGetFoldersQuery();
+  const { data: natures } = useGetDocumentNatureQuery();
   const [items, setItems] = useState([]);
   const [error, setError] = useState(null);
 
@@ -56,6 +66,7 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
       doc_path: "/",
       doc_status: "pending",
       doc_departement: departements?.[0]?.id ? String(departements[0].id) : "",
+      doc_nature: natures?.[0]?.id ? String(natures[0].id) : "",
       doc_description: "",
       expanded: true,
       uploading: false,
@@ -75,40 +86,57 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
   const removeItem = (id) =>
     setItems((prev) => prev.filter((it) => it.id !== id));
 
+  const [createDocument] = useCreateDocumentMutation();
+
   const handleSubmit = async (ev) => {
     ev?.preventDefault();
     setError(null);
-    if (!onSubmit) return;
     if (!items.length) {
       setError("No files selected");
       return;
     }
 
-    // Prepare payload and forward to parent
-    try {
-      const payload = items.map(
-        ({
-          file,
-          doc_title,
-          doc_path,
-          doc_status,
-          doc_departement,
-          doc_description,
-        }) => ({
-          file,
-          doc_title,
-          doc_path,
-          doc_status,
-          doc_departement,
-          doc_description,
-        })
-      );
+    const uploaderId =
+      currentUserId || (currentUser && currentUser.id) || undefined;
+    const results = [];
 
-      await onSubmit(payload, { setItems });
-    } catch (err) {
-      console.error("BatchCreateDocumentsForm submit error:", err);
-      setError(err?.message || String(err));
-      throw err;
+    // Upload sequentially to keep server load predictable and preserve order
+    for (const it of items) {
+      updateItem(it.id, { uploading: true, progress: 0 });
+      try {
+        const fd = new FormData();
+        fd.append("file", it.file, it.file.name);
+        if (it.doc_departement)
+          fd.append("doc_departement", String(it.doc_departement));
+        if (it.doc_nature) fd.append("doc_nature", String(it.doc_nature));
+        if (uploaderId) fd.append("doc_owner", String(uploaderId));
+        if (it.doc_path)
+          fd.append("doc_path", String(it.doc_path).replace(/^\/+|\/+$/g, ""));
+        if (it.doc_title) fd.append("doc_title", String(it.doc_title));
+        if (it.doc_status) fd.append("doc_status", String(it.doc_status));
+        if (it.doc_description)
+          fd.append("doc_description", String(it.doc_description));
+
+        const resp = await createDocument(fd).unwrap();
+        updateItem(it.id, { uploading: false, result: resp });
+        results.push({ id: it.id, ok: true, resp });
+      } catch (err) {
+        console.error("upload failed for", it.file?.name, err);
+        updateItem(it.id, { uploading: false, result: err });
+        results.push({ id: it.id, ok: false, error: err });
+      }
+    }
+
+    // Remove successful items from UI
+    const failedIds = results.filter((r) => !r.ok).map((r) => r.id);
+    setItems((prev) => prev.filter((it) => failedIds.includes(it.id)));
+
+    if (typeof onSubmit === "function") {
+      try {
+        await onSubmit(results, { setItems });
+      } catch (e) {
+        console.debug("onSubmit callback error", e);
+      }
     }
   };
 
@@ -251,6 +279,29 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
                             </SelectContent>
                           </Select>
                         </div>
+                        <div className="md:col-span-1">
+                          <label className="block text-sm mb-1">Nature</label>
+                          <Select
+                            value={String(it.doc_nature || "")}
+                            onValueChange={(v) =>
+                              updateItem(it.id, { doc_nature: v })
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                <SelectLabel>Natures</SelectLabel>
+                                {natures?.map((n) => (
+                                  <SelectItem key={n.id} value={String(n.id)}>
+                                    {n.nat_name || n.name || `${n.id}`}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </div>
                         <div>
                           <label className="block text-sm mb-1">Folder</label>
                           <Select
@@ -265,23 +316,32 @@ export default function BatchCreateDocumentsForm({ onSubmit, disabled }) {
                             <SelectContent>
                               <SelectGroup>
                                 <SelectLabel>Folders</SelectLabel>
-                                {(folders?.folders || []).length === 0 ? (
-                                  <SelectItem value="/">Root</SelectItem>
-                                ) : (
-                                  [
-                                    <SelectItem key="/" value="/">
-                                      Root
-                                    </SelectItem>,
-                                    ...(folders?.folders || []).map((f) => (
-                                      <SelectItem
-                                        key={String(f)}
-                                        value={String(f)}
-                                      >
+                                <SelectItem value="/">Root</SelectItem>
+                                {(folders || []).map((f) => {
+                                  // folders may be strings or objects
+                                  if (!f) return null;
+                                  if (typeof f === "string") {
+                                    return (
+                                      <SelectItem key={f} value={String(f)}>
                                         {String(f)}
                                       </SelectItem>
-                                    )),
-                                  ]
-                                )}
+                                    );
+                                  }
+                                  const label = `${f.fol_index || ""} ${
+                                    f.fol_name || f.fol_path || ""
+                                  }`.trim();
+                                  const value = String(
+                                    f.fol_path || f.path || f.fol_name || ""
+                                  );
+                                  return (
+                                    <SelectItem
+                                      key={String(f.id || value)}
+                                      value={value}
+                                    >
+                                      {label}
+                                    </SelectItem>
+                                  );
+                                })}
                               </SelectGroup>
                             </SelectContent>
                           </Select>

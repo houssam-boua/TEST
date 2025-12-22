@@ -41,7 +41,7 @@ export const documentSlice = apiSlice.injectEndpoints({
 
     createFolder: builder.mutation({
       query: (body) => ({
-        url: "/api/documents/create-folder/",
+        url: "/api/folders/",
         method: "POST",
         body,
       }),
@@ -58,10 +58,42 @@ export const documentSlice = apiSlice.injectEndpoints({
 
     getFolders: builder.query({
       query: () => ({
-        url: "/api/documents/folders/",
+        url: "/api/folders/",
         method: "GET",
       }),
       providesTags: ["Document"],
+    }),
+
+    getFoldersTree: builder.query({
+      query: () => ({
+        url: "/api/folders/tree/",
+        method: "GET",
+      }),
+      providesTags: ["Document"],
+    }),
+    getDocumentNature: builder.query({
+      query: () => ({
+        url: "/api/document-natures/",
+        method: "GET",
+      }),
+      providesTags: ["Document"],
+    }),
+
+    getDocumentCategories: builder.query({
+      query: () => ({
+        url: "/api/document-categories/",
+        method: "GET",
+      }),
+      providesTags: ["Document"],
+    }),
+
+    patchDocument: builder.mutation({
+      query: ({ id, data }) => ({
+        url: `/api/documents/${id}/`,
+        method: "PATCH",
+        body: data,
+      }),
+      invalidatesTags: ["Document"],
     }),
   }),
   overrideExisting: false,
@@ -69,6 +101,7 @@ export const documentSlice = apiSlice.injectEndpoints({
 
 export const {
   useGetDocumentsQuery,
+
   useGetDocumentByIdQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
@@ -76,4 +109,8 @@ export const {
   useCreateFolderMutation,
   useGetFolderContentQuery,
   useGetFoldersQuery,
+  useGetFoldersTreeQuery,
+  useGetDocumentNatureQuery,
+  useGetDocumentCategoriesQuery,
+  usePatchDocumentMutation,
 } = documentSlice;

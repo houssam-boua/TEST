@@ -5,7 +5,33 @@ import { CirclePicker } from "react-color";
 import CreatableSelect from "../collection/createable-select";
 
 const CreateFolder = ({ onCreate, onCancel, loading, className, ...props }) => {
-  const [form, setForm] = React.useState({ path: "" });
+  const [form, setForm] = React.useState({
+    fol_name: "",
+    fol_path: "",
+    fol_index: "",
+    parent_folder: "",
+    created_by: "",
+  });
+  React.useEffect(() => {
+    // keep fol_path in sync with current prefix (the current folder path)
+    setForm((p) => ({
+      ...p,
+      fol_path: props.prefix || "",
+      parent_folder:
+        p.parent_folder || props.parent || props.parent_folder || "",
+      created_by:
+        p.created_by ||
+        props.currentUserId ||
+        (props.currentUser && props.currentUser.id) ||
+        "",
+    }));
+  }, [
+    props.prefix,
+    props.parent,
+    props.parent_folder,
+    props.currentUserId,
+    props.currentUser,
+  ]);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
@@ -13,9 +39,9 @@ const CreateFolder = ({ onCreate, onCancel, loading, className, ...props }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // normalize prefix and entered path, then combine
+    // normalize prefix and entered folder name, then combine (for display/use if needed)
     const prefixRaw = String(props.prefix || "").trim();
-    const entered = String(form.path || "").trim();
+    const entered = String(form.fol_name || "").trim();
     if (!entered) return; // noop when empty
 
     // strip leading/trailing slashes from both
@@ -24,12 +50,33 @@ const CreateFolder = ({ onCreate, onCancel, loading, className, ...props }) => {
     const combined = pref ? `${pref}/${strip(entered)}` : strip(entered);
 
     if (typeof onCreate === "function") {
-      // collect other form values (including the hidden input written by CreatableSelect)
+      // collect other form values (including the hidden inputs written by CreatableSelect)
       const fd = new FormData(e.target);
-      const folderType = fd.get("folderType") || null;
-      return onCreate({ path: combined, type: folderType });
+      const folIndex = fd.get("fol_index") || null;
+      const payload = {
+        fol_name: entered,
+        fol_path: fd.get("fol_path") || props.prefix || "",
+        fol_index: folIndex,
+        parent_folder:
+          fd.get("parent_folder") ||
+          form.parent_folder ||
+          props.parent ||
+          props.parent_folder ||
+          null,
+        created_by:
+          fd.get("created_by") ||
+          props.currentUserId ||
+          (props.currentUser && props.currentUser.id) ||
+          null,
+        // also provide a combined path if the caller wants it
+        combined_path: combined,
+      };
+      return onCreate(payload);
     }
-    console.debug("CreateFolderForm payload", { ...form, type: null });
+    console.debug("CreateFolderForm payload", {
+      ...form,
+      combined_path: combined,
+    });
   };
 
   return (
@@ -45,22 +92,22 @@ const CreateFolder = ({ onCreate, onCancel, loading, className, ...props }) => {
         </div>
         <div className="grid grid-rows-2 gap-3">
           <div className="flex flex-col">
-            <label htmlFor="path" className="text-sm font-bold">
-              New Path
+            <label htmlFor="fol_name" className="text-sm font-bold">
+              Folder name
             </label>
             <Input
-              id="path"
-              name="path"
+              id="fol_name"
+              name="fol_name"
               type="text"
               placeholder="Enter new folder name"
               className="peer pl"
               onChange={handleChange}
-              value={form.path}
+              value={form.fol_name}
             />
           </div>
           <div className="flex flex-col">
             <label htmlFor="path" className="text-sm font-bold">
-              Reference
+              Index
             </label>
             <CreatableSelect
               options={[
@@ -68,12 +115,34 @@ const CreateFolder = ({ onCreate, onCancel, loading, className, ...props }) => {
                 { value: "public", label: "Public" },
               ]}
               defaultValue={{ value: "private", label: "Private" }}
-              name="folderType"
+              name="fol_index"
               id="folder-type"
             />
           </div>
         </div>
       </div>
+
+      {/* hidden inputs: fol_path (current path), parent_folder, created_by */}
+      <input
+        type="hidden"
+        name="fol_path"
+        value={props.prefix || form.fol_path || ""}
+      />
+      <input
+        type="hidden"
+        name="parent_folder"
+        value={form.parent_folder || props.parent || props.parent_folder || ""}
+      />
+      <input
+        type="hidden"
+        name="created_by"
+        value={
+          form.created_by ||
+          props.currentUserId ||
+          (props.currentUser && props.currentUser.id) ||
+          ""
+        }
+      />
 
       <div className="flex gap-2 justify-end">
         <Button

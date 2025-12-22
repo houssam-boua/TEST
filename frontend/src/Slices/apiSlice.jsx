@@ -12,12 +12,15 @@ const baseQuery = fetchBaseQuery({
       headers.set("authorization", `Token ${token}`);
     }
 
-    // Only set Content-Type for non-FormData requests. createDocument/updateDocument
-    // are excluded because they send FormData with file uploads.
+    // Only set Content-Type for non-FormData requests. Exclude endpoints that
+    // send FormData (createDocument, updateDocument, patchDocument) so the
+    // browser can set the proper multipart boundary header.
     if (
       !headers.get("Content-Type") &&
       endpoint !== "createDocument" &&
-      endpoint !== "updateDocument"
+      endpoint !== "updateDocument" &&
+      endpoint !== "patchDocument" &&
+      endpoint !== "createTask"
     ) {
       headers.set("Content-Type", "application/json");
     }
