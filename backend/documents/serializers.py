@@ -31,6 +31,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     doc_format = serializers.CharField(required=False, allow_blank=True)
     doc_size = serializers.FloatField(required=False, allow_null=True)
     doc_code = serializers.CharField(required=False, allow_blank=True)
+    path_index = serializers.SerializerMethodField(read_only=True)
 
     def validate_doc_code(self, value):
         if not value or value.strip() == '':
@@ -46,6 +47,10 @@ class DocumentSerializer(serializers.ModelSerializer):
     def get_doc_path(self, obj):
         # Return only the relative file path, not the full URL
         return str(obj.doc_path)
+    
+    def get_path_index(self, obj):
+        # Return the computed path_index
+        return obj.get_path_index()
     
     class Meta:
         model = Document
@@ -85,7 +90,7 @@ class FolderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Folder
         fields = [
-            'id', 'fol_name', 'fol_path', 'fol_index',
+            'id', 'fol_name', 'fol_path', 'fol_index', 'fol_order',
             'parent_folder',
             'created_by', 'created_at', 'updated_at', 'children'
         ]

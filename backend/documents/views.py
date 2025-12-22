@@ -35,7 +35,7 @@ import datetime
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from .models import (
-    Document, DocumentCategory, DocumentNature
+    Document, DocumentCategory, DocumentNature, Folder
 )
 from .serializers import (
     DocumentSerializer, DocumentCategorySerializer, DocumentNatureSerializer
@@ -85,6 +85,13 @@ class DocumentListCreateView(APIView):
         if not file:
             return Response({'error': 'Missing file'}, status=400)
  
+        # Parent folder
+        parent_folder_id = request.data.get('parent_folder')
+        try:
+            folder = Folder.objects.get(id=parent_folder_id)
+        except Folder.DoesNotExist:
+            return Response({'error': 'Invalid folder ID'}, status=400)
+        
         # Get owner: prefer explicit doc_owner, otherwise fall back to
         # authenticated user if available.
         owner_id = request.data.get('doc_owner')
@@ -153,6 +160,7 @@ class DocumentListCreateView(APIView):
             doc_description=doc_description_val,
             doc_nature=nature,
             doc_nature_order=next_order,
+            parent_folder=folder
         )
  
         # DIAGNOSTIC: Print storage backend type
@@ -583,17 +591,33 @@ class FolderViewSet(viewsets.ModelViewSet):
         """
         Returns the hierarchical folder structure as a tree.
         """
-        def build_tree(parent):
+        def build_tree(parent, parent_path_index=None):
             children = parent.subfolders.all()
+            
+            # Build path_index: only include fol_order if it's not None
+            if parent.fol_order is not None:
+                # Format order with leading zero if less than 10
+                formatted_order = f"0{parent.fol_order}" if parent.fol_order < 10 else str(parent.fol_order)
+                current_part = f"{parent.fol_index}-{formatted_order}"
+            else:
+                current_part = parent.fol_index
+            
+            if parent_path_index:
+                path_index = f"{parent_path_index}-{current_part}"
+            else:
+                path_index = current_part
+            
             return {
                 'id': parent.id,
                 'fol_name': parent.fol_name,
                 'fol_path': parent.fol_path,
                 'fol_index': parent.fol_index,
-                'created_by': parent.created_by_id,
+                'fol_order': parent.fol_order,
+                'path_index': path_index,
+                'created_by': parent.created_by_id, 
                 'created_at': parent.created_at,
                 'updated_at': parent.updated_at,
-                'subfolders': [build_tree(child) for child in children]
+                'subfolders': [build_tree(child, path_index) for child in children]
             }
         roots = self.get_queryset().filter(parent_folder=None)
         tree = [build_tree(folder) for folder in roots]
