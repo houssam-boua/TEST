@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,8 @@ import {
   useGetDocumentNatureQuery,
   useCreateDocumentMutation,
 } from "@/Slices/documentSlice";
+import mlean from "@/lib/mlean";
+import { toast } from "sonner";
 
 /**
  * BatchCreateDocumentsForm
@@ -44,6 +46,8 @@ export default function BatchCreateDocumentsForm({
   const { data: natures } = useGetDocumentNatureQuery();
   const [items, setItems] = useState([]);
   const [error, setError] = useState(null);
+  const [perimetersOptions, setPerimetersOptions] = useState([]);
+  const [selectedPerimeters, setSelectedPerimeters] = useState([]);
 
   const getFileExt = (file) => {
     if (!file) return "unknown";
@@ -67,6 +71,7 @@ export default function BatchCreateDocumentsForm({
       doc_status: "pending",
       doc_departement: departements?.[0]?.id ? String(departements[0].id) : "",
       doc_nature: natures?.[0]?.id ? String(natures[0].id) : "",
+      doc_perimeters: "",
       doc_description: "",
       expanded: true,
       uploading: false,
@@ -76,6 +81,20 @@ export default function BatchCreateDocumentsForm({
 
     setItems((s) => [...s, ...newItems]);
   };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const p = await mlean.fetchPerimeters();
+        if (!mounted) return;
+        setPerimetersOptions(Array.isArray(p) ? p : p.results || []);
+      } catch (e) {
+        console.debug("Mlean perimeters fetch failed:", e);
+      }
+    })();
+    return () => (mounted = false);
+  }, []);
 
   const updateItem = (id, patch) => {
     setItems((prev) =>
@@ -119,6 +138,18 @@ export default function BatchCreateDocumentsForm({
 
         const resp = await createDocument(fd).unwrap();
         updateItem(it.id, { uploading: false, result: resp });
+        // After local save, attempt to sync to mlean (frontend-only)
+        try {
+          const perims = it.doc_perimeters
+            ? [Number(it.doc_perimeters)]
+            : (selectedPerimeters || []).map((x) =>
+                Number(x) ? Number(x) : x
+              );
+          await mlean.syncDocumentToMlean({ name: it.doc_title || it.file.name, file: it.file, perimeters: perims });
+        } catch (me) {
+          console.error("Mlean sync error:", me);
+          toast.error(`Mlean sync failed for ${it.file.name}`);
+        }
         results.push({ id: it.id, ok: true, resp });
       } catch (err) {
         console.error("upload failed for", it.file?.name, err);
@@ -148,6 +179,7 @@ export default function BatchCreateDocumentsForm({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            
             <div>
               <label
                 htmlFor="batch-files"
@@ -273,6 +305,29 @@ export default function BatchCreateDocumentsForm({
                                     value={String(dep.id)}
                                   >
                                     {dep.dep_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="md:col-span-1">
+                          <label className="block text-sm mb-1">Périmètre (Mlean)</label>
+                          <Select
+                            value={String(it.doc_perimeters || "")}
+                            onValueChange={(v) =>
+                              updateItem(it.id, { doc_perimeters: v })
+                            }
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                <SelectLabel>Périmètres</SelectLabel>
+                                {(perimetersOptions || []).map((p) => (
+                                  <SelectItem key={p.id} value={String(p.id)}>
+                                    {p.name || p.title || p.label || p.perimeter || String(p.id)}
                                   </SelectItem>
                                 ))}
                               </SelectGroup>
