@@ -37,6 +37,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import EditDocumentForm from "@/components/forms/edit-document";
 
 function normalizePath(p) {
   if (p === undefined || p === null) return "";
@@ -71,21 +72,24 @@ function detectCommonPrefix(paths = []) {
   return null;
 }
 
-export default function FolderManager({
-  initialPath = "/Documents",
-  className = "",
-}) {
+export default function FolderManager({ initialPath = "/", className = "" }) {
   const [currentPath, setCurrentPath] = useState(normalizePath(initialPath));
   const [createOpen, setCreateOpen] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
-  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDocId, setEditDocId] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [localFolders, setLocalFolders] = useState([]); // optimistic local-created folders (full normalized paths)
 
   const { data: foldersApiData = [], refetch: refetchFolders } =
     useGetFoldersQuery();
+  // Always pass an explicit params object so RTK Query key includes the folder
+  // even when `currentPath` is empty (root). This ensures the hook fetches
+  // the correct data on mount instead of relying on a user click to trigger it.
+  // Request documents for currentPath; when currentPath is empty (root)
+  // pass `undefined` so the API receives no `folder` filter and returns root contents.
   const { data: documents = [], refetch: refetchDocuments } =
-    useGetDocumentsQuery(currentPath ? { folder: currentPath } : undefined);
+    useGetDocumentsQuery("/");
 
   const [createFolder] = useCreateFolderMutation();
   const [createDocument] = useCreateDocumentMutation();
@@ -134,9 +138,12 @@ export default function FolderManager({
     };
 
     // derive folders from folderPaths when available, include local optimistic folders
+    // `folderPaths` may contain objects (API returns folder objects) or strings; normalize to strings
     const sourcePaths = (
       folderPaths && folderPaths.length
-        ? folderPaths
+        ? folderPaths.map((fp) =>
+            typeof fp === "string" ? fp : fp.fol_path || fp.path || ""
+          )
         : (documents || []).map((d) => d.doc_path || d.file || "")
     ).concat(localFolders || []);
     for (const raw of sourcePaths || []) {
@@ -192,18 +199,65 @@ export default function FolderManager({
     return crumbs;
   }, [currentPath]);
 
+  // hide top-level 'Documents' breadcrumb (UX choice to avoid duplicate root label)
+  const visibleBreadcrumbs = useMemo(() => {
+    if (!Array.isArray(breadcrumbs)) return breadcrumbs;
+    // remove any single top-level 'Documents' entry when root is shown as '/'
+    return breadcrumbs.filter((c, idx) => {
+      if (c && c.name === "Documents") {
+        // if it's the only non-root crumb and root exists, hide it
+        const nonRoot = breadcrumbs.filter((b) => b.name !== "/");
+        if (nonRoot.length === 1 && nonRoot[0].name === "Documents")
+          return false;
+      }
+      return true;
+    });
+  }, [breadcrumbs]);
+
   const tableRows = useMemo(() => {
     const rows = [];
     for (const name of immediateFolders) {
       const path = currentPath ? `${currentPath}/${name}` : name;
-      rows.push({ id: `folder:${path}`, name, path, isFolder: true });
+      // attempt to resolve a full folder object from API data if available
+      let folderObj = null;
+      if (Array.isArray(folderPaths) && folderPaths.length) {
+        folderObj =
+          folderPaths.find((fp) => {
+            if (!fp) return false;
+            // fp may be a string path or an object
+            if (typeof fp === "string")
+              return (
+                fp.replace(/^\/+|\/+$/g, "") === path.replace(/^\/+|\/+$/g, "")
+              );
+            const fpPath = (fp.fol_path || fp.path || "").replace(
+              /^\/+|\/+$/g,
+              ""
+            );
+            return (
+              fpPath === path.replace(/^\/+|\/+$/g, "") || fp.fol_name === name
+            );
+          }) || null;
+      }
+      rows.push({
+        id: folderObj?.id ?? `folder:${path}`,
+        fol_name: folderObj?.fol_name ?? name,
+        fol_path: folderObj?.fol_path ?? path,
+        fol_index: folderObj?.fol_index ?? "",
+        parent_folder: folderObj?.parent_folder ?? null,
+        isFolder: true,
+        raw: folderObj,
+      });
     }
     for (const f of immediateFiles) {
       rows.push({
-        id: `file:${f.id || f.doc_path}`,
-        name: f.file_name || f.doc_title || (f.doc_path || "").split("/").pop(),
-        file: f,
+        id: f.id ?? `file:${f.doc_path}`,
+        fol_name:
+          f.file_name || f.doc_title || (f.doc_path || "").split("/").pop(),
+        fol_path: f.doc_path || f.file || "",
+        fol_index: f.doc_code || f.doc_number || f.doc_index || "",
+        parent_folder: null,
         isFolder: false,
+        file: f,
       });
     }
     return rows;
@@ -212,7 +266,6 @@ export default function FolderManager({
   // create file form state
   const [newFileName, setNewFileName] = useState("");
   const [newFileObj, setNewFileObj] = useState(null);
-  const [shareTarget, setShareTarget] = useState("");
 
   async function handleSubmitNewFile(e) {
     e && e.preventDefault && e.preventDefault();
@@ -237,23 +290,45 @@ export default function FolderManager({
     }
   }
 
-  function handleSubmitShare(e) {
-    e && e.preventDefault && e.preventDefault();
-    // Placeholder: implement sharing API or behavior
-    console.log("Share", { target: shareTarget });
-    alert(`Share request sent to ${shareTarget || "(no target)"}`);
-    setShowShareDialog(false);
-    setShareTarget("");
-  }
+  // Share action removed; use `handleRowEdit` for editing instead.
 
   async function handleCreateFolder(payload) {
-    // payload expected { path }
+    // payload expected from CreateFolder: { fol_name, fol_path, fol_index, parent_folder, created_by, combined_path }
     try {
       console.debug("CreateFolder payload:", payload);
-      const resp = await createFolder(payload).unwrap();
+      // build request body for folders API
+      const fol_name = payload.fol_name || payload.path || payload.name || "";
+      const fol_path =
+        (payload.fol_path && String(payload.fol_path).trim()) ||
+        (payload.combined_path && String(payload.combined_path).trim()) ||
+        (currentPath ? `${currentPath}/${fol_name}` : fol_name);
+      // determine parent_folder id from the currentPath when available
+      const normalizedCurrent = normalizePath(currentPath || "");
+      let parentId = null;
+      if (normalizedCurrent) {
+        if (Array.isArray(folderPaths) && folderPaths.length) {
+          const match = folderPaths.find((fp) => {
+            if (!fp) return false;
+            if (typeof fp === "string")
+              return normalizePath(fp) === normalizedCurrent;
+            const fpPath = normalizePath(fp.fol_path || fp.path || "");
+            return fpPath === normalizedCurrent;
+          });
+          if (match && typeof match !== "string") parentId = match.id ?? null;
+        }
+      }
+
+      const body = {
+        fol_name,
+        fol_path: String(fol_path).replace(/^\/+|\/+$/g, ""),
+        fol_index: payload.fol_index || null,
+        parent_folder: payload.parent_folder ?? parentId ?? null,
+      };
+
+      const resp = await createFolder(body).unwrap();
       console.debug("CreateFolder response:", resp);
       // compute expected key first and add optimistic local folder so UI shows it immediately
-      const expectedKey = String(payload.path || "")
+      const expectedKey = String(body.fol_path || "")
         .trim()
         .replace(/^\/+|\/+$/g, "");
       const expectedLeaf = expectedKey.split("/").filter(Boolean).pop();
@@ -290,7 +365,7 @@ export default function FolderManager({
 
       // also refresh documents list
       try {
-        await refetchDocuments();
+        await Promise.all([refetchFolders(), refetchDocuments()]);
       } catch (e) {
         console.debug("refetch documents failed", e);
       }
@@ -310,6 +385,20 @@ export default function FolderManager({
       alert("Failed to create folder");
     }
   }
+
+  // ensure we fetch folders/documents on mount so root loads immediately
+  React.useEffect(() => {
+    try {
+      refetchFolders();
+    } catch (e) {
+      /* ignore */
+    }
+    try {
+      refetchDocuments();
+    } catch (e) {
+      /* ignore */
+    }
+  }, []);
 
   async function handleUploadFiles(files) {
     if (!files || !files.length) return;
@@ -345,10 +434,14 @@ export default function FolderManager({
         // TODO: call rename API
       }
     } else {
-      // navigate to document edit page when available
-      const id = r.file.id;
-      if (id) navigate(`/edit-document/${id}`);
-      else console.log("edit file", r.file);
+      // open edit modal for document
+      const id = r.file?.id;
+      if (id) {
+        setEditDocId(id);
+        setEditOpen(true);
+      } else {
+        console.log("edit file", r.file);
+      }
     }
   }
 
@@ -438,7 +531,7 @@ export default function FolderManager({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-            {breadcrumbs.map((c, i) => (
+            {visibleBreadcrumbs.map((c, i) => (
               <span
                 key={c.path || i}
                 className="inline-flex items-center gap-2"
@@ -454,7 +547,7 @@ export default function FolderManager({
                 >
                   {c.name}
                 </button>
-                {i < breadcrumbs.length - 1 && (
+                {i < visibleBreadcrumbs.length - 1 && (
                   <span className="text-muted-foreground/60">/</span>
                 )}
               </span>
@@ -487,89 +580,73 @@ export default function FolderManager({
       </div>
 
       {/* Main area: single table with folders and files */}
-      <div className="bg-card rounded shadow-sm overflow-hidden">
-        <table className="w-full table-fixed text-sm">
-          <thead className="bg-muted/10 text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 text-left w-1/2">Name</th>
-              <th className="px-4 py-3 text-left w-1/6">Type</th>
-              <th className="px-4 py-3 text-right w-1/6">Size</th>
-              <th className="px-4 py-3 text-left w-1/6">Modified</th>
-              <th className="px-4 py-3 text-left w-12"></th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {tableRows.length === 0 ? (
+      <div className="bg-card rounded shadow-sm overflow-visible">
+        <div className="overflow-x-auto">
+          <table className="w-full table-auto text-sm min-w-full">
+            <thead className="bg-muted/10 text-muted-foreground">
               <tr>
-                <td
-                  colSpan={6}
-                  className="p-8 text-center text-muted-foreground"
-                >
-                  No folders or files in this path. Use New Folder or Upload to
-                  get started.
-                </td>
+                <th className="px-4 py-3 text-left w-1/6">ID</th>
+                <th className="px-4 py-3 text-left w-1/3">Name</th>
+                <th className="px-4 py-3 text-left w-1/4">Path</th>
+                <th className="px-4 py-3 text-left w-1/6">Index</th>
+                <th className="px-4 py-3 text-left w-1/6">Parent</th>
+                <th className="px-4 py-3 text-right w-24">Actions</th>
               </tr>
-            ) : (
-              tableRows.map((r) => (
-                <tr key={r.id} className="hover:bg-muted/5">
-                  <td className="px-4 py-3">
-                    {r.isFolder ? (
-                      <button
-                        onClick={() => setCurrentPath(r.path)}
-                        className="flex items-center gap-3 w-full text-left"
-                      >
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded text-primary">
-                          <Folder size={16} />
-                        </span>
-                        <div>
-                          <div className="font-medium">{r.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            Folder
+            </thead>
+            <tbody className="divide-y">
+              {tableRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="p-8 text-center text-muted-foreground"
+                  >
+                    No folders or files in this path. Use New Folder or Upload
+                    to get started.
+                  </td>
+                </tr>
+              ) : (
+                tableRows.map((r) => (
+                  <tr key={r.id} className="hover:bg-muted/5">
+                    <td className="px-4 py-3 text-sm">{r.id}</td>
+                    <td className="px-4 py-3">
+                      {r.isFolder ? (
+                        <button
+                          onClick={() => setCurrentPath(r.fol_path)}
+                          className="flex items-center gap-3 w-full text-left"
+                        >
+                          <span className="inline-flex items-center justify-center w-8 h-8 rounded text-primary">
+                            <Folder size={16} />
+                          </span>
+                          <div>
+                            <div className="font-medium">{r.fol_name}</div>
+                          </div>
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex items-center justify-center w-8 h-8 rounded bg-primary/10 text-primary">
+                            <FileText size={16} />
+                          </span>
+                          <div>
+                            <a
+                              href={r.file?.url || r.file?.file || "#"}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-medium"
+                            >
+                              {r.fol_name}
+                            </a>
                           </div>
                         </div>
-                      </button>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded bg-primary/10 text-primary">
-                          <FileText size={16} />
-                        </span>
-                        <div>
-                          <a
-                            href={r.file.url || r.file.file || "#"}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="font-medium"
-                          >
-                            {r.name}
-                          </a>
-                          <div className="text-xs text-muted-foreground">
-                            {(r.file.doc_path || "")
-                              .split("/")
-                              .slice(-2)
-                              .join("/")}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </td>
+                      )}
+                    </td>
 
-                  <td className="px-4 py-3">
-                    {r.isFolder ? "Folder" : r.file.file ? "File" : "File"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {!r.isFolder && r.file.doc_size
-                      ? `${Math.round(r.file.doc_size)} B`
-                      : ""}
-                  </td>
-                  <td className="px-4 py-3">
-                    {!r.isFolder
-                      ? r.file.updated_at || r.file.created_at || "-"
-                      : "-"}
-                  </td>
+                    <td className="px-4 py-3 text-sm">{r.fol_path}</td>
+                    <td className="px-4 py-3 text-sm">{r.fol_index || ""}</td>
+                    <td className="px-4 py-3 text-sm">
+                      {r.parent_folder ?? "-"}
+                    </td>
 
-                  <td className="px-4 py-3">
-                    {!r.isFolder ? (
+                    <td className="px-4 py-3 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
@@ -580,34 +657,35 @@ export default function FolderManager({
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuLabel>File</DropdownMenuLabel>
+                          <DropdownMenuLabel>
+                            {r.isFolder ? "Folder" : "File"}
+                          </DropdownMenuLabel>
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              setShowNewDialog(true);
+                              if (r.isFolder) setCreateOpen(true);
+                              else setShowNewDialog(true);
                             }}
                           >
-                            New File
+                            New
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.stopPropagation();
-                              setShowShareDialog(true);
+                              handleRowEdit(r);
                             }}
                           >
-                            Share
+                            Edit
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    ) : (
-                      ""
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -620,6 +698,34 @@ export default function FolderManager({
             onCreate={handleCreateFolder}
             onCancel={() => setCreateOpen(false)}
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={editOpen}
+        onOpenChange={(v) => {
+          setEditOpen(v);
+          if (!v) setEditDocId(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Document</DialogTitle>
+          </DialogHeader>
+          {editDocId && (
+            <EditDocumentForm
+              documentId={editDocId}
+              onClose={() => {
+                setEditOpen(false);
+                setEditDocId(null);
+                try {
+                  refetchDocuments();
+                } catch (e) {
+                  /* ignore */
+                }
+              }}
+            />
+          )}
         </DialogContent>
       </Dialog>
 
@@ -661,42 +767,7 @@ export default function FolderManager({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Share File</DialogTitle>
-            <DialogDescription>
-              Enter a user or email to share with.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmitShare}>
-            <FieldGroup>
-              <FieldLabel>Target (email or username)</FieldLabel>
-              <Input
-                value={shareTarget}
-                onChange={(e) => setShareTarget(e.target.value)}
-                placeholder="user@example.com"
-              />
-              <FieldLabel>Message (optional)</FieldLabel>
-              <Textarea placeholder="Optional message" />
-            </FieldGroup>
-            <DialogFooter>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => setShowShareDialog(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Share
-                </button>
-              </div>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Share dialog removed */}
     </div>
   );
 }
