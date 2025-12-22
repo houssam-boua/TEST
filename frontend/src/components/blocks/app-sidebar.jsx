@@ -8,6 +8,7 @@ import {
   Book,
   BookOpen,
   Bot,
+  CircleDotDashed,
   Cog,
   Command,
   FileClock,
@@ -186,6 +187,13 @@ const data = {
           requiredRoles: ["admin"],
         },
       ],
+    },
+    {
+      title: "Visual Standard",
+      url: 'https://mps-partners.mlean.com/visual-standards/overview',
+      icon: CircleDotDashed,
+      
+      // show admin only to admins by default
     },
     // {
     //   title: "Permissions",

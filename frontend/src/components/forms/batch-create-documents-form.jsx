@@ -145,7 +145,11 @@ export default function BatchCreateDocumentsForm({
             : (selectedPerimeters || []).map((x) =>
                 Number(x) ? Number(x) : x
               );
-          await mlean.syncDocumentToMlean({ name: it.doc_title || it.file.name, file: it.file, perimeters: perims });
+          await mlean.syncDocumentToMlean({
+            name: it.doc_title || it.file.name,
+            file: it.file,
+            perimeters: perims,
+          });
         } catch (me) {
           console.error("Mlean sync error:", me);
           toast.error(`Mlean sync failed for ${it.file.name}`);
@@ -179,7 +183,6 @@ export default function BatchCreateDocumentsForm({
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            
             <div>
               <label
                 htmlFor="batch-files"
@@ -312,7 +315,9 @@ export default function BatchCreateDocumentsForm({
                           </Select>
                         </div>
                         <div className="md:col-span-1">
-                          <label className="block text-sm mb-1">Périmètre (Mlean)</label>
+                          <label className="block text-sm mb-1">
+                            Périmètre (Mlean)
+                          </label>
                           <Select
                             value={String(it.doc_perimeters || "")}
                             onValueChange={(v) =>
@@ -327,7 +332,11 @@ export default function BatchCreateDocumentsForm({
                                 <SelectLabel>Périmètres</SelectLabel>
                                 {(perimetersOptions || []).map((p) => (
                                   <SelectItem key={p.id} value={String(p.id)}>
-                                    {p.name || p.title || p.label || p.perimeter || String(p.id)}
+                                    {p.name ||
+                                      p.title ||
+                                      p.label ||
+                                      p.perimeter ||
+                                      String(p.id)}
                                   </SelectItem>
                                 ))}
                               </SelectGroup>
