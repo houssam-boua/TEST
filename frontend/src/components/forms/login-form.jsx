@@ -39,7 +39,7 @@ export function LoginForm({ className, ...props }) {
       }
       const role = result?.user?.role?.role_name || result?.user?.role;
       const redirection = redirectForRole({ role });
-      navigate(redirection);
+      navigate("/acceuil");
     } catch (err) {
       setError("Login échoué : " + (err.message || "Erreur inconnue"));
       console.error("Échec de la connexion :", err);

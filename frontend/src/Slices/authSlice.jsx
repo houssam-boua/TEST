@@ -1,18 +1,11 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { apiSlice } from "./apiSlice";
+import authStorage from "../lib/authStorage";
 
-// Helper function to get initial state from localStorage
+// Helper function to get initial state from storage (abstracted)
 const getInitialState = () => {
-  const token = localStorage.getItem("token");
-  const userJson = localStorage.getItem("user");
-
-  let user = null;
-  try {
-    user = userJson ? JSON.parse(userJson) : null;
-  } catch (error) {
-    console.warn("Failed to parse user data from localStorage:", error);
-    localStorage.removeItem("user");
-  }
+  const token = authStorage.getToken();
+  const user = authStorage.getUser();
 
   // Only consider authenticated if both token and user exist
   const isAuthenticated = !!(token && user);
@@ -61,9 +54,8 @@ const authSlice = createSlice({
       state.isLoading = false;
       state.error = null;
 
-      // Store token in localStorage
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(data));
+      // Persist token/user via authStorage abstraction
+      authStorage.setAuth({ token, user: data });
     },
 
     // Logout
@@ -74,44 +66,28 @@ const authSlice = createSlice({
       state.isLoading = false;
       state.error = null;
 
-      // Remove from localStorage
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
+      // Remove persisted auth
+      authStorage.clearAuth();
     },
 
     // Update user profile
     updateUserProfile: (state, action) => {
       state.user = { ...state.user, ...action.payload };
-      localStorage.setItem("user", JSON.stringify(state.user));
+      authStorage.setUser(state.user);
     },
 
-    // Initialize auth state from localStorage
+    // Initialize auth state from abstracted storage
     initializeAuth: (state) => {
-      const token = localStorage.getItem("token");
-      const userJson = localStorage.getItem("user");
+      const token = authStorage.getToken();
+      const user = authStorage.getUser();
 
-      if (token && userJson) {
-        try {
-          const user = JSON.parse(userJson);
-          state.token = token;
-          state.user = user;
-          state.isAuthenticated = true;
-          state.isLoading = false;
-          state.error = null;
-        } catch (error) {
-          console.warn(
-            "Failed to parse user data during initialization:",
-            error
-          );
-          // Clear corrupted data
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          state.user = null;
-          state.token = null;
-          state.isAuthenticated = false;
-        }
+      if (token && user) {
+        state.token = token;
+        state.user = user;
+        state.isAuthenticated = true;
+        state.isLoading = false;
+        state.error = null;
       } else {
-        // Ensure clean state if data is incomplete
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
@@ -137,9 +113,9 @@ const authSlice = createSlice({
           state.isLoading = false;
           state.error = null;
 
-          // Store in localStorage when available
-          if (token) localStorage.setItem("token", token);
-          if (data) localStorage.setItem("user", JSON.stringify(data));
+          // Persist via authStorage abstraction
+          if (token) authStorage.setToken(token);
+          if (data) authStorage.setUser(data);
         })
         .addMatcher(loginEp.matchRejected, (state, action) => {
           state.isLoading = false;

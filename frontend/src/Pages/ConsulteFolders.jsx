@@ -2,7 +2,10 @@ import React from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
 import useRelativeTime from "../Hooks/useRelativeTime";
-import { useGetDocumentsQuery } from "@/Slices/documentSlice";
+import {
+  useGetDocumentsQuery,
+  useGetFoldersQuery,
+} from "@/Slices/documentSlice";
 import {
   ChevronRight,
   Copy,
@@ -39,8 +42,22 @@ const ConsulteFolders = () => {
   const [newPathValue, setNewPathValue] = React.useState("");
 
   const [createFolder, { createFolderLoading }] = useCreateFolderMutation();
-  const currentPath = folderId ? decodeURIComponent(folderId) : ""; // '' means root
-  const { data: documents = [] } = useGetDocumentsQuery();
+  // Normalize currentPath: remove leading/trailing slashes and surrounding whitespace
+  function normalizePath(p) {
+    if (!p && p !== "") return "";
+    const s = String(p || "").trim();
+    return s.replace(/^\/+|\/+$/g, "");
+  }
+
+  const currentPath = folderId
+    ? normalizePath(decodeURIComponent(folderId))
+    : ""; // '' means root
+
+  // Prefer folder-list API when available; fallback to deriving folders from documents
+  const { data: foldersApiData = [] } = useGetFoldersQuery();
+  const { data: documents = [] } = useGetDocumentsQuery(
+    folderId ? { folder: currentPath } : undefined
+  );
   const [favorites, setFavorites] = React.useState({});
   function RelativeTime({ date }) {
     const s = useRelativeTime(date);
@@ -110,71 +127,154 @@ const ConsulteFolders = () => {
     },
   ];
 
-  // Build rows: immediate subfolders and files in the current path
+  // NOTE: helper logic inlined into memo below to satisfy hook lint rules
+
   const rows = React.useMemo(() => {
     const items = [];
     const folderMap = new Map();
-    const curParts = currentPath ? currentPath.split("/").filter(Boolean) : [];
-    const curDepth = curParts.length;
 
-    for (const d of documents || []) {
-      const raw = d.doc_path || d.file || d.url || "";
-      const path = String(raw || "").replace(/^\/+|\/+$/g, "");
-      if (!path) continue;
-      const parts = path.split("/").filter(Boolean);
+    // Use folders API when available
+    const folderPaths = Array.isArray(foldersApiData)
+      ? foldersApiData
+      : (foldersApiData && foldersApiData.folders) || [];
 
-      // If the path aligns with currentPath (prefix), determine whether it's an immediate child folder or a file in this folder
-      const matchesPrefix =
-        curDepth === 0
-          ? true
-          : parts.slice(0, curDepth).join("/") === curParts.join("/");
-      if (!matchesPrefix) continue;
-
-      if (parts.length > curDepth + 1) {
-        // document sits inside a deeper subfolder; we expose the immediate child folder
-        const folderName = parts[curDepth];
-        const folderKey = (currentPath ? currentPath + "/" : "") + folderName;
-        if (!folderMap.has(folderKey)) {
-          folderMap.set(folderKey, {
-            id: folderKey,
-            name: folderName,
-            count: 0,
-            size: 0,
-            isFolder: true,
-            path: folderKey,
-          });
+    if (folderPaths && folderPaths.length > 0) {
+      // derive immediate child names from folderPaths, stripping a common prefix if detected
+      const cleaned = (folderPaths || [])
+        .map((p) =>
+          String(p || "")
+            .trim()
+            .replace(/^\/+|\/+$/g, "")
+        )
+        .filter(Boolean);
+      let prefixToStrip = null;
+      if (cleaned.length > 0) {
+        const firstSegments = cleaned.map((p) => p.split("/")[0]);
+        const counts = firstSegments.reduce((acc, seg) => {
+          acc[seg] = (acc[seg] || 0) + 1;
+          return acc;
+        }, {});
+        const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        const [topSeg, topCount] = entries[0] || [null, 0];
+        if (
+          topSeg &&
+          topCount / cleaned.length >= 0.6 &&
+          /^[A-Za-z0-9-]+$/.test(topSeg)
+        ) {
+          prefixToStrip = topSeg;
         }
-        const entry = folderMap.get(folderKey);
-        entry.count += 1;
-        entry.size += Number(d.file_size || d.doc_size || 0) || 0;
-      } else if (parts.length === curDepth + 1) {
-        // file directly in the current path
-        items.push({
-          id: d.id ?? path,
-          file_name: d.file_name || d.doc_title || parts[parts.length - 1],
-          name: d.file_name || d.doc_title || parts[parts.length - 1],
-          file_size: d.file_size || d.doc_size || null,
-          doc_path: path,
-          updated_at: d.updated_at || d.createdAt || d.created_at,
-          _raw: d,
-          isFolder: false,
-        });
-      } else if (parts.length === curDepth && curDepth === 0) {
-        // file at root (when currentPath is root)
-        items.push({
-          id: d.id ?? path,
-          file_name: d.file_name || d.doc_title || parts[parts.length - 1],
-          name: d.file_name || d.doc_title || parts[parts.length - 1],
-          file_size: d.file_size || d.doc_size || null,
-          doc_path: path,
-          updated_at: d.updated_at || d.createdAt || d.created_at,
-          _raw: d,
-          isFolder: false,
+      }
+      const curNorm = normalizePath(currentPath || "");
+      const curParts = curNorm ? curNorm.split("/").filter(Boolean) : [];
+      const curDepth = curParts.length;
+      const childrenSet = new Map();
+      for (const raw of cleaned) {
+        let p = raw;
+        if (prefixToStrip && p.startsWith(prefixToStrip + "/")) {
+          p = p.slice(prefixToStrip.length + 1);
+        }
+        const parts = p.split("/").filter(Boolean);
+        if (curDepth === 0) {
+          if (parts.length >= 1) {
+            const name = parts[0];
+            childrenSet.set(name, (childrenSet.get(name) || 0) + 1);
+          }
+        } else {
+          if (parts.length > curDepth) {
+            const matches =
+              parts.slice(0, curDepth).join("/") === curParts.join("/");
+            if (!matches) continue;
+            const name = parts[curDepth];
+            childrenSet.set(name, (childrenSet.get(name) || 0) + 1);
+          }
+        }
+      }
+      const childNames = Array.from(childrenSet.keys()).sort();
+      for (const name of childNames) {
+        const key = (currentPath ? currentPath + "/" : "") + name;
+        folderMap.set(key, {
+          id: key,
+          name,
+          count: 0,
+          size: 0,
+          isFolder: true,
+          path: key,
         });
       }
     }
 
-    // Build final rows: folders first (sorted), then files
+    // Derive files (and fallback folders) from documents data
+    const curParts = currentPath ? currentPath.split("/").filter(Boolean) : [];
+    const curDepth = curParts.length;
+    for (const d of documents || []) {
+      const raw = d.doc_path || d.file || d.url || "";
+      const path = String(raw || "")
+        .trim()
+        .replace(/^\/+|\/+$/g, "");
+      if (!path) continue;
+      // If foldersApiData was empty, derive folder entries from documents
+      if (!folderPaths || folderPaths.length === 0) {
+        const parts = path.split("/").filter(Boolean);
+        const matchesPrefix =
+          curDepth === 0
+            ? true
+            : parts.slice(0, curDepth).join("/") === curParts.join("/");
+        if (!matchesPrefix) continue;
+        if (parts.length > curDepth + 1) {
+          const folderName = parts[curDepth];
+          const folderKey = (currentPath ? currentPath + "/" : "") + folderName;
+          if (!folderMap.has(folderKey)) {
+            folderMap.set(folderKey, {
+              id: folderKey,
+              name: folderName,
+              count: 0,
+              size: 0,
+              isFolder: true,
+              path: folderKey,
+            });
+          }
+          const entry = folderMap.get(folderKey);
+          entry.count += 1;
+          entry.size += Number(d.file_size || d.doc_size || 0) || 0;
+          continue;
+        }
+      }
+
+      // File directly in current path
+      const parts = path.split("/").filter(Boolean);
+      if (curDepth === 0) {
+        if (parts.length === 1) {
+          items.push({
+            id: d.id ?? path,
+            file_name: d.file_name || d.doc_title || parts[parts.length - 1],
+            name: d.file_name || d.doc_title || parts[parts.length - 1],
+            file_size: d.file_size || d.doc_size || null,
+            doc_path: path,
+            updated_at: d.updated_at || d.createdAt || d.created_at,
+            _raw: d,
+            isFolder: false,
+          });
+        }
+      } else {
+        const prefix = curParts.join("/");
+        if (path === prefix || path.startsWith(prefix + "/")) {
+          const rest = curDepth === 0 ? path : path.replace(prefix + "/", "");
+          if (rest && !rest.includes("/")) {
+            items.push({
+              id: d.id ?? path,
+              file_name: d.file_name || d.doc_title || parts[parts.length - 1],
+              name: d.file_name || d.doc_title || parts[parts.length - 1],
+              file_size: d.file_size || d.doc_size || null,
+              doc_path: path,
+              updated_at: d.updated_at || d.createdAt || d.created_at,
+              _raw: d,
+              isFolder: false,
+            });
+          }
+        }
+      }
+    }
+
     const folders = Array.from(folderMap.values()).sort((a, b) =>
       String(a.name).localeCompare(String(b.name))
     );
@@ -182,7 +282,7 @@ const ConsulteFolders = () => {
       String(a.file_name).localeCompare(String(b.file_name))
     );
     return [...folders, ...files];
-  }, [documents, currentPath]);
+  }, [documents, foldersApiData, currentPath]);
 
   // Columns for combined folders+files table
   const columns = [
@@ -239,7 +339,7 @@ const ConsulteFolders = () => {
     },
     {
       id: "modifiedAt",
-      accessorKey: "modifiedAt",
+      accessorKey: "updated_at",
       header: "Last Modified",
       cell: ({ row }) => {
         const d =
@@ -254,17 +354,21 @@ const ConsulteFolders = () => {
       header: "",
       cell: ({ row }) => (
         <Link
-          to={`/a/consulter/${encodeURIComponent(row.original.id)}/documents/`}
+          to={`/a/consulter/${encodeURIComponent(row.original.id)}/`}
           className="text-primary-"
           rel="noopener noreferrer"
         >
-          <Button variant="secondary" className="w-6 h-6">
+          <span
+            role="button"
+            aria-label="open"
+            className="inline-flex items-center justify-center w-6 h-6 rounded bg-transparent hover:bg-muted"
+          >
             <ChevronRight
               strokeWidth={1.5}
               size={20}
               className="stroke-muted-foreground/50"
             />
-          </Button>
+          </span>
         </Link>
       ),
     },
@@ -294,7 +398,7 @@ const ConsulteFolders = () => {
     <div className="flex flex-1 flex-col">
       <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
         <DataTable
-          title={currentPath ? `Contents of ${currentPath}` : "Folders & files"}
+          title={currentPath ? `Path: /${currentPath}` : "Folders & files"}
           columns={combinedColumns}
           data={rows}
           onEdit={() => {}}

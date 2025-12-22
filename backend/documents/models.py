@@ -3,40 +3,67 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from users.models import User, Departement
 
+class DocumentCategory(models.Model):
+    """
+    Stores document categories (RH, MT, AC, GD).
+    """
+    code = models.CharField(max_length=2, unique=True, default='GD')
+    name = models.CharField(max_length=128)
+    description = models.TextField()
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
+class DocumentNature(models.Model):
+    """
+    Stores document types (IT, ET, FI).
+    """
+    code = models.CharField(max_length=2, unique=True)
+    name = models.CharField(max_length=128)
+    description = models.TextField()
+
+    @staticmethod
+    def get_default_natures():
+        return [
+            {"code": "IT", "name": "Instruction de travail", "description": "Instruction de travail"},
+            {"code": "ET", "name": "Enregistrement", "description": "Enregistrement"},
+            {"code": "FI", "name": "Fiche", "description": "Fiche"},
+        ]
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
 
 class Document(models.Model):
     """
     Represents a document in the system.
     Includes metadata such as title, type, status, and owner.
     """
-    DOC_STATUS_CHOICES = [
-        ('draft', 'Draft'),
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-        ('archived', 'Archived'),
+    DOC_STATUS_TYPE_CHOICES = [
+        ('ORIGINAL', 'Original'),
+        ('COPIE', 'Copie'),
+        ('PERIME', 'Périmé'),
     ]
 
     doc_title = models.CharField(max_length=1024)
-    doc_type = models.CharField(max_length=50) # e.g., PDF, Word Document, Excel Spreadsheet
-    # doc_deletion_date = models.DateTimeField(null=True, blank=True)
-    
-    # Uses Django's default storage (configured in settings.py, e.g., Minio/S3 via DEFAULT_FILE_STORAGE)
-    # Set max_length=2048 for Minio/S3 compatibility (object key length limit)
-    # Use a relative upload_to string. The actual storage backend is configured via
-    # DEFAULT_FILE_STORAGE in settings.py (e.g. MinIO backend). Avoid passing a
-    # storage instance here because that can get serialized into migrations.
     doc_path = models.FileField(upload_to='', max_length=2048)
-
-    doc_status = models.CharField(max_length=50, choices=DOC_STATUS_CHOICES)
-    doc_size = models.FloatField()
+    doc_type = models.CharField(max_length=50) # e.g., PDF, Word Document, Excel Spreadsheet
     doc_format = models.CharField(max_length=20)  # e.g., PDF, DOCX, XLSX
-    # doc_category = models.CharField(max_length=50)
+    doc_size = models.FloatField(null=True, blank=True)
     doc_description = models.TextField()
-    # doc_comment = models.TextField(blank=True)
 
     doc_owner = models.ForeignKey(User, on_delete=models.CASCADE)
     doc_departement = models.ForeignKey(Departement, on_delete=models.CASCADE)
+    
+    doc_code = models.CharField(max_length=20, unique=True, db_index=True)
+    # doc_category = models.ForeignKey(DocumentCategory, on_delete=models.PROTECT)
+    doc_nature = models.ForeignKey(DocumentNature, on_delete=models.PROTECT)
+    doc_nature_order = models.PositiveIntegerField(null=True, blank=True)
+    parent_document = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
+    doc_status_type = models.CharField(
+        max_length=10,
+        choices=DOC_STATUS_TYPE_CHOICES,
+        default='ORIGINAL'
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -49,7 +76,6 @@ class Document(models.Model):
 
     def __str__(self):
         return f"{self.doc_title} ({self.doc_type})"
-
 
 class DocumentVersion(models.Model):
     """
@@ -76,3 +102,45 @@ class DocumentVersion(models.Model):
 
     def __str__(self):
         return f"Version {self.version_number} of {self.document.doc_title}"
+
+class Folder(models.Model):
+    """
+    Represents a folder in the document management system.
+    Supports hierarchical parent-child relationships and index tracking.
+    """
+    fol_name = models.CharField(max_length=255)
+    fol_path = models.CharField(max_length=1024)
+    fol_index = models.CharField(max_length=5, default='GD')  # Not unique, allows multiple folders per index
+    fol_order = models.PositiveIntegerField(null=True, blank=True, help_text='Order of PR folders within the parent folder')
+    parent_folder = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subfolders')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        ordering = ['fol_index', 'fol_name']
+        verbose_name = 'Folder'
+        verbose_name_plural = 'Folders'
+        constraints = [
+            models.UniqueConstraint(fields=['fol_name', 'parent_folder'], name='unique_folder_name_in_parent')
+        ]
+
+    def __str__(self):
+        return self.fol_name
+
+    class Meta:
+        ordering = ['fol_index', 'fol_name']
+        verbose_name = 'Folder'
+        verbose_name_plural = 'Folders'
+
+    def get_full_path(self):
+        """
+        Returns the full folder path hierarchy as a string.
+        """
+        parts = [self.fol_name]
+        parent = self.parent_folder
+        while parent:
+            parts.insert(0, parent.fol_name)
+            parent = parent.parent_folder
+        return '/'.join(parts)
+    

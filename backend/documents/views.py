@@ -1,4 +1,10 @@
 # views.py
+from .models import Folder
+from .serializers import FolderSerializer
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status, viewsets, serializers
@@ -27,8 +33,28 @@ import os
 import jwt
 import datetime
 from django.http import HttpResponse
- 
- 
+from django.shortcuts import get_object_or_404
+from .models import (
+    Document, DocumentCategory, DocumentNature
+)
+from .serializers import (
+    DocumentSerializer, DocumentCategorySerializer, DocumentNatureSerializer
+)
+from .utils import generate_document_code, validate_document_code
+from django.utils import timezone
+from django.db import transaction
+from users.models import User
+
+class DocumentCategoryViewSet(viewsets.ModelViewSet):
+    queryset = DocumentCategory.objects.all()
+    serializer_class = DocumentCategorySerializer
+
+class DocumentNatureViewSet(viewsets.ModelViewSet):
+    queryset = DocumentNature.objects.all()
+    serializer_class = DocumentNatureSerializer
+
+# Removed DocumentVersionViewSet, DocumentDistributionViewSet, and DocumentArchiveViewSet as part of ISMS simplification.
+
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
@@ -37,6 +63,7 @@ class DocumentListCreateView(APIView):
     def post(self, request):
         # Extract file and custom path
         file = request.FILES.get('file')
+        departement_id = request.data.get('doc_departement')
         custom_path = request.data.get('doc_path', '')  # Folder prefix (e.g., "projects/2024")
         print(f"DIAGNOSTIC: Received custom_path = '{custom_path}'")
 
@@ -79,15 +106,29 @@ class DocumentListCreateView(APIView):
             departement = Departement.objects.get(id=departement_id)
         except Departement.DoesNotExist:
             return Response({'error': 'Invalid departement ID'}, status=400)
- 
+    
+        # Get Nature
+        nature_id = request.data.get('doc_nature')
+        try:
+            nature = DocumentNature.objects.get(id=nature_id)
+        except DocumentNature.DoesNotExist:
+            return Response({'error': 'Invalid nature ID'}, status=400)
+
+        # Find the last doc_nature_order for this nature (gaps are OK)
+        last_order = Document.objects.filter(doc_nature=nature).order_by('-doc_nature_order').first()
+        next_order = (last_order.doc_nature_order + 1) if last_order and last_order.doc_nature_order is not None else 1
+        print(f"DIAGNOSTIC: Using next order = '{next_order}'")
+        
         # Extract file metadata
         doc_size = file.size
+        print("DOC SIZE", doc_size)   
         doc_format = file.name.split('.')[-1] if '.' in file.name else ''
         doc_title = request.data.get('doc_title', '')
         # Use sensible defaults for optional fields
-        doc_status_val = request.data.get('doc_status', 'draft')
+        doc_status_type = request.data.get('doc_status', 'draft')
         doc_description_val = request.data.get('doc_description', '')
- 
+        # Generate doc_code as <nature_code><order>, e.g., IT1, ET2, etc.
+        doc_code = f"{nature.code}-{next_order}"
         # Build the upload path: custom_path + filename
         # Normalize slashes and ensure no leading/trailing slashes cause issues
         if custom_path:
@@ -103,14 +144,15 @@ class DocumentListCreateView(APIView):
         document = Document(
             doc_title=doc_title,
             doc_type=format_and_types.get(doc_format.lower(), 'Unknown'),
-            # doc_category=request.data['doc_category'],
-            doc_status=doc_status_val,
+            doc_status_type=doc_status_type,
             doc_owner=owner,
             doc_departement=departement,
             doc_format=doc_format,
+            doc_code=doc_code,
             doc_size=doc_size,
             doc_description=doc_description_val,
-            # doc_comment=request.data.get('doc_comment', ''),
+            doc_nature=nature,
+            doc_nature_order=next_order,
         )
  
         # DIAGNOSTIC: Print storage backend type
@@ -181,6 +223,13 @@ class DocumentDetailView(APIView):
         )
         return Response({'status': 'Document deleted successfully'}, status=200)
 
+class DocumentVersionViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for DocumentVersion model.
+    """
+    queryset = DocumentVersion.objects.all()
+    serializer_class = DocumentVersionSerializer
+
 class MinioFileListView(APIView):
     """
     API endpoint that lists all folder paths stored in MinIO using Django's default storage backend.
@@ -230,13 +279,51 @@ class FolderDocumentsView(APIView):
             'documents': serializer.data
         }, status=status.HTTP_200_OK)
     
-class DocumentVersionViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint for DocumentVersion model.
-    """
-    queryset = DocumentVersion.objects.all()
-    serializer_class = DocumentVersionSerializer
+class CreateFolderSerializer(serializers.Serializer):
+    path = serializers.CharField(help_text="Folder path to create, e.g. 'projects/NewProject/files'")
 
+@swagger_auto_schema(
+    method='post',
+    request_body=CreateFolderSerializer,
+    responses={
+        201: openapi.Response('Folder created successfully'),
+        400: openapi.Response('Bad request'),
+        500: openapi.Response('Server error'),
+    }
+)
+
+@api_view(['POST'])
+# def create_folder(request):
+#     """
+#     Create a logical folder in MinIO by adding a .keep placeholder file.
+#     In S3/MinIO, folders don't exist; they're just prefixes in object keys.
+#     """
+#     serializer = CreateFolderSerializer(data=request.data)
+#     if not serializer.is_valid():
+#         return Response(serializer.errors, status=400)
+
+#     folder_path = serializer.validated_data.get('path')
+#     if not folder_path:
+#         return Response({'error': 'Missing folder path'}, status=400)
+
+#     # Normalize the path
+#     folder_path = folder_path.strip('/').replace('\\', '/')
+
+#     # Create a placeholder file to establish the folder prefix
+#     # placeholder_path = f"documents/{folder_path}/.keep"
+#     placeholder_path = f"{folder_path}/.keep" if folder_path else ".keep"
+
+#     try:
+#         default_storage.save(placeholder_path, ContentFile(b""))
+#         return Response({
+#             'status': 'Folder created successfully',
+#             'path': folder_path
+#         }, status=201)
+#     except Exception as e:
+#         return Response({
+#             'error': f'Failed to create folder: {str(e)}'
+#         }, status=500)
+  
 
 # OnlyOffice integration endpoints
 @api_view(["GET"])
@@ -321,7 +408,6 @@ def onlyoffice_config(request, pk):
             print(f"ONLYOFFICE: token signing failed: {exc}")
 
     return Response(config)
-
 
 @api_view(["GET"])
 def onlyoffice_script_proxy(request):
@@ -424,48 +510,91 @@ def onlyoffice_callback(request, pk):
 
     return Response({"error": 0})
 
-class CreateFolderSerializer(serializers.Serializer):
-    path = serializers.CharField(help_text="Folder path to create, e.g. 'projects/NewProject/files'")
-
-@swagger_auto_schema(
-    method='post',
-    request_body=CreateFolderSerializer,
-    responses={
-        201: openapi.Response('Folder created successfully'),
-        400: openapi.Response('Bad request'),
-        500: openapi.Response('Server error'),
-    }
-)
-
-@api_view(['POST'])
-def create_folder(request):
+class FolderViewSet(viewsets.ModelViewSet):
     """
-    Create a logical folder in MinIO by adding a .keep placeholder file.
-    In S3/MinIO, folders don't exist; they're just prefixes in object keys.
+    API endpoint for managing folders.
+
+    Provides CRUD operations, search, ordering, and hierarchical views for Folder objects.
+    
+    - Requires authentication.
+    - Supports filtering, searching, and ordering.
+    - Includes custom actions for root folders and hierarchical tree.
     """
-    serializer = CreateFolderSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=400)
+    queryset = Folder.objects.select_related('parent_folder', 'created_by').prefetch_related('subfolders').all()
+    serializer_class = FolderSerializer
+    permission_classes = [IsAuthenticated]
+    from rest_framework import filters
+    filter_backends = [
+        filters.SearchFilter,
+        filters.OrderingFilter
+    ]
+    filterset_fields = ['fol_index', 'parent_folder']
+    search_fields = ['fol_name', 'fol_path']
+    ordering_fields = ['fol_name', 'fol_index', 'created_at', 'updated_at']
+    ordering = ['fol_index', 'fol_name']
 
-    folder_path = serializer.validated_data.get('path')
-    if not folder_path:
-        return Response({'error': 'Missing folder path'}, status=400)
+    def perform_create(self, serializer):
+        """
+        Set the created_by field to the current user on creation.
+        Also create a logical folder in MinIO by adding a .keep placeholder file.
+        The folder path will be parent_path + current folder name.
+        If fol_index is 'PR', set fol_order to the next available order in the parent folder.
+        """
+        folder_data = serializer.validated_data
+        fol_index = folder_data.get('fol_index')
+        parent_folder = folder_data.get('parent_folder')
+        folder = serializer.save(created_by=self.request.user)
+        # Assign order if fol_index is 'PR'
+        if fol_index == 'PR':
+            from .models import Folder
+            siblings = Folder.objects.filter(parent_folder=parent_folder, fol_index='PR').order_by('id')
+            folder.fol_order = siblings.count()
+            folder.save(update_fields=["fol_order"])
+        from django.core.files.base import ContentFile
+        from django.core.files.storage import default_storage
+        # Build the full path: parent path + current folder name
+        parent_path = ''
+        if folder.parent_folder:
+            parent_path = folder.parent_folder.fol_path.strip('/').replace('\\', '/')
+        folder_name = folder.fol_name.strip('/').replace('\\', '/')
+        full_path = f"{parent_path}/{folder_name}" if parent_path else folder_name
+        # Update the folder's fol_path if needed
+        if folder.fol_path != full_path:
+            folder.fol_path = full_path
+            folder.save(update_fields=["fol_path"])
+        placeholder_path = f"{full_path}/.keep" if full_path else ".keep"
+        try:
+            default_storage.save(placeholder_path, ContentFile(b""))
+        except Exception as e:
+            # Optionally log or handle the error
+            pass
 
-    # Normalize the path
-    folder_path = folder_path.strip('/').replace('\\', '/')
+    @action(detail=False, methods=['get'], url_path='roots')
+    def roots(self, request):
+        """
+        Returns all root folders (folders with no parent).
+        """
+        roots = self.get_queryset().filter(parent_folder=None)
+        serializer = self.get_serializer(roots, many=True)
+        return Response(serializer.data)
 
-    # Create a placeholder file to establish the folder prefix
-    # placeholder_path = f"documents/{folder_path}/.keep"
-    placeholder_path = f"{folder_path}/.keep" if folder_path else ".keep"
-
-    try:
-        default_storage.save(placeholder_path, ContentFile(b""))
-        return Response({
-            'status': 'Folder created successfully',
-            'path': folder_path
-        }, status=201)
-    except Exception as e:
-        return Response({
-            'error': f'Failed to create folder: {str(e)}'
-        }, status=500)
-  
+    @action(detail=False, methods=['get'], url_path='tree')
+    def tree(self, request):
+        """
+        Returns the hierarchical folder structure as a tree.
+        """
+        def build_tree(parent):
+            children = parent.subfolders.all()
+            return {
+                'id': parent.id,
+                'fol_name': parent.fol_name,
+                'fol_path': parent.fol_path,
+                'fol_index': parent.fol_index,
+                'created_by': parent.created_by_id,
+                'created_at': parent.created_at,
+                'updated_at': parent.updated_at,
+                'subfolders': [build_tree(child) for child in children]
+            }
+        roots = self.get_queryset().filter(parent_folder=None)
+        tree = [build_tree(folder) for folder in roots]
+        return Response(tree)

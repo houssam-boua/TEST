@@ -48,6 +48,12 @@ export default function CreateDocumentsBatch() {
           if (it.doc_departement)
             fd.append("doc_departement", it.doc_departement);
           fd.append("doc_description", it.doc_description || "");
+          // include doc_path when provided (normalize slashes)
+          if (it.doc_path) {
+            const rawPath = String(it.doc_path || "").trim();
+            const normalized = rawPath.replace(/^\/+|\/+$/g, "");
+            if (normalized) fd.append("doc_path", normalized);
+          }
           // Optional: custom path or category if backend supports it
           // if (it.doc_category) fd.append("doc_category", it.doc_category);
           // Ensure the current authenticated user id is set as doc_owner
@@ -62,6 +68,15 @@ export default function CreateDocumentsBatch() {
             );
 
           try {
+            // debug: log doc_path presence in FormData
+            try {
+              const entries = [];
+              fd.forEach((v, k) => entries.push([k, v]));
+              console.debug("CreateDocument FormData:", entries);
+            } catch (e) {
+              console.debug("Failed to serialize FormData for debug", e);
+            }
+
             const res = await createDocument(fd).unwrap();
             if (setItems)
               setItems((prev) =>

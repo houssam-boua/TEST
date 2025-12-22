@@ -12,12 +12,15 @@ const baseQuery = fetchBaseQuery({
       headers.set("authorization", `Token ${token}`);
     }
 
-    // Only set Content-Type for non-FormData requests. createDocument/updateDocument
-    // are excluded because they send FormData with file uploads.
+    // Only set Content-Type for non-FormData requests. Exclude endpoints that
+    // send FormData (createDocument, updateDocument, patchDocument) so the
+    // browser can set the proper multipart boundary header.
     if (
       !headers.get("Content-Type") &&
       endpoint !== "createDocument" &&
-      endpoint !== "updateDocument"
+      endpoint !== "updateDocument" &&
+      endpoint !== "patchDocument" &&
+      endpoint !== "createTask"
     ) {
       headers.set("Content-Type", "application/json");
     }
@@ -42,7 +45,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Document", "Workflow", "Task"],
+  tagTypes: ["Document", "Workflow", "Task", "User"],
   endpoints: (builder) => ({
     // Auth endpoints
     login: builder.mutation({
@@ -52,6 +55,10 @@ export const apiSlice = createApi({
         body: { username, password },
       }),
     }),
+    getMe: builder.query({
+      query: () => ({ url: "/api/me/", method: "GET" }),
+      providesTags: ["User"],
+    }),
   }),
 });
 
@@ -59,4 +66,5 @@ export const apiSlice = createApi({
 export const {
   // Auth hooks
   useLoginMutation,
+  useGetMeQuery,
 } = apiSlice;

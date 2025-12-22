@@ -2,7 +2,12 @@ import React from "react";
 import CostumeCardTitle from "../components/collection/costume-card-title";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
 import { useGetPermissionsQuery } from "../Slices/permissionSlice";
+import useActionBadge from "../Hooks/useActionBadge";
 
+function ActionBadgeCell({ action }) {
+  const badge = useActionBadge({ action });
+  return badge;
+}
 const columns = [
   { id: "id", accessorKey: "id", header: "ID" },
   { id: "name", accessorKey: "name", header: "Title" },
@@ -10,11 +15,12 @@ const columns = [
     id: "action",
     accessorKey: "action",
     header: "Action",
+    cell: ({ row }) => <ActionBadgeCell action={row.original.action} />,
   },
   {
     id: "target",
     accessorKey: "target",
-    header: "Target",
+    header: "Target object",
   },
   {
     id: "description",

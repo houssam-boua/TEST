@@ -172,9 +172,9 @@ export function CreateWorkflowForm({
                   name="nom"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Task Name</FormLabel>
+                      <FormLabel>Workflow Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Task Name" {...field} />
+                        <Input placeholder="Workflow Name" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

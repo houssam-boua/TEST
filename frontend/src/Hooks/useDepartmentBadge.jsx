@@ -47,38 +47,50 @@ const DepartmentBadge = ({ color = "#2563eb", name }) => {
     // e.g. color = 'amber-600' -> name = 'amber', classes use amber-600 for bg and amber-500 for text
     const token = color;
     const nameToken = token.split("-")[0];
-    const classes = `bg-${token}/10 dark:bg-${token}/20 hover:bg-${token}/10 text-${nameToken}-500 shadow-none rounded-full inline-flex items-center gap-2 px-2 py-1`;
+    // use higher background opacity (80%) and text opacity (~90%) per request
+    const classes = `bg-${token}/80 dark:bg-${token}/90 hover:bg-${token}/80 text-${nameToken}-500/90 shadow-none rounded-full inline-flex items-center gap-2 px-2 py-1`;
     return (
       <Badge className={classes}>
         <Building size={14} />
-        <span className="text-xs font-medium">{label}</span>
+        <span style={{ opacity: 0.9 }} className="text-xs font-medium">
+          {label}
+        </span>
       </Badge>
     );
   }
 
   // Fallback: accept arbitrary css color values (hex or named colors) and compute readable text color.
   const bg = normalized;
-  let textColor = "#fff";
+  let bgStyle = bg;
+  let textColorStyle = "#ffffff";
   try {
     if (
-      typeof color === "string" &&
-      color.startsWith("#") &&
-      color.length === 7
+      typeof normalized === "string" &&
+      normalized.startsWith("#") &&
+      normalized.length === 7
     ) {
-      const r = parseInt(color.slice(1, 3), 16);
-      const g = parseInt(color.slice(3, 5), 16);
-      const b = parseInt(color.slice(5, 7), 16);
+      const r = parseInt(normalized.slice(1, 3), 16);
+      const g = parseInt(normalized.slice(3, 5), 16);
+      const b = parseInt(normalized.slice(5, 7), 16);
       const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-      textColor = luminance > 0.6 ? "#111827" : "#ffffff";
+      // use 80% alpha for background, choose readable text color and apply 90% alpha to text
+      bgStyle = `rgba(${r}, ${g}, ${b}, 0.8)`;
+      if (luminance > 0.6) {
+        // light background -> dark text
+        textColorStyle = `rgba(17, 24, 39, 0.9)`; // #111827 with 90% alpha
+      } else {
+        // dark background -> light text
+        textColorStyle = `rgba(255, 255, 255, 0.9)`;
+      }
     }
   } catch {
-    textColor = "#fff";
+    textColorStyle = "#ffffff";
   }
 
   return (
     <Badge
-      style={{ backgroundColor: bg, color: textColor }}
-      className="shadow-none rounded-full inline-flex items-center gap-2 px-2 py-1 hover:opacity-95"
+      style={{ backgroundColor: bgStyle, color: textColorStyle }}
+      className="shadow-none rounded-full inline-flex items-center gap-2 px-2 py-1"
     >
       <Building size={14} />
       <span className="text-xs font-medium">{label}</span>

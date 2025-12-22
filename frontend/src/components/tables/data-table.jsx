@@ -389,7 +389,7 @@ export function DataTable({
                         <TableHead
                           key={header.id}
                           colSpan={header.colSpan}
-                          className="text-muted-foreground/80 border-0 border-b border-b-muted"
+                          className="text-muted-foreground border-0 border-b border-b-muted font-medium"
                         >
                           {header.isPlaceholder
                             ? null
@@ -403,7 +403,7 @@ export function DataTable({
                   </TableRow>
                 ))}
               </TableHeader>
-              <TableBody className="**:data-[slot=table-cell]:first:w-8 divide-y divide-muted">
+              <TableBody className="**:data-[slot=table-cell]:first:w-8 divide-y divide-muted text-muted-foreground/80 ">
                 {table.getRowModel().rows?.length ? (
                   <SortableContext
                     items={dataIds}
@@ -423,7 +423,7 @@ export function DataTable({
                   <TableRow className="bg-white border-muted">
                     <TableCell
                       colSpan={table.getAllLeafColumns().length || 1}
-                      className="h-24 border-muted"
+                      className="h-24 border-muted  "
                     >
                       <div className="flex flex-col items-center justify-center mt-2 ">
                         <img
