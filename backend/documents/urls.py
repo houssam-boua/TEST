@@ -7,6 +7,8 @@ from .views import (
     DocumentCategoryViewSet,
     DocumentNatureViewSet,
     FolderViewSet,
+    FolderDocumentsView,
+    DocumentByFolderView
 )
 
 router = DefaultRouter()
@@ -18,5 +20,6 @@ router.register(r'folders', FolderViewSet, basename='folders')
 urlpatterns = [
     path('documents/', DocumentListCreateView.as_view()),
     path('documents/<int:pk>/', DocumentDetailView.as_view()),
+    path('documents/by-folder/<int:folder_id>/', DocumentByFolderView.as_view()),
     path('', include(router.urls)),
 ]
