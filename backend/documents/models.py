@@ -3,6 +3,47 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from users.models import User, Departement
 
+class Folder(models.Model):
+    """
+    Represents a folder in the document management system.
+    Supports hierarchical parent-child relationships and index tracking.
+    """
+    fol_name = models.CharField(max_length=255)
+    fol_path = models.CharField(max_length=1024)
+    fol_index = models.CharField(max_length=5, default='GD')  # Not unique, allows multiple folders per index
+    fol_order = models.PositiveIntegerField(null=True, blank=True, help_text='Order of PR folders within the parent folder')
+    parent_folder = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subfolders')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        ordering = ['fol_index', 'fol_name']
+        verbose_name = 'Folder'
+        verbose_name_plural = 'Folders'
+        constraints = [
+            models.UniqueConstraint(fields=['fol_name', 'parent_folder'], name='unique_folder_name_in_parent')
+        ]
+
+    def __str__(self):
+        return self.fol_name
+
+    class Meta:
+        ordering = ['fol_index', 'fol_name']
+        verbose_name = 'Folder'
+        verbose_name_plural = 'Folders'
+
+    def get_full_path(self):
+        """
+        Returns the full folder path hierarchy as a string.
+        """
+        parts = [self.fol_name]
+        parent = self.parent_folder
+        while parent:
+            parts.insert(0, parent.fol_name)
+            parent = parent.parent_folder
+        return '/'.join(parts)
+  
 class DocumentCategory(models.Model):
     """
     Stores document categories (RH, MT, AC, GD).
@@ -58,15 +99,57 @@ class Document(models.Model):
     # doc_category = models.ForeignKey(DocumentCategory, on_delete=models.PROTECT)
     doc_nature = models.ForeignKey(DocumentNature, on_delete=models.PROTECT)
     doc_nature_order = models.PositiveIntegerField(null=True, blank=True)
-    parent_document = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
     doc_status_type = models.CharField(
         max_length=10,
         choices=DOC_STATUS_TYPE_CHOICES,
         default='ORIGINAL'
     )
 
+    parent_document = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
+    parent_folder = models.ForeignKey(Folder, on_delete=models.CASCADE)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def get_path_index(self):
+        """
+        Returns the path_index based on the parent folder's path_index.
+        Format: parent_path_index-doc_nature_code-doc_nature_order
+        """
+        if not self.parent_folder:
+            # No folder, just use nature and order
+            if self.doc_nature_order is not None:
+                formatted_order = f"0{self.doc_nature_order}" if self.doc_nature_order < 10 else str(self.doc_nature_order)
+                return f"{self.doc_nature.code}-{formatted_order}"
+            return self.doc_nature.code
+        
+        # Build folder path_index
+        def build_folder_path(folder, parent_path_index=None):
+            if folder.fol_order is not None:
+                # Format order with leading zero if less than 10
+                formatted_order = f"0{folder.fol_order}" if folder.fol_order < 10 else str(folder.fol_order)
+                current_part = f"{folder.fol_index}-{formatted_order}"
+            else:
+                current_part = folder.fol_index
+            
+            if parent_path_index:
+                return f"{parent_path_index}-{current_part}"
+            return current_part
+        
+        # Recursively build the folder path
+        def get_folder_full_path(folder):
+            if folder.parent_folder:
+                parent_path = get_folder_full_path(folder.parent_folder)
+                return build_folder_path(folder, parent_path)
+            return build_folder_path(folder)
+        
+        folder_path = get_folder_full_path(self.parent_folder)
+        
+        # Add document nature and order
+        if self.doc_nature_order is not None:
+            formatted_order = f"0{self.doc_nature_order}" if self.doc_nature_order < 10 else str(self.doc_nature_order)
+            return f"{folder_path}-{self.doc_nature.code}-{formatted_order}"
+        return f"{folder_path}-{self.doc_nature.code}"
 
     def delete(self, *args, **kwargs):
         # Delete file from storage
@@ -103,44 +186,4 @@ class DocumentVersion(models.Model):
     def __str__(self):
         return f"Version {self.version_number} of {self.document.doc_title}"
 
-class Folder(models.Model):
-    """
-    Represents a folder in the document management system.
-    Supports hierarchical parent-child relationships and index tracking.
-    """
-    fol_name = models.CharField(max_length=255)
-    fol_path = models.CharField(max_length=1024)
-    fol_index = models.CharField(max_length=5, default='GD')  # Not unique, allows multiple folders per index
-    fol_order = models.PositiveIntegerField(null=True, blank=True, help_text='Order of PR folders within the parent folder')
-    parent_folder = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subfolders')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
-
-    class Meta:
-        ordering = ['fol_index', 'fol_name']
-        verbose_name = 'Folder'
-        verbose_name_plural = 'Folders'
-        constraints = [
-            models.UniqueConstraint(fields=['fol_name', 'parent_folder'], name='unique_folder_name_in_parent')
-        ]
-
-    def __str__(self):
-        return self.fol_name
-
-    class Meta:
-        ordering = ['fol_index', 'fol_name']
-        verbose_name = 'Folder'
-        verbose_name_plural = 'Folders'
-
-    def get_full_path(self):
-        """
-        Returns the full folder path hierarchy as a string.
-        """
-        parts = [self.fol_name]
-        parent = self.parent_folder
-        while parent:
-            parts.insert(0, parent.fol_name)
-            parent = parent.parent_folder
-        return '/'.join(parts)
-    
+  

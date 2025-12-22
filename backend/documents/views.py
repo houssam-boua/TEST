@@ -1,49 +1,143 @@
 # views.py
-from .models import Folder
-from .serializers import FolderSerializer
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status, viewsets, serializers
-from django.shortcuts import get_object_or_404
-from django.contrib.auth import get_user_model
-from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-from django.views.decorators.csrf import csrf_exempt
-from rest_framework.decorators import api_view
-from drf_yasg.utils import swagger_auto_schema
-from drf_yasg import openapi
-import logging
+import datetime
 import json
-from .models import Document, DocumentVersion
-from users.models import Departement
-from .serializers import DocumentSerializer, DocumentVersionSerializer
-from users.models import UserActionLog
-from django.contrib.contenttypes.models import ContentType
-from rest_framework.decorators import api_view
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.decorators import permission_classes
-import requests
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
+import logging
 import os
 import jwt
-import datetime
+import requests
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.contrib.contenttypes.models import ContentType
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from .models import (
-    Document, DocumentCategory, DocumentNature
-)
+from django.views.decorators.csrf import csrf_exempt
+
+from rest_framework import serializers, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+
+from users.models import Departement, UserActionLog
+from .models import Document, DocumentCategory, DocumentNature, DocumentVersion, Folder
 from .serializers import (
-    DocumentSerializer, DocumentCategorySerializer, DocumentNatureSerializer
+    DocumentCategorySerializer,
+    DocumentNatureSerializer,
+    DocumentSerializer,
+    DocumentVersionSerializer,
+    FolderSerializer,
 )
-from .utils import generate_document_code, validate_document_code
-from django.utils import timezone
-from django.db import transaction
-from users.models import User
+
+class FolderViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for managing folders.
+
+    Provides CRUD operations, search, ordering, and hierarchical views for Folder objects.
+    
+    - Requires authentication.
+    - Supports filtering, searching, and ordering.
+    - Includes custom actions for root folders and hierarchical tree.
+    """
+    queryset = Folder.objects.select_related('parent_folder', 'created_by').prefetch_related('subfolders').all()
+    serializer_class = FolderSerializer
+    permission_classes = [IsAuthenticated]
+    from rest_framework import filters
+    filter_backends = [
+        filters.SearchFilter,
+        filters.OrderingFilter
+    ]
+    filterset_fields = ['fol_index', 'parent_folder']
+    search_fields = ['fol_name', 'fol_path']
+    ordering_fields = ['fol_name', 'fol_index', 'created_at', 'updated_at']
+    ordering = ['fol_index', 'fol_name']
+
+    def perform_create(self, serializer):
+        """
+        Set the created_by field to the current user on creation.
+        Also create a logical folder in MinIO by adding a .keep placeholder file.
+        The folder path will be parent_path + current folder name.
+        If fol_index is 'PR', set fol_order to the next available order in the parent folder.
+        """
+        folder_data = serializer.validated_data
+        fol_index = folder_data.get('fol_index')
+        parent_folder = folder_data.get('parent_folder')
+        folder = serializer.save(created_by=self.request.user)
+        # Assign order if fol_index is 'PR'
+        if fol_index == 'PR':
+            from .models import Folder
+            siblings = Folder.objects.filter(parent_folder=parent_folder, fol_index='PR').order_by('id')
+            folder.fol_order = siblings.count()
+            folder.save(update_fields=["fol_order"])
+        from django.core.files.base import ContentFile
+        from django.core.files.storage import default_storage
+        # Build the full path: parent path + current folder name
+        parent_path = ''
+        if folder.parent_folder:
+            parent_path = folder.parent_folder.fol_path.strip('/').replace('\\', '/')
+        folder_name = folder.fol_name.strip('/').replace('\\', '/')
+        full_path = f"{parent_path}/{folder_name}" if parent_path else folder_name
+        # Update the folder's fol_path if needed
+        if folder.fol_path != full_path:
+            folder.fol_path = full_path
+            folder.save(update_fields=["fol_path"])
+        placeholder_path = f"{full_path}/.keep" if full_path else ".keep"
+        try:
+            default_storage.save(placeholder_path, ContentFile(b""))
+        except Exception as e:
+            # Optionally log or handle the error
+            pass
+
+    @action(detail=False, methods=['get'], url_path='roots')
+    def roots(self, request):
+        """
+        Returns all root folders (folders with no parent).
+        """
+        roots = self.get_queryset().filter(parent_folder=None)
+        serializer = self.get_serializer(roots, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='tree')
+    def tree(self, request):
+        """
+        Returns the hierarchical folder structure as a tree.
+        """
+        def build_tree(parent, parent_path_index=None):
+            children = parent.subfolders.all()
+            
+            # Build path_index: only include fol_order if it's not None
+            if parent.fol_order is not None:
+                # Format order with leading zero if less than 10
+                formatted_order = f"0{parent.fol_order}" if parent.fol_order < 10 else str(parent.fol_order)
+                current_part = f"{parent.fol_index}-{formatted_order}"
+            else:
+                current_part = parent.fol_index
+            
+            if parent_path_index:
+                path_index = f"{parent_path_index}-{current_part}"
+            else:
+                path_index = current_part
+            
+            return {
+                'id': parent.id,
+                'fol_name': parent.fol_name,
+                'fol_path': parent.fol_path,
+                'fol_index': parent.fol_index,
+                'fol_order': parent.fol_order,
+                'path_index': path_index,
+                'created_by': parent.created_by_id, 
+                'created_at': parent.created_at,
+                'updated_at': parent.updated_at,
+                'subfolders': [build_tree(child, path_index) for child in children]
+            }
+        roots = self.get_queryset().filter(parent_folder=None)
+        tree = [build_tree(folder) for folder in roots]
+        return Response(tree)
 
 class DocumentCategoryViewSet(viewsets.ModelViewSet):
     queryset = DocumentCategory.objects.all()
@@ -85,6 +179,13 @@ class DocumentListCreateView(APIView):
         if not file:
             return Response({'error': 'Missing file'}, status=400)
  
+        # Parent folder
+        parent_folder_id = request.data.get('parent_folder')
+        try:
+            folder = Folder.objects.get(id=parent_folder_id)
+        except Folder.DoesNotExist:
+            return Response({'error': 'Invalid folder ID'}, status=400)
+        
         # Get owner: prefer explicit doc_owner, otherwise fall back to
         # authenticated user if available.
         owner_id = request.data.get('doc_owner')
@@ -153,6 +254,7 @@ class DocumentListCreateView(APIView):
             doc_description=doc_description_val,
             doc_nature=nature,
             doc_nature_order=next_order,
+            parent_folder=folder
         )
  
         # DIAGNOSTIC: Print storage backend type
@@ -185,7 +287,7 @@ class DocumentListCreateView(APIView):
         documents = Document.objects.all()
         serializer = DocumentSerializer(documents, many=True)
         return Response(serializer.data)
-
+    
 class DocumentDetailView(APIView):
     def get(self, request, pk):
         document = get_object_or_404(Document, pk=pk)
@@ -279,20 +381,36 @@ class FolderDocumentsView(APIView):
             'documents': serializer.data
         }, status=status.HTTP_200_OK)
     
-class CreateFolderSerializer(serializers.Serializer):
-    path = serializers.CharField(help_text="Folder path to create, e.g. 'projects/NewProject/files'")
+class DocumentByFolderView(APIView):
+    """
+    Docstring for DocumentByFolderView
+    """
+    def get(self, request, folder_id):
+        """
+        Get all documents within a specific folder (by folder ID).
+        """
+        folder = get_object_or_404(Folder, id=folder_id)
+        documents = Document.objects.filter(parent_folder=folder)
+        serializer = DocumentSerializer(documents, many=True)
+        return Response({
+            'folder': folder.fol_name,
+            'documents': serializer.data
+        }, status=status.HTTP_200_OK)
+  
+# class CreateFolderSerializer(serializers.Serializer):
+#     path = serializers.CharField(help_text="Folder path to create, e.g. 'projects/NewProject/files'")
 
-@swagger_auto_schema(
-    method='post',
-    request_body=CreateFolderSerializer,
-    responses={
-        201: openapi.Response('Folder created successfully'),
-        400: openapi.Response('Bad request'),
-        500: openapi.Response('Server error'),
-    }
-)
+# @swagger_auto_schema(
+#     method='post',
+#     request_body=CreateFolderSerializer,
+#     responses={
+#         201: openapi.Response('Folder created successfully'),
+#         400: openapi.Response('Bad request'),
+#         500: openapi.Response('Server error'),
+#     }
+# )
 
-@api_view(['POST'])
+# @api_view(['POST'])
 # def create_folder(request):
 #     """
 #     Create a logical folder in MinIO by adding a .keep placeholder file.
@@ -510,91 +628,3 @@ def onlyoffice_callback(request, pk):
 
     return Response({"error": 0})
 
-class FolderViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint for managing folders.
-
-    Provides CRUD operations, search, ordering, and hierarchical views for Folder objects.
-    
-    - Requires authentication.
-    - Supports filtering, searching, and ordering.
-    - Includes custom actions for root folders and hierarchical tree.
-    """
-    queryset = Folder.objects.select_related('parent_folder', 'created_by').prefetch_related('subfolders').all()
-    serializer_class = FolderSerializer
-    permission_classes = [IsAuthenticated]
-    from rest_framework import filters
-    filter_backends = [
-        filters.SearchFilter,
-        filters.OrderingFilter
-    ]
-    filterset_fields = ['fol_index', 'parent_folder']
-    search_fields = ['fol_name', 'fol_path']
-    ordering_fields = ['fol_name', 'fol_index', 'created_at', 'updated_at']
-    ordering = ['fol_index', 'fol_name']
-
-    def perform_create(self, serializer):
-        """
-        Set the created_by field to the current user on creation.
-        Also create a logical folder in MinIO by adding a .keep placeholder file.
-        The folder path will be parent_path + current folder name.
-        If fol_index is 'PR', set fol_order to the next available order in the parent folder.
-        """
-        folder_data = serializer.validated_data
-        fol_index = folder_data.get('fol_index')
-        parent_folder = folder_data.get('parent_folder')
-        folder = serializer.save(created_by=self.request.user)
-        # Assign order if fol_index is 'PR'
-        if fol_index == 'PR':
-            from .models import Folder
-            siblings = Folder.objects.filter(parent_folder=parent_folder, fol_index='PR').order_by('id')
-            folder.fol_order = siblings.count()
-            folder.save(update_fields=["fol_order"])
-        from django.core.files.base import ContentFile
-        from django.core.files.storage import default_storage
-        # Build the full path: parent path + current folder name
-        parent_path = ''
-        if folder.parent_folder:
-            parent_path = folder.parent_folder.fol_path.strip('/').replace('\\', '/')
-        folder_name = folder.fol_name.strip('/').replace('\\', '/')
-        full_path = f"{parent_path}/{folder_name}" if parent_path else folder_name
-        # Update the folder's fol_path if needed
-        if folder.fol_path != full_path:
-            folder.fol_path = full_path
-            folder.save(update_fields=["fol_path"])
-        placeholder_path = f"{full_path}/.keep" if full_path else ".keep"
-        try:
-            default_storage.save(placeholder_path, ContentFile(b""))
-        except Exception as e:
-            # Optionally log or handle the error
-            pass
-
-    @action(detail=False, methods=['get'], url_path='roots')
-    def roots(self, request):
-        """
-        Returns all root folders (folders with no parent).
-        """
-        roots = self.get_queryset().filter(parent_folder=None)
-        serializer = self.get_serializer(roots, many=True)
-        return Response(serializer.data)
-
-    @action(detail=False, methods=['get'], url_path='tree')
-    def tree(self, request):
-        """
-        Returns the hierarchical folder structure as a tree.
-        """
-        def build_tree(parent):
-            children = parent.subfolders.all()
-            return {
-                'id': parent.id,
-                'fol_name': parent.fol_name,
-                'fol_path': parent.fol_path,
-                'fol_index': parent.fol_index,
-                'created_by': parent.created_by_id,
-                'created_at': parent.created_at,
-                'updated_at': parent.updated_at,
-                'subfolders': [build_tree(child) for child in children]
-            }
-        roots = self.get_queryset().filter(parent_folder=None)
-        tree = [build_tree(folder) for folder in roots]
-        return Response(tree)
