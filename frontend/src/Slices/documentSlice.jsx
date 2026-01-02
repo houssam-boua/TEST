@@ -2,50 +2,192 @@ import { apiSlice } from "./apiSlice";
 
 export const documentSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+    // -------------------- Documents --------------------
     getDocuments: builder.query({
-      // Accept an optional params object: { folder }
       query: (params) => {
         const folder = params?.folder;
         const url = folder
-          ? `/api/documents/?folder=${encodeURIComponent(folder)}`
+          ? `/api/documents/by-folder/?folder=${encodeURIComponent(folder)}`
           : "/api/documents/";
         return { url, method: "GET" };
       },
-      providesTags: ["Document"],
+      transformResponse: (resp) => {
+        if (resp && typeof resp === "object" && Array.isArray(resp.documents)) {
+          return resp.documents;
+        }
+        return resp;
+      },
+      providesTags: (result) =>
+        result
+          ? [
+              { type: "Document", id: "LIST" },
+              ...(Array.isArray(result)
+                ? result.map((d) => ({ type: "Document", id: d.id }))
+                : []),
+            ]
+          : [{ type: "Document", id: "LIST" }],
     }),
+
     getDocumentById: builder.query({
       query: (id) => ({ url: `/api/documents/${id}/`, method: "GET" }),
-      providesTags: ["Document"],
+      providesTags: (result, error, id) => [{ type: "Document", id }],
     }),
+
     createDocument: builder.mutation({
-      // expects a FormData instance when uploading files
       query: (formData) => ({
         url: "/api/documents/",
         method: "POST",
         body: formData,
       }),
-      invalidatesTags: ["Document"],
+      invalidatesTags: [{ type: "Document", id: "LIST" }],
     }),
+
     updateDocument: builder.mutation({
       query: ({ id, data }) => ({
         url: `/api/documents/${id}/`,
         method: "PUT",
         body: data,
       }),
-      invalidatesTags: ["Document"],
-    }),
-    deleteDocument: builder.mutation({
-      query: (id) => ({ url: `/api/documents/${id}/`, method: "DELETE" }),
-      invalidatesTags: ["Document"],
+      invalidatesTags: (result, error, arg) => [
+        { type: "Document", id: arg.id },
+        { type: "Document", id: "LIST" },
+        { type: "ArchivedDocument", id: "LIST" },
+        "ArchiveNav",
+      ],
     }),
 
+    deleteDocument: builder.mutation({
+      query: (id) => ({ url: `/api/documents/${id}/`, method: "DELETE" }),
+      invalidatesTags: (result, error, id) => [
+        { type: "Document", id },
+        { type: "Document", id: "LIST" },
+        { type: "ArchivedDocument", id: "LIST" },
+        "ArchiveNav",
+      ],
+    }),
+
+    // -------------------- ARCHIVE (Admin only) --------------------
+    getArchiveNavigation: builder.query({
+      query: (folderId) => {
+        const qs = folderId ? `?folder_id=${folderId}` : "";
+        return { url: `/api/archives/navigation/${qs}`, method: "GET" };
+      },
+      providesTags: ["ArchiveNav", { type: "ArchivedDocument", id: "LIST" }],
+    }),
+
+    getArchivedDocuments: builder.query({
+      query: () => ({ url: "/api/documents/archived/", method: "GET" }),
+      providesTags: (result) =>
+        result
+          ? [
+              { type: "ArchivedDocument", id: "LIST" },
+              ...(Array.isArray(result)
+                ? result.map((r) => ({ type: "ArchivedDocument", id: r.id }))
+                : []),
+            ]
+          : [{ type: "ArchivedDocument", id: "LIST" }],
+    }),
+
+    archiveDocument: builder.mutation({
+      query: ({ id, mode, until, note }) => ({
+        url: `/api/documents/${id}/archive/`,
+        method: "POST",
+        body: { mode, until, note },
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: "Document", id: arg.id },
+        { type: "Document", id: "LIST" },
+        { type: "ArchivedDocument", id: "LIST" },
+        "ArchiveNav",
+      ],
+    }),
+
+    restoreDocument: builder.mutation({
+      query: (id) => ({
+        url: `/api/documents/${id}/restore/`,
+        method: "POST",
+      }),
+      invalidatesTags: (result, error, id) => [
+        { type: "Document", id },
+        { type: "Document", id: "LIST" },
+        { type: "ArchivedDocument", id: "LIST" },
+        "ArchiveNav",
+      ],
+    }),
+
+    // ✅ FIX: Ensure parameters match backend expectations
+    archiveFolder: builder.mutation({
+      query: ({ id, mode, until, note }) => ({
+        url: `/api/folders/${id}/archive/`,
+        method: "POST",
+        body: { 
+          mode,   // "permanent" or "until"
+          until,  // ISO string or null
+          note 
+        },
+      }),
+      invalidatesTags: [
+        { type: "Folder", id: "LIST" },
+        { type: "Folder", id: "TREE" },
+        { type: "Document", id: "LIST" },
+        { type: "ArchivedDocument", id: "LIST" },
+        "ArchiveNav",
+      ],
+    }),
+
+    restoreFolder: builder.mutation({
+      query: (id) => ({
+        url: `/api/folders/${id}/restore/`,
+        method: "POST",
+      }),
+      invalidatesTags: [
+        { type: "Folder", id: "LIST" },
+        { type: "Folder", id: "TREE" },
+        { type: "Document", id: "LIST" },
+        { type: "ArchivedDocument", id: "LIST" },
+        "ArchiveNav",
+      ],
+    }),
+
+    // -------------------- Folders --------------------
     createFolder: builder.mutation({
       query: (body) => ({
         url: "/api/folders/",
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Document"],
+      invalidatesTags: [
+        { type: "Folder", id: "LIST" },
+        { type: "Folder", id: "TREE" },
+        "ArchiveNav",
+      ],
+    }),
+
+    updateFolder: builder.mutation({
+      query: ({ id, data }) => ({
+        url: `/api/folders/${id}/`,
+        method: "PUT",
+        body: data,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: "Folder", id: arg.id },
+        { type: "Folder", id: "LIST" },
+        { type: "Folder", id: "TREE" },
+        "ArchiveNav",
+      ],
+    }),
+
+    deleteFolder: builder.mutation({
+      query: (id) => ({
+        url: `/api/folders/${id}/`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (result, error, id) => [
+        { type: "Folder", id },
+        { type: "Folder", id: "LIST" },
+        { type: "Folder", id: "TREE" },
+        "ArchiveNav",
+      ],
     }),
 
     getFolderContent: builder.query({
@@ -53,7 +195,7 @@ export const documentSlice = apiSlice.injectEndpoints({
         url: "/api/documents/folder-contents/",
         method: "GET",
       }),
-      providesTags: ["Document"],
+      providesTags: [{ type: "Folder", id: "CONTENTS" }],
     }),
 
     getFolders: builder.query({
@@ -61,7 +203,7 @@ export const documentSlice = apiSlice.injectEndpoints({
         url: "/api/folders/",
         method: "GET",
       }),
-      providesTags: ["Document"],
+      providesTags: [{ type: "Folder", id: "LIST" }],
     }),
 
     getFoldersTree: builder.query({
@@ -69,14 +211,16 @@ export const documentSlice = apiSlice.injectEndpoints({
         url: "/api/folders/tree/",
         method: "GET",
       }),
-      providesTags: ["Document"],
+      providesTags: [{ type: "Folder", id: "TREE" }],
     }),
+
+    // -------------------- Dictionaries --------------------
     getDocumentNature: builder.query({
       query: () => ({
         url: "/api/document-natures/",
         method: "GET",
       }),
-      providesTags: ["Document"],
+      providesTags: [{ type: "DocumentNature", id: "LIST" }],
     }),
 
     getDocumentCategories: builder.query({
@@ -84,33 +228,35 @@ export const documentSlice = apiSlice.injectEndpoints({
         url: "/api/document-categories/",
         method: "GET",
       }),
-      providesTags: ["Document"],
-    }),
-
-    patchDocument: builder.mutation({
-      query: ({ id, data }) => ({
-        url: `/api/documents/${id}/`,
-        method: "PATCH",
-        body: data,
-      }),
-      invalidatesTags: ["Document"],
+      providesTags: [{ type: "DocumentCategory", id: "LIST" }],
     }),
   }),
+
   overrideExisting: false,
 });
 
 export const {
   useGetDocumentsQuery,
-
   useGetDocumentByIdQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
   useDeleteDocumentMutation,
+
+  // ✅ Archive Hooks
+  useGetArchivedDocumentsQuery,
+  useGetArchiveNavigationQuery,
+  useArchiveDocumentMutation,
+  useRestoreDocumentMutation,
+  useArchiveFolderMutation,
+  useRestoreFolderMutation,
+
   useCreateFolderMutation,
+  useUpdateFolderMutation,
+  useDeleteFolderMutation,
   useGetFolderContentQuery,
   useGetFoldersQuery,
   useGetFoldersTreeQuery,
+
   useGetDocumentNatureQuery,
   useGetDocumentCategoriesQuery,
-  usePatchDocumentMutation,
 } = documentSlice;

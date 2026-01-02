@@ -10,8 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useGetRolesQuery } from "@/Slices/rolesSlices";
-import { useGetDepartementsQuery } from "@/Slices/departementSlice";
+import { useGetRolesQuery } from "@/slices/rolesslices";
+import { useGetDepartementsQuery } from "@/slices/departementSlice";
 
 const EditUser = ({ user, onSubmit, onCancel, loading }) => {
   const { data: rolesData } = useGetRolesQuery();

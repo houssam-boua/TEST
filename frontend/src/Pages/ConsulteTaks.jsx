@@ -2,12 +2,12 @@ import React, { useState, useMemo } from "react";
 import CostumeCardTitle from "../components/collection/costume-card-title";
 import CostumeTableHeader from "../components/collection/costume-table-header";
 import CollapsibleCard from "../components/collection/collapsible-card";
-import { useGetTasksQuery, useUpdateTaskMutation } from "@/Slices/taskSlice";
-import { useGetWorkflowsQuery } from "@/Slices/workflowSlice";
+import { useGetTasksQuery, useUpdateTaskMutation } from "@/slices/taskSlice";
+import { useGetWorkflowsQuery } from "@/slices/workflowSlice";
 import { Card, CardHeader } from "../components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import TaskCard from "../components/blocks/task-card";
-import { useGetTasksofWorkflowQuery } from "../Slices/taskSlice";
+import { useGetTasksofWorkflowQuery } from "../slices/taskSlice";
 import { useParams } from "react-router-dom";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
 import { ExpandableDataTable } from "../components/tables/expandable-data-table";
@@ -15,7 +15,7 @@ import StepperIcons from "../components/blocks/stepper-icon";
 import PriorityBadge from "../Hooks/usePriority";
 import StatusBadge from "../Hooks/useStatusBadge";
 import { useSelector } from "react-redux";
-import { selectHasRole } from "@/Slices/authSlice";
+import { selectHasRole } from "@/slices/authSlice";
 import { Button } from "../components/ui/button";
 import {
   Dialog,

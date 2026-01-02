@@ -13,8 +13,8 @@ import {
   logout,
   setLoading,
   loginSuccess,
-} from "../Slices/authSlice";
-import { useLoginMutation, apiSlice } from "../Slices/apiSlice";
+} from "../slices/authSlice";
+import { useLoginMutation, apiSlice } from "../slices/apiSlice";
 import { AuthContext } from "./AuthContextDefinition";
 
 export const AuthProvider = ({ children }) => {

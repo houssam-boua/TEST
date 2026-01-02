@@ -42,9 +42,9 @@ The store is already configured in `src/store.jsx` and connected to the app in `
 #### Login
 
 ```javascript
-import { useLoginMutation } from "../Slices/apiSlice";
+import { useLoginMutation } from "../slices/apiSlice";
 import { useSelector } from "react-redux";
-import { selectAuth } from "../Slices/authSlice";
+import { selectAuth } from "../slices/authSlice";
 
 const LoginComponent = () => {
   const [login, { isLoading }] = useLoginMutation();
@@ -64,7 +64,7 @@ const LoginComponent = () => {
 #### Logout
 
 ```javascript
-import { useLogoutMutation } from "../Slices/apiSlice";
+import { useLogoutMutation } from "../slices/apiSlice";
 
 const LogoutComponent = () => {
   const [logout] = useLogoutMutation();
@@ -87,7 +87,7 @@ import {
   selectUser,
   selectIsAuthenticated,
   selectUserRole,
-} from "../Slices/authSlice";
+} from "../slices/authSlice";
 
 const ProfileComponent = () => {
   const user = useSelector(selectUser);
@@ -166,7 +166,7 @@ const ProfileComponent = () => {
 #### Fetching Data
 
 ```javascript
-import { useGetUsersQuery } from "../Slices/apiSlice";
+import { useGetUsersQuery } from "../slices/apiSlice";
 
 const UsersComponent = () => {
   const {
@@ -195,7 +195,7 @@ const UsersComponent = () => {
 #### Creating Data
 
 ```javascript
-import { useCreateUserMutation } from "../Slices/apiSlice";
+import { useCreateUserMutation } from "../slices/apiSlice";
 
 const CreateUserComponent = () => {
   const [createUser, { isLoading, error }] = useCreateUserMutation();
@@ -214,7 +214,7 @@ const CreateUserComponent = () => {
 #### Updating Data
 
 ```javascript
-import { useUpdateUserMutation } from "../Slices/apiSlice";
+import { useUpdateUserMutation } from "../slices/apiSlice";
 
 const UpdateUserComponent = ({ userId }) => {
   const [updateUser, { isLoading }] = useUpdateUserMutation();
@@ -233,7 +233,7 @@ const UpdateUserComponent = ({ userId }) => {
 #### File Upload (Documents)
 
 ```javascript
-import { useCreateDocumentMutation } from "../Slices/apiSlice";
+import { useCreateDocumentMutation } from "../slices/apiSlice";
 
 const UploadDocumentComponent = () => {
   const [createDocument, { isLoading }] = useCreateDocumentMutation();

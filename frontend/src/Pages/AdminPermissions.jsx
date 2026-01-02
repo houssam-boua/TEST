@@ -1,7 +1,7 @@
 import React from "react";
 import CostumeCardTitle from "../components/collection/costume-card-title";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
-import { useGetPermissionsQuery } from "../Slices/permissionSlice";
+import { useGetPermissionsQuery } from "../slices/permissionSlice";
 import useActionBadge from "../Hooks/useActionBadge";
 
 function ActionBadgeCell({ action }) {

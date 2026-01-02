@@ -23,11 +23,11 @@ import CreateUserForm from "../components/forms/create-user";
 import { Button } from "../components/ui/button";
 import useRoleBadge from "../Hooks/useRoleBage";
 import useDepartmentBadge from "../Hooks/useDepartmentBadge";
-import { useGetUsersQuery, useCreateUserMutation } from "@/Slices/userSlice";
+import { useGetUsersQuery, useCreateUserMutation } from "@/slices/userSlice";
 import {
   useDeleteUserMutation,
   useUpdateUserMutation,
-} from "../Slices/userSlice";
+} from "../slices/userSlice";
 import DeleteUser from "../components/forms/delete-user";
 import EditUser from "../components/forms/edit-user";
 import { Avatarr } from "../components/blocks/avatarr";
@@ -49,66 +49,11 @@ function DepartmentBadge({ departement, color, name }) {
   return <>{badge}</>;
 }
 // Sheet tab data now tailored for user information
-const infos = [
-  {
-    icon: <User className="text-primary" strokeWidth={1.5} size={16} />,
-    title: "Nom d'utilisateur",
-    description: "jdoe",
-  },
-  {
-    icon: <Mail className="text-primary" strokeWidth={1.5} size={16} />,
-    title: "Email",
-    description: "jdoe@example.com",
-  },
-  {
-    icon: <Shield className="text-primary" strokeWidth={1.5} size={16} />,
-    title: "Rôle",
-    description: "Administrateur",
-  },
-];
 
-const comments = [
-  {
-    icon: (
-      <MessageCircleMore className="text-primary" strokeWidth={1.5} size={16} />
-    ),
-    title: "Note RH — 2025-09-21",
-    description: "Utilisateur évalué positivement.",
-  },
-  {
-    icon: (
-      <MessageCircleMore className="text-primary" strokeWidth={1.5} size={16} />
-    ),
-    title: "Manager — 2025-09-28",
-    description: "A terminé la formation sécurité.",
-  },
-];
 
-const versions = [
-  {
-    icon: <History className="text-primary" strokeWidth={1.5} size={16} />,
-    title: "Dernière connexion",
-    description: "2025-10-10 09:32",
-  },
-  {
-    icon: <History className="text-primary" strokeWidth={1.5} size={16} />,
-    title: "Mot de passe changé",
-    description: "2025-09-01 14:05",
-  },
-];
 
-const access = [
-  {
-    icon: <Lock className="text-primary" strokeWidth={1.5} size={16} />,
-    title: "Applications",
-    description: "Portail, API Admin",
-  },
-  {
-    icon: <Lock className="text-primary" strokeWidth={1.5} size={16} />,
-    title: "Permissions",
-    description: "Lecture, Écriture, Export",
-  },
-];
+
+
 const columns = [
   {
     id: "id",
@@ -279,7 +224,7 @@ const AdminUsers = () => {
         <Dialog open={createOpen} onOpenChange={(v) => setCreateOpen(v)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Créer un utilisateur</DialogTitle>
+              <DialogTitle>Create un utilisateur</DialogTitle>
               <DialogDescription>
                 Remplissez les informations utilisateur.
               </DialogDescription>

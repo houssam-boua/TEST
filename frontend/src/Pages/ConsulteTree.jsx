@@ -6,7 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
-import { useGetDocumentsQuery } from "@/Slices/documentSlice";
+import { useGetDocumentsQuery } from "@/slices/documentSlice";
 import { Button } from "../components/ui/button";
 
 // utility: derive folder prefix from a document path

@@ -5,8 +5,8 @@ import {
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
-} from "../Slices/apiSlice";
-import { selectIsAuthenticated } from "../Slices/authSlice";
+} from "../slices/apiSlice";
+import { selectIsAuthenticated } from "../slices/authSlice";
 import { Button } from "../components/ui/button";
 
 const UsersList = () => {

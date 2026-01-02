@@ -20,6 +20,7 @@ import EditDocument from "../Pages/EditDocument";
 import LoginPage from "../Pages/LoginPage";
 import PermissionGroups from "../Pages/PermissionGroups";
 import UnauthorizedPage from "../Pages/UnauthorizedPage";
+import ArchivedDocumentsPage from "../Pages/ArchivedDocumentsPage";
 
 export const routesConfig = {
   public: {
@@ -51,6 +52,8 @@ export const routesConfig = {
       //   component: ConsulteDocuments,
       // },
       { path: "/creer-documents", component: CreateDocumentsBatch },
+      { path: "/archived-documents", component: ArchivedDocumentsPage, breadcrumb: "Archivage" },
+
       { path: "/consulter-workflow", component: ConsulteWorkflow },
       {
         path: "/consulter-workflow/:workflowId/tasks",

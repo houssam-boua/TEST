@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ChevronRight } from "lucide-react";
-import { useGetDashboardDocumentsRecentQuery } from "@/Slices/dashboardSlices";
+import { useGetDashboardDocumentsRecentQuery } from "@/slices/dashboardslices";
 import React from "react";
 import StatusBadge from "../../Hooks/useStatusBadge";
 import useTitleSplit from "../../Hooks/useTitleSplit";

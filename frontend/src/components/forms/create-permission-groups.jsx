@@ -1,5 +1,5 @@
 import React, { useState, useId } from "react";
-import { useGetPermissionsQuery } from "../../Slices/permissionSlice";
+import { useGetPermissionsQuery } from "../../slices/permissionSlice";
 import { cn } from "@/lib/utils";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";

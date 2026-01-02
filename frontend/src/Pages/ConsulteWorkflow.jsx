@@ -10,7 +10,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import CreateWorkflowForm from "../components/forms/create-workflow";
-import { useGetWorkflowsQuery } from "@/Slices/workflowSlice";
+import { useGetWorkflowsQuery } from "@/slices/workflowSlice";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import DepartmentBadge from "../Hooks/useDepartmentBadge";

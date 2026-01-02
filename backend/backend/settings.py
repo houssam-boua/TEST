@@ -204,10 +204,6 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-# Minio / S3 Storage configuration
-# All file storage is handled by MinioMediaStorage, ensuring files are stored in Minio/S3.
-# The storage backend is configured here; do not pass storage instances into model fields
-# because migrations will serialize them. Use relative upload paths (upload_to) in models.
 
 
 # --------------------------------------------------------------------
@@ -222,15 +218,18 @@ STATIC_ROOT = './static_files/'
 MINIO_STORAGE_ENDPOINT = "s3.ramaqs.com"  # NO http:// prefix
 MINIO_STORAGE_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "wWdV6G6VSoG7KBHQprVl")
 MINIO_STORAGE_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "nKTDOM5I6lxYqnzo1K6QqDBXn9M8S1dGFESH2uEz")
-MINIO_STORAGE_USE_HTTPS = False
+
+# FIX: Set to True so generated links are HTTPS
+MINIO_STORAGE_USE_HTTPS = True
 
 # Bucket configuration
 MINIO_STORAGE_MEDIA_BUCKET_NAME = "smartdocspro"
 MINIO_STORAGE_AUTO_CREATE_MEDIA_BUCKET = True
 MINIO_STORAGE_AUTO_CREATE_STATIC_BUCKET = True
 
-# Optional: Direct MinIO URLs for serving files
-MINIO_STORAGE_MEDIA_URL = "s3.ramaqs.com"
+# FIX: Commented out to allow MinIO to generate signed, secure URLs automatically
+# If you leave this enabled, it generates broken public links without signatures.
+# MINIO_STORAGE_MEDIA_URL = "s3.ramaqs.com"
 
 # --------------------------------------------------------------------
 # STORAGE BACKENDS (Django 4.2+)

@@ -23,19 +23,30 @@ export const dashboardSlice = apiSlice.injectEndpoints({
 
     // Documents total count
     getDashboardDocumentsCount: builder.query({
-      query: () => ({ url: "/api/dashboard/documents/count/", method: "GET" }),
+      query: () => ({ 
+        url: "/api/dashboard/documents/count/", 
+        method: "GET" 
+      }),
       providesTags: ["Dashboard"],
     }),
 
     // Recent documents
     getDashboardDocumentsRecent: builder.query({
-      // optional params may be supported by backend in the future
       query: (params) => ({
         url: "/api/dashboard/documents/recent/",
         method: "GET",
         params,
       }),
       providesTags: ["Dashboard"],
+    }),
+
+    // Workflows by state (Élaboration, Vérification, Approbation, Diffusion)
+    getWorkflowsByState: builder.query({
+      query: () => ({
+        url: "/api/dashboard/workflows/by-state/",
+        method: "GET",
+      }),
+      providesTags: ["Dashboard", "Workflows"],
     }),
 
     // Invalidate dashboard cache (admin action)
@@ -50,16 +61,23 @@ export const dashboardSlice = apiSlice.injectEndpoints({
 
     // Users count
     getDashboardUsersCount: builder.query({
-      query: () => ({ url: "/api/dashboard/users/count/", method: "GET" }),
+      query: () => ({ 
+        url: "/api/dashboard/users/count/", 
+        method: "GET" 
+      }),
       providesTags: ["Dashboard"],
     }),
 
     // Validators count
     getDashboardValidatorsCount: builder.query({
-      query: () => ({ url: "/api/dashboard/validators/count/", method: "GET" }),
+      query: () => ({ 
+        url: "/api/dashboard/validators/count/", 
+        method: "GET" 
+      }),
       providesTags: ["Dashboard"],
     }),
 
+    // Departements count
     getDashboardDepartementsCount: builder.query({
       query: () => ({
         url: "/api/dashboard/departements/count/",
@@ -68,12 +86,13 @@ export const dashboardSlice = apiSlice.injectEndpoints({
       providesTags: ["Dashboard"],
     }),
 
+    // Workflows count
     getDashboardWorkflowsCount: builder.query({
       query: () => ({
         url: "/api/dashboard/workflows/count/",
         method: "GET",
       }),
-      providesTags: ["Dashboard"],
+      providesTags: ["Dashboard", "Workflows"],
     }),
   }),
   overrideExisting: false,
@@ -84,6 +103,7 @@ export const {
   useGetDashboardDocumentsByStatusQuery,
   useGetDashboardDocumentsCountQuery,
   useGetDashboardDocumentsRecentQuery,
+  useGetWorkflowsByStateQuery,
   useInvalidateDashboardCacheMutation,
   useGetDashboardUsersCountQuery,
   useGetDashboardValidatorsCountQuery,

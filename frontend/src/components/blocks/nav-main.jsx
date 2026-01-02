@@ -25,7 +25,8 @@ export function NavMain({ items }) {
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const hasChildren = Array.isArray(item.items) && item.items.length > 0;
+          const hasChildren =
+            Array.isArray(item.items) && item.items.length > 0;
           if (hasChildren) {
             return (
               <Collapsible
@@ -60,17 +61,26 @@ export function NavMain({ items }) {
             );
           }
 
-          const isExternal = typeof item.url === "string" && /^https?:\/\//.test(item.url);
+          const isExternal =
+            typeof item.url === "string" && /^https?:\/\//.test(item.url);
           return (
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton asChild tooltip={item.title}>
                 {isExternal ? (
-                  <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 w-full">
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 w-full"
+                  >
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
                   </a>
                 ) : (
-                  <Link to={item.url} className="flex items-center gap-2 w-full">
+                  <Link
+                    to={item.url}
+                    className="flex items-center gap-2 w-full"
+                  >
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
                   </Link>

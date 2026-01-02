@@ -1,7 +1,7 @@
 import React from "react";
 import { ChartBarInteractive } from "../components/charts/chart-bar-interactive";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
-import { useGetLogsQuery } from "@/Slices/logsSlice";
+import { useGetLogsQuery } from "@/slices/logsSlice";
 import useLogsTableData from "@/Hooks/useLogsTableData";
 import useRelativeTime from "@/Hooks/useRelativeTime";
 import useRoleBadge from "@/Hooks/useRoleBage";

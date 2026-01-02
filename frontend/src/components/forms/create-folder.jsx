@@ -151,10 +151,10 @@ const CreateFolder = ({ onCreate, onCancel, loading, className, ...props }) => {
           onClick={onCancel}
           disabled={loading}
         >
-          Annuler
+          Cancel
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? "Création..." : "Créer"}
+          {loading ? "Creating..." : "Create"}
         </Button>
       </div>
     </form>

@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useContext } from "react";
 import BatchCreateDocumentsForm from "@/components/forms/batch-create-documents-form";
-import { useCreateDocumentMutation } from "@/Slices/documentSlice";
+import { useCreateDocumentMutation } from "@/slices/documentSlice";
 import { toast } from "sonner";
 import { AuthContext } from "@/Context/AuthContextDefinition";
 

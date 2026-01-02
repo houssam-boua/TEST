@@ -70,7 +70,7 @@ const EditRole = ({ role, onSubmit, onCancel, loading }) => {
           onClick={onCancel}
           disabled={loading}
         >
-          Annuler
+          Cancel
         </Button>
         <Button type="submit" disabled={loading}>
           {loading ? "Saving..." : "Save"}

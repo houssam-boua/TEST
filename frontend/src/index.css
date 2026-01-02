@@ -1,12 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-
 :root {
   --background: #f9fdff;
   --foreground: #180600;
   --card: #ffffff;
-  --card-foreground: oklch(30.59% 0.0445 224.42);;
+  --card-foreground: oklch(30.59% 0.0445 224.42);
   --popover: #e8e8e8;
   --popover-foreground: #123440;
   --primary: #048bb1;
@@ -19,7 +18,7 @@
   --accent-foreground: #180600;
   --destructive: #de3531;
   --destructive-foreground: #000000;
-  --border: #ffffff;
+  --border: #e5e7eb;
   --input: #e8e8e8;
   --ring: #d1d1d1;
   --chart-1: #eed79a;
@@ -55,6 +54,36 @@
   --shadow-2xl: 0 1px 1px 0px hsl(0 0% 0% / 0.10);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
+
+  /* Enhanced 3D & Glassmorphism Variables */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.2);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+  --blur-amount: 20px;
+  --perspective: 1000px;
+  
+  /* Gradient overlays for depth */
+  --gradient-primary: linear-gradient(135deg, #048bb1 0%, #00a1bb 100%);
+  --gradient-secondary: linear-gradient(135deg, #cdeaf0 0%, #80e895 100%);
+  --gradient-accent: linear-gradient(135deg, #eba200 0%, #eed79a 100%);
+  --gradient-glow: radial-gradient(circle at 50% 0%, rgba(4, 139, 177, 0.1), transparent 50%);
+  
+  /* Enhanced shadows for 3D effect */
+  --shadow-3d-sm: 0 2px 4px rgba(0, 0, 0, 0.05), 0 4px 8px rgba(4, 139, 177, 0.08);
+  --shadow-3d-md: 0 4px 8px rgba(0, 0, 0, 0.06), 0 8px 16px rgba(4, 139, 177, 0.1);
+  --shadow-3d-lg: 0 8px 16px rgba(0, 0, 0, 0.08), 0 16px 32px rgba(4, 139, 177, 0.12);
+  --shadow-3d-xl: 0 12px 24px rgba(0, 0, 0, 0.1), 0 24px 48px rgba(4, 139, 177, 0.15);
+  
+  /* Card elevation levels */
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.04), 0 2px 4px rgba(4, 139, 177, 0.06);
+  --elevation-2: 0 2px 4px rgba(0, 0, 0, 0.05), 0 4px 8px rgba(4, 139, 177, 0.08);
+  --elevation-3: 0 4px 8px rgba(0, 0, 0, 0.06), 0 8px 16px rgba(4, 139, 177, 0.1);
+  --elevation-4: 0 8px 16px rgba(0, 0, 0, 0.08), 0 16px 32px rgba(4, 139, 177, 0.12);
+  
+  /* Glow effects */
+  --glow-primary: 0 0 20px rgba(4, 139, 177, 0.3);
+  --glow-secondary: 0 0 20px rgba(128, 232, 149, 0.3);
+  --glow-accent: 0 0 20px rgba(235, 162, 0, 0.3);
 }
 
 .dark {
@@ -74,7 +103,7 @@
   --accent-foreground: #fafafa;
   --destructive: #ff6467;
   --destructive-foreground: #fafafa;
-  --border: #b92b2b;
+  --border: #2a2a2a;
   --input: #343434;
   --ring: #737373;
   --chart-1: #91c5ff;
@@ -102,17 +131,37 @@
   --shadow-color: oklch(0 0 0);
   --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.04);
   --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.04);
-  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
-    0 1px 2px -1px hsl(0 0% 0% / 0.08);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
-    0 1px 2px -1px hsl(0 0% 0% / 0.08);
-  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
-    0 2px 4px -1px hsl(0 0% 0% / 0.08);
-  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
-    0 4px 6px -1px hsl(0 0% 0% / 0.08);
-  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.08),
-    0 8px 10px -1px hsl(0 0% 0% / 0.08);
+  --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.08);
+  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.08);
+  --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 2px 4px -1px hsl(0 0% 0% / 0.08);
+  --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 4px 6px -1px hsl(0 0% 0% / 0.08);
+  --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.08), 0 8px 10px -1px hsl(0 0% 0% / 0.08);
   --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.2);
+
+  /* Dark mode 3D & Glassmorphism */
+  --glass-bg: rgba(23, 23, 23, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+  --blur-amount: 20px;
+  
+  --gradient-primary: linear-gradient(135deg, #3a81f6 0%, #1a4eda 100%);
+  --gradient-secondary: linear-gradient(135deg, #262626 0%, #404040 100%);
+  --gradient-accent: linear-gradient(135deg, #525252 0%, #737373 100%);
+  --gradient-glow: radial-gradient(circle at 50% 0%, rgba(58, 129, 246, 0.15), transparent 50%);
+  
+  --shadow-3d-sm: 0 2px 4px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(58, 129, 246, 0.1);
+  --shadow-3d-md: 0 4px 8px rgba(0, 0, 0, 0.25), 0 8px 16px rgba(58, 129, 246, 0.15);
+  --shadow-3d-lg: 0 8px 16px rgba(0, 0, 0, 0.3), 0 16px 32px rgba(58, 129, 246, 0.2);
+  --shadow-3d-xl: 0 12px 24px rgba(0, 0, 0, 0.35), 0 24px 48px rgba(58, 129, 246, 0.25);
+  
+  --elevation-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(58, 129, 246, 0.1);
+  --elevation-2: 0 2px 4px rgba(0, 0, 0, 0.35), 0 4px 8px rgba(58, 129, 246, 0.15);
+  --elevation-3: 0 4px 8px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(58, 129, 246, 0.2);
+  --elevation-4: 0 8px 16px rgba(0, 0, 0, 0.45), 0 16px 32px rgba(58, 129, 246, 0.25);
+  
+  --glow-primary: 0 0 20px rgba(58, 129, 246, 0.4);
+  --glow-secondary: 0 0 20px rgba(38, 38, 38, 0.3);
+  --glow-accent: 0 0 20px rgba(64, 64, 64, 0.3);
 }
 
 @theme inline {
@@ -166,4 +215,490 @@
   --shadow-lg: var(--shadow-lg);
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
+}
+
+/* ============================================
+   3D TRANSFORM & PERSPECTIVE UTILITIES
+   ============================================ */
+
+.perspective-500 {
+  perspective: 500px;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.perspective-1500 {
+  perspective: 1500px;
+}
+
+.perspective-2000 {
+  perspective: 2000px;
+}
+
+.transform-gpu {
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* ============================================
+   GLASSMORPHISM EFFECTS
+   ============================================ */
+
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(var(--blur-amount));
+  -webkit-backdrop-filter: blur(var(--blur-amount));
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.glass-medium {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-heavy {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* Dark mode glassmorphism */
+.dark .glass-light {
+  background: rgba(23, 23, 23, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .glass-medium {
+  background: rgba(23, 23, 23, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dark .glass-heavy {
+  background: rgba(23, 23, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ============================================
+   CUSTOM SCROLLBARS
+   ============================================ */
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(4, 139, 177, 0.2);
+  border-radius: 3px;
+  transition: background 0.2s ease;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(4, 139, 177, 0.4);
+}
+
+.scrollbar-track-transparent::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thumb-primary::-webkit-scrollbar-thumb {
+  background: rgba(4, 139, 177, 0.3);
+}
+
+.scrollbar-thumb-primary::-webkit-scrollbar-thumb:hover {
+  background: rgba(4, 139, 177, 0.5);
+}
+
+.scrollbar-thumb-blue-200::-webkit-scrollbar-thumb {
+  background: #93c5fd;
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-blue-200::-webkit-scrollbar-thumb:hover {
+  background: #60a5fa;
+}
+
+.scrollbar-thumb-purple-200::-webkit-scrollbar-thumb {
+  background: #c4b5fd;
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-purple-200::-webkit-scrollbar-thumb:hover {
+  background: #a78bfa;
+}
+
+/* ============================================
+   ELEVATION & 3D SHADOWS
+   ============================================ */
+
+.elevation-1 {
+  box-shadow: var(--elevation-1);
+}
+
+.elevation-2 {
+  box-shadow: var(--elevation-2);
+}
+
+.elevation-3 {
+  box-shadow: var(--elevation-3);
+}
+
+.elevation-4 {
+  box-shadow: var(--elevation-4);
+}
+
+.shadow-3d-sm {
+  box-shadow: var(--shadow-3d-sm);
+}
+
+.shadow-3d-md {
+  box-shadow: var(--shadow-3d-md);
+}
+
+.shadow-3d-lg {
+  box-shadow: var(--shadow-3d-lg);
+}
+
+.shadow-3d-xl {
+  box-shadow: var(--shadow-3d-xl);
+}
+
+/* ============================================
+   GLOW EFFECTS
+   ============================================ */
+
+.glow-primary {
+  box-shadow: var(--glow-primary);
+}
+
+.glow-secondary {
+  box-shadow: var(--glow-secondary);
+}
+
+.glow-accent {
+  box-shadow: var(--glow-accent);
+}
+
+.glow-primary-hover:hover {
+  box-shadow: var(--glow-primary);
+  transition: box-shadow 0.3s ease;
+}
+
+/* ============================================
+   GRADIENT BACKGROUNDS
+   ============================================ */
+
+.gradient-primary {
+  background: var(--gradient-primary);
+}
+
+.gradient-secondary {
+  background: var(--gradient-secondary);
+}
+
+.gradient-accent {
+  background: var(--gradient-accent);
+}
+
+.gradient-glow {
+  background: var(--gradient-glow);
+}
+
+/* ============================================
+   HOVER EFFECTS & TRANSITIONS
+   ============================================ */
+
+.hover-lift {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-3d-lg);
+}
+
+.hover-lift-sm {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+}
+
+.hover-lift-sm:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-3d-md);
+}
+
+.hover-3d {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-3d:hover {
+  transform: rotateX(2deg) rotateY(2deg) translateY(-4px);
+}
+
+.hover-scale {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+.hover-glow:hover {
+  box-shadow: var(--glow-primary);
+  transition: box-shadow 0.3s ease;
+}
+
+/* ============================================
+   SHIMMER & SHINE EFFECTS
+   ============================================ */
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: shimmer 3s infinite;
+}
+
+.dark .shimmer::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+}
+
+/* ============================================
+   ANIMATED GRADIENTS
+   ============================================ */
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animated-gradient {
+  background-size: 200% 200%;
+  animation: gradient-shift 6s ease infinite;
+}
+
+/* ============================================
+   PULSE & BREATHING ANIMATIONS
+   ============================================ */
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(4, 139, 177, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(4, 139, 177, 0.4);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+.breathe {
+  animation: breathe 3s ease-in-out infinite;
+}
+
+/* ============================================
+   FROSTED GLASS VARIANTS
+   ============================================ */
+
+.frosted-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .frosted-glass {
+  background: rgba(23, 23, 23, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ============================================
+   CARD DEPTH LAYERS
+   ============================================ */
+
+.card-layer-1 {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--elevation-1);
+}
+
+.card-layer-2 {
+  position: relative;
+  z-index: 2;
+  box-shadow: var(--elevation-2);
+}
+
+.card-layer-3 {
+  position: relative;
+  z-index: 3;
+  box-shadow: var(--elevation-3);
+}
+
+.card-layer-4 {
+  position: relative;
+  z-index: 4;
+  box-shadow: var(--elevation-4);
+}
+
+/* ============================================
+   SMOOTH SCROLL
+   ============================================ */
+
+html {
+  scroll-behavior: smooth;
+}
+
+.smooth-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================
+   BACKDROP BLUR UTILITIES
+   ============================================ */
+
+.backdrop-blur-xs {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.backdrop-blur-sm {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.backdrop-blur-md {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.backdrop-blur-lg {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.backdrop-blur-xl {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.backdrop-blur-2xl {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.backdrop-blur-3xl {
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+}
+
+/* ============================================
+   PERFORMANCE OPTIMIZATIONS
+   ============================================ */
+
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+.reduce-motion {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ============================================
+   UTILITY HELPERS
+   ============================================ */
+
+.overflow-overlay {
+  overflow: overlay;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

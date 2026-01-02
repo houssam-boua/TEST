@@ -21,9 +21,10 @@ class Command(BaseCommand):
         # Create fake Departements
         self.stdout.write("Creating fake Departements...")
         departements = []
-        for _ in range(10):
-            dep = Departement.objects.create(
-                dep_name=fake.word().capitalize(), dep_color=fake.word().capitalize()
+        for i in range(10):
+            dep, created = Departement.objects.get_or_create(
+                dep_name=f"Department_{i}",
+                defaults={"dep_color": fake.word().capitalize()}
             )
             departements.append(dep)
         self.stdout.write(self.style.SUCCESS("Successfully created Departements."))
@@ -33,8 +34,9 @@ class Command(BaseCommand):
         roles = []
         role_names = ["admin", "validator", "user"]
         for name in role_names:
-            role = Role.objects.create(
-            role_name=name, role_color=fake.catch_phrase()
+            role, created = Role.objects.get_or_create(
+                role_name=name, 
+                defaults={'role_color': fake.catch_phrase()}
             )
             roles.append(role)
         self.stdout.write(self.style.SUCCESS("Successfully created Roles."))
@@ -66,18 +68,31 @@ class Command(BaseCommand):
 
         # Create fake Documents
         self.stdout.write("Creating fake Documents...")
+        from documents.models import DocumentNature, Folder
+        
+        # Get or create a default nature and folder
+        nature, _ = DocumentNature.objects.get_or_create(
+            code="IT", defaults={"name": "Instruction", "description": "Default"}
+        )
+        folder, _ = Folder.objects.get_or_create(
+            fol_name="Default", defaults={"fol_path": "default", "fol_index": "GD"}
+        )
+        
         documents = []
-        for _ in range(10):
+        for i in range(10):
             doc = Document.objects.create(
                 doc_title=fake.sentence(nb_words=3),
                 doc_type=random.choice(["PDF", "Word", "Excel"]),
-                doc_status=random.choice(["Active", "Inactive"]),
+                doc_status_type=random.choice(["ORIGINAL", "COPIE", "PERIME"]),
                 doc_size=random.randint(100, 5000),
                 doc_format=random.choice(["pdf", "docx", "xlsx"]),
-                # doc_category=fake.word().capitalize(),
                 doc_description=fake.text(max_nb_chars=200),
                 doc_owner=random.choice(users),
                 doc_departement=random.choice(departements),
+                doc_code=f"IT-{i+1}",
+                doc_nature=nature,
+                doc_nature_order=i+1,
+                parent_folder=folder,
             )
             documents.append(doc)
         self.stdout.write(self.style.SUCCESS("Successfully created Documents."))

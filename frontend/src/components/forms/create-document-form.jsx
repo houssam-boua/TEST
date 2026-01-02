@@ -31,8 +31,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { CloudUpload } from "lucide-react";
-import { useGetDepartementsQuery } from "../../Slices/departementSlice";
-import { useGetFoldersQuery } from "../../Slices/documentSlice";
+import { useGetDepartementsQuery } from "../../slices/departementSlice";
+import { useGetFoldersQuery } from "../../slices/documentSlice";
 
 export function CreateDocumentForm({ onSubmit, loading }) {
   const [localError, setLocalError] = useState(null);
@@ -298,7 +298,7 @@ export function CreateDocumentForm({ onSubmit, loading }) {
 
               <div className="flex gap-3">
                 <Button type="submit" disabled={loading}>
-                  {loading ? "Création..." : "Créer"}
+                  {loading ? "Creating..." : "Create"}
                 </Button>
                 <Button
                   type="button"

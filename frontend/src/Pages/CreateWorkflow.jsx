@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import CreateWorkflowForm from "../components/forms/create-workflow";
 import CreateTaskForm from "../components/forms/create-task-form";
-import { useCreateWorkflowMutation } from "@/Slices/workflowSlice";
+import { useCreateWorkflowMutation } from "@/slices/workflowSlice";
 import {
   useCreateTaskMutation,
   useDeleteTaskMutation,
   useUpdateTaskMutation,
-} from "@/Slices/taskSlice";
+} from "@/slices/taskSlice";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import CreatedTaskCard from "../components/blocks/created-task-card";

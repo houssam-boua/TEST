@@ -32,7 +32,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ChevronDown, ChevronsUpDown, Check } from "lucide-react";
-import { useGetUsersQuery } from "@/Slices/userSlice";
+import { useGetUsersQuery } from "@/slices/userSlice";
 
 const taskSchema = z.object({
   task_name: z.string().min(1, "Nom requis"),
@@ -98,7 +98,7 @@ export default function CreateTaskForm({
       }
       form.reset(form.getValues());
     } catch (err) {
-      setSubmitError(err?.message || "Erreur lors de la création de la tâche");
+      setSubmitError(err?.message || "Erreur lors de la Creating de la tâche");
       console.error("CreateTask error:", err);
     } finally {
       setSubmitting(false);

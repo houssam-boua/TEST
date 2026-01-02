@@ -1,25 +1,92 @@
+# urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+
 from .views import (
-    DocumentViewSet,
+    # APIViews
     DocumentListCreateView,
     DocumentDetailView,
+    FolderDocumentsView,
+    DocumentByFolderView,
+    DocumentVersionsByDocumentView,
+    ArchiveNavigationView,  # ✅ New Import
+
+    # ViewSets
+    DocumentViewSet,
     DocumentCategoryViewSet,
     DocumentNatureViewSet,
     FolderViewSet,
-    FolderDocumentsView,
-    DocumentByFolderView
+    DocumentVersionViewSet,
+
+    # OnlyOffice
+    onlyoffice_config,
+    onlyoffice_callback,
+    onlyoffice_script_proxy,
 )
 
 router = DefaultRouter()
-router.register(r'document-categories', DocumentCategoryViewSet, basename='documentcategory')
-router.register(r'document-natures', DocumentNatureViewSet, basename='documentnature')
-# router.register(r'documents', DocumentViewSet, basename='document')
-router.register(r'folders', FolderViewSet, basename='folders')
+router.register(r"document-categories", DocumentCategoryViewSet, basename="documentcategory")
+router.register(r"document-natures", DocumentNatureViewSet, basename="documentnature")
+router.register(r"folders", FolderViewSet, basename="folders")
+
+# Optional (handy for admin/debug):
+router.register(r"document-versions", DocumentVersionViewSet, basename="documentversion")
+
+# NOTE: We DO NOT register "documents" in the router here.
+# We manually define the paths below to prevent URL pattern conflicts (404/500 errors).
 
 urlpatterns = [
-    path('documents/', DocumentListCreateView.as_view()),
-    path('documents/<int:pk>/', DocumentDetailView.as_view()),
-    path('documents/by-folder/<int:folder_id>/', DocumentByFolderView.as_view()),
-    path('', include(router.urls)),
+    # ------------------------------------------------------------------
+    # ✅ 1. Archive Navigation (Smart Browser)
+    # ------------------------------------------------------------------
+    path(
+        "archives/navigation/", 
+        ArchiveNavigationView.as_view(), 
+        name="archive-navigation"
+    ),
+
+    # ------------------------------------------------------------------
+    # ✅ 2. Archive Actions (MUST come BEFORE generic documents/<int:pk>/)
+    # ------------------------------------------------------------------
+    path(
+        "documents/archived/",
+        DocumentViewSet.as_view({"get": "archived"}),
+        name="document-archived-list"
+    ),
+    path(
+        "documents/<int:pk>/archive/",
+        DocumentViewSet.as_view({"post": "archive"}),
+        name="document-archive"
+    ),
+    path(
+        "documents/<int:pk>/restore/",
+        DocumentViewSet.as_view({"post": "restore"}),
+        name="document-restore"
+    ),
+
+    # ------------------------------------------------------------------
+    # ✅ 3. Standard Document CRUD
+    # ------------------------------------------------------------------
+    path("documents/", DocumentListCreateView.as_view(), name="document-list-create"),
+    path("documents/<int:pk>/", DocumentDetailView.as_view(), name="document-detail"),
+
+    # ------------------------------------------------------------------
+    # ✅ 4. Utilities & Helpers
+    # ------------------------------------------------------------------
+    # Versions (Historique)
+    path("documents/<int:pk>/versions/", DocumentVersionsByDocumentView.as_view()),
+
+    # Folder-related helpers
+    path("documents/by-folder/", FolderDocumentsView.as_view()),  # ?folder=path/to/folder
+    path("documents/by-folder/<int:folder_id>/", DocumentByFolderView.as_view()),
+
+    # OnlyOffice
+    path("documents/<int:pk>/onlyoffice-config/", onlyoffice_config),
+    path("documents/<int:pk>/onlyoffice-callback/", onlyoffice_callback),
+    path("onlyoffice/script/", onlyoffice_script_proxy),
+
+    # ------------------------------------------------------------------
+    # ✅ 5. Router URLs (Folders, Categories, Natures)
+    # ------------------------------------------------------------------
+    path("", include(router.urls)),
 ]

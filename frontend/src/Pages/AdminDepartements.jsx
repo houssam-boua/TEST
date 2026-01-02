@@ -8,12 +8,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import CreateDepartementForm from "../components/forms/create-departement";
-import { useCreateDepartementMutation } from "@/Slices/departementSlice";
+import { useCreateDepartementMutation } from "@/slices/departementSlice";
 import {
   useDeleteDepartementMutation,
   useGetDepartementsQuery,
   useUpdateDepartementMutation,
-} from "../Slices/departementSlice";
+} from "../slices/departementSlice";
 import DepartmentBadge from "@/Hooks/useDepartmentBadge";
 import { Pencil, Trash2 } from "lucide-react";
 import DeleteDepartment from "../components/forms/delete-department";

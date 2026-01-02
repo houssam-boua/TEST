@@ -1,7 +1,10 @@
 from django.db import models
 from django.conf import settings
-from django.core.files.storage import default_storage
+from django.utils import timezone
+from django.core.files.storage import default_storage  # kept (may be useful elsewhere)
+
 from users.models import User, Departement
+
 
 class Folder(models.Model):
     """
@@ -9,51 +12,75 @@ class Folder(models.Model):
     Supports hierarchical parent-child relationships and index tracking.
     """
     fol_name = models.CharField(max_length=255)
-    fol_path = models.CharField(max_length=1024)
-    fol_index = models.CharField(max_length=5, default='GD')  # Not unique, allows multiple folders per index
-    fol_order = models.PositiveIntegerField(null=True, blank=True, help_text='Order of PR folders within the parent folder')
-    parent_folder = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='subfolders')
+    fol_path = models.CharField(max_length=1024, blank=True, default="")
+    fol_index = models.CharField(max_length=5, default="GD")  # Not unique
+    fol_order = models.PositiveIntegerField(
+        null=True, blank=True, help_text="Order of PR folders within the parent folder"
+    )
+
+    parent_folder = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="subfolders",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
+    created_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL)
+
+    # ✅ ARCHIVING (folder)
+    is_archived = models.BooleanField(default=False, db_index=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_until = models.DateTimeField(null=True, blank=True)  # null => permanent
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="archived_folders",
+    )
+    archived_note = models.TextField(blank=True, default="")
 
     class Meta:
-        ordering = ['fol_index', 'fol_name']
-        verbose_name = 'Folder'
-        verbose_name_plural = 'Folders'
+        ordering = ["fol_index", "fol_name"]
+        verbose_name = "Folder"
+        verbose_name_plural = "Folders"
         constraints = [
-            models.UniqueConstraint(fields=['fol_name', 'parent_folder'], name='unique_folder_name_in_parent')
+            models.UniqueConstraint(
+                fields=["fol_name", "parent_folder"],
+                name="unique_folder_name_in_parent",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["is_archived"]),
+            models.Index(fields=["archived_until"]),
         ]
 
     def __str__(self):
         return self.fol_name
 
-    class Meta:
-        ordering = ['fol_index', 'fol_name']
-        verbose_name = 'Folder'
-        verbose_name_plural = 'Folders'
-
     def get_full_path(self):
-        """
-        Returns the full folder path hierarchy as a string.
-        """
         parts = [self.fol_name]
         parent = self.parent_folder
         while parent:
             parts.insert(0, parent.fol_name)
             parent = parent.parent_folder
-        return '/'.join(parts)
-  
+        return "/".join(parts)
+
+
 class DocumentCategory(models.Model):
     """
     Stores document categories (RH, MT, AC, GD).
     """
-    code = models.CharField(max_length=2, unique=True, default='GD')
+    code = models.CharField(max_length=2, unique=True, default="GD")
     name = models.CharField(max_length=128)
-    description = models.TextField()
+    description = models.TextField(blank=True, default="")
 
     def __str__(self):
         return f"{self.code} - {self.name}"
+
 
 class DocumentNature(models.Model):
     """
@@ -61,7 +88,7 @@ class DocumentNature(models.Model):
     """
     code = models.CharField(max_length=2, unique=True)
     name = models.CharField(max_length=128)
-    description = models.TextField()
+    description = models.TextField(blank=True, default="")
 
     @staticmethod
     def get_default_natures():
@@ -74,82 +101,104 @@ class DocumentNature(models.Model):
     def __str__(self):
         return f"{self.code} - {self.name}"
 
+
 class Document(models.Model):
     """
-    Represents a document in the system.
-    Includes metadata such as title, type, status, and owner.
+    Represents a document in the system (current/latest file + metadata).
     """
     DOC_STATUS_TYPE_CHOICES = [
-        ('ORIGINAL', 'Original'),
-        ('COPIE', 'Copie'),
-        ('PERIME', 'Périmé'),
+        ("ORIGINAL", "Original"),
+        ("COPIE", "Copie"),
+        ("PERIME", "Périmé"),
     ]
 
+    # mLean linkage (optional)
+    mlean_document_id = models.IntegerField(null=True, blank=True, db_index=True)
+    mlean_paper_standard_id = models.IntegerField(null=True, blank=True, db_index=True)  # paper-standards id
+    mlean_standard_id = models.IntegerField(null=True, blank=True, db_index=True)  # standards root id
+
     doc_title = models.CharField(max_length=1024)
-    doc_path = models.FileField(upload_to='', max_length=2048)
-    doc_type = models.CharField(max_length=50) # e.g., PDF, Word Document, Excel Spreadsheet
-    doc_format = models.CharField(max_length=20)  # e.g., PDF, DOCX, XLSX
+
+    # IMPORTANT: keep upload_to="" because you explicitly set keys in views with doc_path.save(key,...)
+    doc_path = models.FileField(upload_to="", max_length=2048)
+
+    doc_type = models.CharField(max_length=50)  # e.g., PDF, Word Document
+    doc_format = models.CharField(max_length=20)  # e.g., pdf, docx, xlsx
     doc_size = models.FloatField(null=True, blank=True)
-    doc_description = models.TextField()
+
+    doc_description = models.TextField(blank=True, default="")
 
     doc_owner = models.ForeignKey(User, on_delete=models.CASCADE)
     doc_departement = models.ForeignKey(Departement, on_delete=models.CASCADE)
-    
+
     doc_code = models.CharField(max_length=20, unique=True, db_index=True)
+
     # doc_category = models.ForeignKey(DocumentCategory, on_delete=models.PROTECT)
     doc_nature = models.ForeignKey(DocumentNature, on_delete=models.PROTECT)
     doc_nature_order = models.PositiveIntegerField(null=True, blank=True)
+
     doc_status_type = models.CharField(
         max_length=10,
         choices=DOC_STATUS_TYPE_CHOICES,
-        default='ORIGINAL'
+        default="ORIGINAL",
     )
 
-    parent_document = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE)
+    parent_document = models.ForeignKey("self", null=True, blank=True, on_delete=models.CASCADE)
     parent_folder = models.ForeignKey(Folder, on_delete=models.CASCADE)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # ✅ ARCHIVING (document)
+    is_archived = models.BooleanField(default=False, db_index=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_until = models.DateTimeField(null=True, blank=True)  # null => permanent
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="archived_documents",
+    )
+    archive_note = models.TextField(blank=True, default="")  # helpful for UI/search
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["is_archived"]),
+            models.Index(fields=["archived_until"]),
+            models.Index(fields=["mlean_document_id"]),
+            models.Index(fields=["mlean_paper_standard_id"]),
+            models.Index(fields=["mlean_standard_id"]),
+        ]
+
     def get_path_index(self):
         """
-        Returns the path_index based on the parent folder's path_index.
-        Format: parent_path_index-doc_nature_code-doc_nature_order
+        Returns the path_index based on the parent folder's hierarchy + doc_nature + doc_nature_order.
         """
-        if not self.parent_folder:
-            # No folder, just use nature and order
-            if self.doc_nature_order is not None:
-                formatted_order = f"0{self.doc_nature_order}" if self.doc_nature_order < 10 else str(self.doc_nature_order)
-                return f"{self.doc_nature.code}-{formatted_order}"
-            return self.doc_nature.code
-        
-        # Build folder path_index
-        def build_folder_path(folder, parent_path_index=None):
+
+        def build_folder_part(folder):
             if folder.fol_order is not None:
-                # Format order with leading zero if less than 10
                 formatted_order = f"0{folder.fol_order}" if folder.fol_order < 10 else str(folder.fol_order)
-                current_part = f"{folder.fol_index}-{formatted_order}"
-            else:
-                current_part = folder.fol_index
-            
-            if parent_path_index:
-                return f"{parent_path_index}-{current_part}"
-            return current_part
-        
-        # Recursively build the folder path
-        def get_folder_full_path(folder):
-            if folder.parent_folder:
-                parent_path = get_folder_full_path(folder.parent_folder)
-                return build_folder_path(folder, parent_path)
-            return build_folder_path(folder)
-        
-        folder_path = get_folder_full_path(self.parent_folder)
-        
-        # Add document nature and order
+                return f"{folder.fol_index}-{formatted_order}"
+            return folder.fol_index
+
+        def folder_path_index(folder):
+            parts = []
+            cur = folder
+            while cur:
+                parts.insert(0, build_folder_part(cur))
+                cur = cur.parent_folder
+            return "-".join(parts)
+
+        folder_part = folder_path_index(self.parent_folder) if self.parent_folder else ""
+
         if self.doc_nature_order is not None:
-            formatted_order = f"0{self.doc_nature_order}" if self.doc_nature_order < 10 else str(self.doc_nature_order)
-            return f"{folder_path}-{self.doc_nature.code}-{formatted_order}"
-        return f"{folder_path}-{self.doc_nature.code}"
+            formatted_doc_order = f"0{self.doc_nature_order}" if self.doc_nature_order < 10 else str(self.doc_nature_order)
+            doc_part = f"{self.doc_nature.code}-{formatted_doc_order}"
+        else:
+            doc_part = self.doc_nature.code
+
+        return f"{folder_part}-{doc_part}" if folder_part else doc_part
 
     def delete(self, *args, **kwargs):
         # Delete file from storage
@@ -160,25 +209,46 @@ class Document(models.Model):
     def __str__(self):
         return f"{self.doc_title} ({self.doc_type})"
 
+
 class DocumentVersion(models.Model):
     """
     Represents a version of a document.
-    Links to the main Document and includes version-specific metadata.
     """
-    document = models.ForeignKey(Document, related_name='versions', on_delete=models.CASCADE)
+    CHANGE_TYPE_CHOICES = [
+        ("MINOR", "Minor"),
+        ("AUDITABLE", "Auditable"),
+    ]
+
+    document = models.ForeignKey(Document, related_name="versions", on_delete=models.CASCADE)
+
     version_number = models.IntegerField()
     version_date = models.DateTimeField(auto_now_add=True)
-    # Uses Django's default storage (configured in settings.py, e.g., Minio/S3 via DEFAULT_FILE_STORAGE)
-    # Set max_length=255 for Minio/S3 compatibility (object key length limit)
-    # Keep upload_to relative; storage backend is controlled by settings.DEFAULT_FILE_STORAGE
-    version_path = models.FileField(upload_to="documents/versions/", max_length=255)
-    version_comment = models.TextField(blank=True)
+
+    change_type = models.CharField(
+        max_length=10,
+        choices=CHANGE_TYPE_CHOICES,
+        default="MINOR",
+    )
+
+    # NOTE: upload_to already includes "documents/versions/".
+    # Save ONLY the relative part (e.g. "17/v2_file.pdf") to avoid double prefix.
+    version_path = models.FileField(upload_to="documents/versions/", max_length=2048)
+
+    version_comment = models.TextField(blank=True, default="")
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        ordering = ["-version_number", "-version_date"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["document", "version_number"],
+                name="unique_version_per_document",
+            )
+        ]
+
     def delete(self, *args, **kwargs):
-        # Delete file from storage
         if self.version_path:
             self.version_path.delete(save=False)
         super().delete(*args, **kwargs)
@@ -186,4 +256,52 @@ class DocumentVersion(models.Model):
     def __str__(self):
         return f"Version {self.version_number} of {self.document.doc_title}"
 
-  
+
+class DocumentArchive(models.Model):
+    """
+    Archive history table.
+
+    One row per archive action, so you keep history even if the document is restored later.
+    """
+    STATUS_ACTIVE = "ACTIVE"
+    STATUS_RESTORED = "RESTORED"
+    STATUS_EXPIRED = "EXPIRED"
+
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, "ACTIVE"),
+        (STATUS_RESTORED, "RESTORED"),
+        (STATUS_EXPIRED, "EXPIRED"),
+    ]
+
+    document = models.ForeignKey(
+        Document,
+        on_delete=models.CASCADE,
+        related_name="archive_records",
+    )
+
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="document_archive_actions",
+    )
+
+    archived_at = models.DateTimeField(default=timezone.now)
+    retention_until = models.DateTimeField(null=True, blank=True)  # null => permanent archive
+
+    restored_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_ACTIVE)
+
+    note = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-archived_at"]
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["retention_until"]),
+            models.Index(fields=["archived_at"]),
+        ]
+
+    def __str__(self):
+        return f"Archive({self.document_id}) {self.status}"

@@ -2,7 +2,7 @@ import React from "react";
 import {
   useCreatePermissionGroupMutation,
   useGetPermissionGroupsQuery,
-} from "../Slices/permissionSlice";
+} from "../slices/permissionSlice";
 import {
   Dialog,
   DialogContent,

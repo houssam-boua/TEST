@@ -1,1 +1,1 @@
-# This file marks the management package for Django.
+# This file marks the commands package for Django management commands.

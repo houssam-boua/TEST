@@ -1,6 +1,6 @@
 import React, { useContext } from "react";
 import { CreateDocumentForm } from "../components/forms/create-document-form";
-import { useCreateDocumentMutation } from "@/Slices/documentSlice";
+import { useCreateDocumentMutation } from "@/slices/documentSlice";
 import { toast } from "sonner";
 import { AuthContext } from "@/Context/AuthContextDefinition";
 
@@ -55,7 +55,7 @@ const CreateDocument = () => {
       toast.success("Document créé");
     } catch (err) {
       console.error("createDocument error:", err);
-      const msg = parseApiError(err) || "Erreur lors de la création";
+      const msg = parseApiError(err) || "Erreur lors de la Creating";
       toast.error(msg);
       throw err;
     }

@@ -8,12 +8,12 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import CreateRoleForm from "../components/forms/create-role";
-import { useGetRolesQuery, useCreateRoleMutation } from "@/Slices/rolesSlices";
+import { useGetRolesQuery, useCreateRoleMutation } from "@/slices/rolesslices";
 import DepartmentBadge from "../Hooks/useDepartmentBadge";
 import {
   useDeleteRoleMutation,
   useUpdateRoleMutation,
-} from "../Slices/rolesSlices";
+} from "../slices/rolesslices";
 import EditRole from "../components/forms/edit-role";
 import DeleteRole from "../components/forms/delete-role";
 import { Pencil, Trash2 } from "lucide-react";

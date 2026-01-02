@@ -5,7 +5,7 @@ import useRelativeTime from "../Hooks/useRelativeTime";
 import {
   useGetDocumentsQuery,
   useGetFoldersQuery,
-} from "@/Slices/documentSlice";
+} from "@/slices/documentSlice";
 import {
   ChevronRight,
   Copy,
@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import CreateFolder from "../components/forms/create-folder";
-import { useCreateFolderMutation } from "../Slices/documentSlice";
+import { useCreateFolderMutation } from "../slices/documentSlice";
 // (columns are defined inside component so we can use hooks/components safely)
 // (columns are defined inside component so we can use hooks/components safely)
 

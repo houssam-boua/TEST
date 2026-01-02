@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { useGetUsersQuery } from "@/Slices/userSlice";
+import { useGetUsersQuery } from "@/slices/userSlice";
 
 const EditTaskForm = ({ task, onSubmit, onCancel, loading }) => {
   const { data: usersData = {} } = useGetUsersQuery();

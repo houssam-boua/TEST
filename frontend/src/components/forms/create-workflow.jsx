@@ -40,7 +40,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ChevronDown, ChevronsUpDown, Check } from "lucide-react";
-import { useGetDocumentsQuery } from "@/Slices/documentSlice";
+import { useGetDocumentsQuery } from "@/slices/documentSlice";
 import {
   Command,
   CommandEmpty,
@@ -142,7 +142,7 @@ export function CreateWorkflowForm({
       }
       form.reset(form.getValues());
     } catch (err) {
-      setSubmitError(err?.message || "Erreur lors de la création du workflow");
+      setSubmitError(err?.message || "Erreur lors de la Creating du workflow");
       console.error("CreateWorkflow error:", err);
     } finally {
       setSubmitting(false);
@@ -152,7 +152,7 @@ export function CreateWorkflowForm({
     <div className={cn("flex flex-col gap-6 w-full", className)} {...props}>
       <Card className="border-4 border-border w-full md:max-w-full">
         {/* <CardHeader className="items-center">
-          <CardTitle>Créer un workflow</CardTitle>
+          <CardTitle>Create un workflow</CardTitle>
           <CardDescription>
             Renseignez les informations du workflow
           </CardDescription>
