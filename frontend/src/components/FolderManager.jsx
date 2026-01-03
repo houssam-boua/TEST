@@ -1,13 +1,18 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   useGetFoldersQuery,
   useGetDocumentsQuery,
   useCreateFolderMutation,
   useCreateDocumentMutation,
+  useUpdateDocumentMutation,
+  useUpdateFolderMutation,
+  useArchiveDocumentMutation,
+  useArchiveFolderMutation,
   useDeleteDocumentMutation,
+  useSyncFoldersMutation // ✅ NEW: Import Sync Hook
 } from "@/slices/documentSlice";
 
 import { Button } from "@/components/ui/button";
@@ -26,8 +31,18 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Folder,
   FileText,
@@ -35,17 +50,27 @@ import {
   Plus,
   MoreVertical,
   Eye,
-  Trash2,
   Pencil,
   History,
   Archive,
+  ChevronRight,
+  Home,
+  User,
+  Calendar,
+  Info,
+  Move,
+  X,
+  FolderOpen,
+  RefreshCw // ✅ NEW: Import Refresh Icon
 } from "lucide-react";
+import { toast } from "sonner";
 
 import EditDocumentForm from "@/components/forms/edit-document";
 import DocumentHistoryDialog from "@/components/DocumentHistoryDialog";
 import ArchiveDocumentDialog from "@/components/ArchiveDocumentDialog";
 import ArchiveFolderDialog from "@/components/ArchiveFolderDialog";
 
+// --- Helpers ---
 function normalizePath(p) {
   if (p === undefined || p === null) return "";
   return String(p || "").trim().replace(/^\/+|\/+$/g, "");
@@ -58,246 +83,269 @@ function formatFolderIndexLabel(code) {
   return code || "";
 }
 
-function detectCommonPrefix(paths = []) {
-  const cleaned = (paths || [])
-    .map((p) => String(p || "").trim().replace(/^\/+|\/+$/g, ""))
-    .filter(Boolean);
-  if (!cleaned.length) return null;
-
-  const firstSegments = cleaned.map((p) => p.split("/")[0]);
-  const counts = firstSegments.reduce((acc, seg) => {
-    acc[seg] = (acc[seg] || 0) + 1;
-    return acc;
-  }, {});
-  const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  const [topSeg, topCount] = entries[0] || [null, 0];
-
-  if (
-    topSeg &&
-    topCount / cleaned.length >= 0.6 &&
-    /^[A-Za-z0-9-]+$/.test(topSeg)
-  ) {
-    return topSeg;
-  }
-  return null;
+function normalizeFolderIndex(rawIndex) {
+  let fol_index = rawIndex == null || rawIndex === "" ? null : String(rawIndex).trim();
+  const key = (fol_index || "").toLowerCase();
+  if (key === "private" || key === "privet" || key === "prive" || key === "privée" || key === "privee") return { value: "PR", error: null };
+  if (key === "public" || key === "general" || key === "général" || key === "publique") return { value: "GD", error: null };
+  if (fol_index && fol_index.length > 5) return { value: null, error: `Folder type invalid: "${fol_index}"` };
+  return { value: fol_index, error: null };
 }
 
-// Helper: path of the latest version (display only)
+function formatDateTime(val) {
+  if (!val) return "-";
+  const d = new Date(val);
+  if (Number.isNaN(d.getTime())) return "-";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit", month: "2-digit", year: "numeric", 
+    hour: "2-digit", minute: "2-digit"
+  }).format(d);
+}
+
+// Keep strictly for history dialogs if needed, but NOT for main table
 function getLatestVersionPath(doc) {
   if (!doc) return "";
-
-  const vs = doc.versions || doc.document_versions || doc.documentVersions || [];
+  const vs = doc.versions || [];
   if (Array.isArray(vs) && vs.length > 0) {
-    const sorted = [...vs].sort((a, b) => {
-      const an =
-        a.version_number ??
-        a.versionNumber ??
-        a.versionnumber ??
-        a.version_number ??
-        0;
-      const bn =
-        b.version_number ??
-        b.versionNumber ??
-        b.versionnumber ??
-        b.version_number ??
-        0;
-      return (bn || 0) - (an || 0);
-    });
-
-    const latest = sorted[0];
-    if (latest && (latest.version_path || latest.versionPath || latest.versionpath || latest.file)) {
-      return (
-        latest.version_path ||
-        latest.versionPath ||
-        latest.versionpath ||
-        latest.file
-      );
-    }
+    const sorted = [...vs].sort((a, b) => (b.version_number || 0) - (a.version_number || 0));
+    return sorted[0]?.version_path || doc.doc_path || "";
   }
-
-  return doc.doc_path || doc.docpath || doc.doc_path || doc.file || "";
-}
-
-// debug helpers
-function dbg(...args) {
-  const ENABLE = true;
-  if (ENABLE) console.log("[FolderManager]", ...args);
-}
-function dbgErr(...args) {
-  console.error("[FolderManager]", ...args);
-}
-function summarizeRtkError(err) {
-  const status = err?.status;
-  const data = err?.data;
-  return { status, data, raw: err };
-}
-
-function inferFolderFieldStyle(folderPaths) {
-  const firstObj = Array.isArray(folderPaths)
-    ? folderPaths.find((x) => x && typeof x === "object")
-    : null;
-
-  if (!firstObj) return "snake";
-  if ("fol_name" in firstObj || "fol_path" in firstObj || "parent_folder" in firstObj)
-    return "snake";
-  if ("folname" in firstObj || "folpath" in firstObj || "parentfolder" in firstObj)
-    return "camel";
-  return "snake";
+  return doc.doc_path || "";
 }
 
 function getFolderNameFromPayload(payload) {
-  const raw =
-    payload?.fol_name ??
-    payload?.folname ??
-    payload?.folName ??
-    payload?.name ??
-    payload?.folder_name ??
-    payload?.folderName ??
-    payload?.path ??
-    "";
-
-  const s = String(raw || "").trim();
-  if (!s) return "";
-  const normalized = normalizePath(s);
-  if (normalized.includes("/")) return normalized.split("/").filter(Boolean).pop() || "";
-  return normalized;
+  return payload?.fol_name || payload?.folname || payload?.name || "";
 }
 
 function getFolderPathFromPayload({ payload, currentPath, folderName }) {
-  const raw =
-    (payload?.fol_path && String(payload.fol_path).trim()) ||
-    (payload?.folpath && String(payload.folpath).trim()) ||
-    (payload?.combined_path && String(payload.combined_path).trim()) ||
-    (payload?.combinedPath && String(payload.combinedPath).trim()) ||
-    "";
-
+  const raw = payload?.fol_path || "";
   if (raw) return normalizePath(raw);
   return normalizePath(currentPath ? `${currentPath}/${folderName}` : folderName);
 }
 
-function normalizeFolderIndex(rawIndex) {
-  let fol_index = rawIndex == null || rawIndex === "" ? null : String(rawIndex).trim();
-  const key = (fol_index || "").toLowerCase();
+// --- Bulk Action Dialogs ---
 
-  if (
-    key === "private" ||
-    key === "privet" ||
-    key === "prive" ||
-    key === "privée" ||
-    key === "privee"
-  ) {
-    fol_index = "PR";
-  } else if (
-    key === "public" ||
-    key === "general" ||
-    key === "général" ||
-    key === "publique"
-  ) {
-    fol_index = "GD";
-  }
+function BulkMoveDialog({ open, onOpenChange, selectedItems, allFolders, currentFolderId, onMoveSuccess }) {
+  const [targetFolder, setTargetFolder] = useState(null);
+  const [isMoving, setIsMoving] = useState(false);
+  const [updateDoc] = useUpdateDocumentMutation();
+  const [updateFolder] = useUpdateFolderMutation();
 
-  if (fol_index && fol_index.length > 5) {
-    return { value: null, error: `fol_index too long: "${fol_index}"` };
-  }
+  const availableTargets = useMemo(() => {
+    // Filter out: 
+    // 1. The selected items themselves (can't move folder into itself)
+    // 2. The current folder (can't move items to where they already are)
+    const movingIds = new Set(selectedItems.filter(i => i.type === "folder").map(i => i.id));
+    return allFolders.filter(f => !movingIds.has(f.id) && f.id !== currentFolderId);
+  }, [allFolders, selectedItems, currentFolderId]);
 
-  return { value: fol_index, error: null };
+  const handleMove = async () => {
+    setIsMoving(true);
+    let errors = 0;
+    try {
+      const targetId = targetFolder === "root" ? null : targetFolder;
+      
+      const promises = selectedItems.map(item => {
+        if (item.type === "folder") {
+          // Safety: Can't move virtual folders (ID is string)
+          if (typeof item.id !== 'number') return Promise.resolve(); 
+          if (item.id === targetId) return Promise.resolve();
+          return updateFolder({ id: item.id, data: { parent_folder: targetId } }).unwrap();
+        } else {
+          return updateDoc({ id: item.id, data: { parent_folder: targetId } }).unwrap();
+        }
+      });
+
+      await Promise.allSettled(promises).then(results => {
+        results.forEach(res => { if (res.status === 'rejected') errors++; });
+      });
+
+      if (errors > 0) toast.warning(`Moved with ${errors} errors.`);
+      else toast.success("Items moved successfully.");
+      
+      onMoveSuccess();
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Bulk move failed.");
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Move {selectedItems.length} items to...</DialogTitle>
+        </DialogHeader>
+        <div className="flex-1 overflow-y-auto min-h-[300px] border rounded-md p-2">
+          <div 
+            className={`p-2 rounded cursor-pointer flex items-center gap-2 ${targetFolder === "root" ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}
+            onClick={() => setTargetFolder("root")}
+          >
+            <Home size={16} /> <span>Root Directory</span>
+          </div>
+          {availableTargets.map(folder => (
+            <div 
+              key={folder.id} 
+              className={`p-2 ml-4 rounded cursor-pointer flex items-center gap-2 truncate ${targetFolder === folder.id ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}
+              onClick={() => setTargetFolder(folder.id)}
+            >
+              <Folder size={16} /> 
+              <span>{folder.fol_name}</span>
+              <span className="text-xs text-muted-foreground ml-auto max-w-[150px] truncate">{folder.fol_path}</span>
+            </div>
+          ))}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleMove} disabled={!targetFolder || isMoving}>
+            {isMoving ? "Moving..." : "Move Here"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
+
+function BulkArchiveDialog({ open, onOpenChange, selectedItems, onArchiveSuccess }) {
+  const [mode, setMode] = useState("permanent");
+  const [until, setUntil] = useState("");
+  const [note, setNote] = useState("");
+  const [isArchiving, setIsArchiving] = useState(false);
+
+  const [archiveDoc] = useArchiveDocumentMutation();
+  const [archiveFolder] = useArchiveFolderMutation();
+
+  const handleArchive = async () => {
+    setIsArchiving(true);
+    const isoUntil = mode === "until" && until ? new Date(until).toISOString() : null;
+    let errors = 0;
+
+    const promises = selectedItems.map(item => {
+      // Skip virtual items
+      if (item.type === "folder" && typeof item.id !== "number") return Promise.resolve();
+
+      const payload = { id: item.id, mode, until: isoUntil, note };
+      if (item.type === "folder") return archiveFolder(payload).unwrap();
+      return archiveDoc(payload).unwrap();
+    });
+
+    await Promise.allSettled(promises).then(results => {
+        results.forEach(res => { if (res.status === 'rejected') errors++; });
+    });
+
+    setIsArchiving(false);
+    if (errors === 0) {
+      toast.success("Archived successfully.");
+      onArchiveSuccess();
+      onOpenChange(false);
+    } else {
+      toast.warning(`${errors} items failed to archive.`);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Archive {selectedItems.length} items</DialogTitle></DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" checked={mode==="permanent"} onChange={()=>setMode("permanent")} className="accent-primary" /> Permanent
+            </label>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input type="radio" checked={mode==="until"} onChange={()=>setMode("until")} className="accent-primary" /> Temporarily (Until date)
+            </label>
+          </div>
+          {mode === "until" && <Input type="datetime-local" value={until} onChange={e=>setUntil(e.target.value)} />}
+          <Input placeholder="Archive Note..." value={note} onChange={e=>setNote(e.target.value)} />
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleArchive} disabled={isArchiving}>{isArchiving ? "Archiving..." : "Confirm"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// --- Main Component ---
 
 export default function FolderManager({ initialPath = "/", className = "" }) {
   const [currentPath, setCurrentPath] = useState(normalizePath(initialPath));
+  const [selectedItems, setSelectedItems] = useState({});
+
+  // Dialog States
   const [createOpen, setCreateOpen] = useState(false);
   const [showNewDialog, setShowNewDialog] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editDocId, setEditDocId] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [localFolders, setLocalFolders] = useState([]);
-
-  // History dialog state
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyDocId, setHistoryDocId] = useState(null);
-
-  // Archive document dialog state
-  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [archiveDocOpen, setArchiveDocOpen] = useState(false);
   const [archiveDocId, setArchiveDocId] = useState(null);
-
-  // Archive folder dialog state
   const [archiveFolderOpen, setArchiveFolderOpen] = useState(false);
-  const [archiveFolder, setArchiveFolder] = useState(null);
+  const [archiveFolderObj, setArchiveFolderObj] = useState(null);
+
+  const [bulkMoveOpen, setBulkMoveOpen] = useState(false);
+  const [bulkArchiveOpen, setBulkArchiveOpen] = useState(false);
+
+  const [uploading, setUploading] = useState(false);
+  const [localFolders, setLocalFolders] = useState([]); 
 
   const { data: foldersApiData = [], refetch: refetchFolders } = useGetFoldersQuery();
-
-  // IMPORTANT: endpoint expects params object { folder }
   const { data: documents = [], refetch: refetchDocuments } = useGetDocumentsQuery(
     currentPath ? { folder: currentPath } : undefined
   );
 
   const [createFolder] = useCreateFolderMutation();
   const [createDocument] = useCreateDocumentMutation();
-  const [deleteDocument] = useDeleteDocumentMutation();
+  const [syncFolders, { isLoading: isSyncing }] = useSyncFoldersMutation(); // ✅ Sync Hook
 
-  const folderPaths = React.useMemo(
-    () =>
-      Array.isArray(foldersApiData)
-        ? foldersApiData
-        : (foldersApiData && foldersApiData.folders) || [],
-    [foldersApiData]
-  );
-
-  const folderFieldStyle = useMemo(() => inferFolderFieldStyle(folderPaths), [folderPaths]);
-
-  const commonPrefix = useMemo(
-    () =>
-      detectCommonPrefix(
-        folderPaths.length ? folderPaths : (documents || []).map((d) => d.doc_path || d.file || "")
-      ),
-    [folderPaths, documents]
-  );
-
-  // Auto-fix invalid initial path
-  const _autoFixedPathRef = React.useRef(false);
-  React.useEffect(() => {
-    if (_autoFixedPathRef.current) return;
-
-    const hasAnyData =
-      (Array.isArray(folderPaths) && folderPaths.length > 0) ||
-      (Array.isArray(documents) && documents.length > 0);
-
-    if (!hasAnyData) return;
-
-    const cur = normalizePath(currentPath || "");
-    if (!cur) {
-      _autoFixedPathRef.current = true;
-      return;
+  // ✅ AUTO-SYNC ON MOUNT/REFRESH
+  const hasSyncedRef = useRef(false);
+  useEffect(() => {
+    if (!hasSyncedRef.current) {
+      syncFolders()
+        .unwrap()
+        .then((res) => {
+          if (res.deleted_ghost_folders > 0) {
+            console.log(`Synced: Removed ${res.deleted_ghost_folders} ghost folders.`);
+            refetchFolders(); // Refresh list after sync
+          }
+        })
+        .catch(err => console.error("Sync failed", err));
+      hasSyncedRef.current = true;
     }
+  }, [syncFolders, refetchFolders]);
 
-    let candidate = cur;
+  const folderPaths = useMemo(() => {
+    if (Array.isArray(foldersApiData)) return foldersApiData;
+    if (Array.isArray(foldersApiData?.results)) return foldersApiData.results;
+    if (Array.isArray(foldersApiData?.folders)) return foldersApiData.folders;
+    return [];
+  }, [foldersApiData]);
 
-    const lower = candidate.toLowerCase();
-    if (lower === "documents") candidate = "";
-    else if (lower.startsWith("documents/")) candidate = candidate.slice("documents/".length);
+  const currentFolderObj = useMemo(() => {
+    return folderPaths.find(fp => {
+      const p = typeof fp === "string" ? normalizePath(fp) : normalizePath(fp.fol_path);
+      return p === currentPath || p === `Documents/${currentPath}` || p === `documents/${currentPath}`;
+    });
+  }, [folderPaths, currentPath]);
 
-    const allKnownPaths = [];
-
-    for (const fp of folderPaths || []) {
-      if (typeof fp === "string") allKnownPaths.push(normalizePath(fp));
-      else allKnownPaths.push(normalizePath(fp?.fol_path || fp?.folpath || fp?.path || ""));
+  const _autoFixedRef = useRef(false);
+  useEffect(() => {
+    if (_autoFixedRef.current) return;
+    if (folderPaths.length > 0 || documents.length > 0) {
+      const cur = normalizePath(currentPath);
+      let candidate = cur;
+      if (candidate.toLowerCase() === "documents") candidate = "";
+      else if (candidate.toLowerCase().startsWith("documents/")) candidate = candidate.slice("documents/".length);
+      if (candidate !== cur) setCurrentPath(candidate);
+      _autoFixedRef.current = true;
     }
-
-    for (const d of documents || []) {
-      allKnownPaths.push(normalizePath(d?.doc_path || d?.file || ""));
-    }
-
-    if (candidate) {
-      const exists = allKnownPaths.some((p) => p === candidate || p.startsWith(candidate + "/"));
-      if (!exists) candidate = "";
-    }
-
-    if (candidate !== cur) {
-      dbg("Auto-fix currentPath", { from: cur, to: candidate });
-      setCurrentPath(candidate);
-    }
-
-    _autoFixedPathRef.current = true;
   }, [folderPaths, documents, currentPath]);
 
   const { folders: immediateFolders, files: immediateFiles } = useMemo(() => {
@@ -307,49 +355,47 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
     const curParts = cur ? cur.split("/").filter(Boolean) : [];
     const curDepth = curParts.length;
 
-    const curFirst = curParts[0] || null;
-    const stripPrefix = (p) => {
-      if (!p) return "";
-      let s = normalizePath(p);
-      if (commonPrefix && commonPrefix !== curFirst && s.startsWith(commonPrefix + "/")) {
-        s = s.slice(commonPrefix.length + 1);
-      }
-      return s;
-    };
-
     const sourcePaths = (
-      folderPaths && folderPaths.length
-        ? folderPaths.map((fp) =>
-            typeof fp === "string"
-              ? fp
-              : fp.fol_path || fp.folpath || fp.fol_path || fp.path || fp.folpath || ""
-          )
-        : (documents || []).map((d) => d.doc_path || d.file || "")
-    ).concat(localFolders || []);
+      folderPaths.map((fp) => typeof fp === "string" ? fp : fp.fol_path || "")
+    ).concat(localFolders);
 
-    for (const raw of sourcePaths || []) {
-      const p = stripPrefix(raw);
+    for (const raw of sourcePaths) {
+      const p = normalizePath(raw);
       if (!p) continue;
-      const parts = p.split("/").filter(Boolean);
+      
+      let effectivePath = p;
+      if (effectivePath.toLowerCase().startsWith("documents/") && cur === "") {
+         effectivePath = effectivePath.substring("documents/".length);
+      } else if (effectivePath.toLowerCase() === "documents" && cur === "") {
+         continue; 
+      }
+
+      const parts = effectivePath.split("/").filter(Boolean);
+      
       if (curDepth === 0) {
         if (parts.length >= 1) folderSet.add(parts[0]);
       } else {
-        if (parts.length > curDepth && parts.slice(0, curDepth).join("/") === curParts.join("/")) {
-          folderSet.add(parts[curDepth]);
+        const prefix = curParts.join("/");
+        if (effectivePath.startsWith(prefix + "/") || effectivePath === prefix) {
+           const relative = effectivePath.slice(prefix.length).replace(/^\//, "");
+           const relativeParts = relative.split("/").filter(Boolean);
+           if (relativeParts.length > 0) folderSet.add(relativeParts[0]);
         }
       }
     }
 
-    for (const d of documents || []) {
-      const raw = d.doc_path || d.docpath || d.file || "";
-      const p = stripPrefix(raw);
-      if (!p) continue;
+    for (const d of documents) {
+      // ✅ Use doc_path directly and strip optional prefix if needed
+      let p = normalizePath(d.doc_path || "");
+      if (p.toLowerCase().startsWith("documents/") && cur === "") {
+         p = p.substring("documents/".length);
+      }
       const parts = p.split("/").filter(Boolean);
       if (curDepth === 0) {
         if (parts.length === 1) fileList.push(d);
       } else {
         const prefix = curParts.join("/");
-        if (p === prefix || p.startsWith(prefix + "/")) {
+        if (p.startsWith(prefix + "/")) {
           const rest = p.replace(prefix + "/", "");
           if (rest && !rest.includes("/")) fileList.push(d);
         }
@@ -357,719 +403,404 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
     }
 
     return { folders: Array.from(folderSet).sort(), files: fileList };
-  }, [folderPaths, documents, currentPath, commonPrefix, localFolders]);
+  }, [folderPaths, documents, currentPath, localFolders]);
 
   const breadcrumbs = useMemo(() => {
-    const p = normalizePath(currentPath || "");
-    if (!p) return [{ name: "/", path: "" }];
-    const parts = p.split("/").filter(Boolean);
-    const crumbs = [{ name: "/", path: "" }];
+    const parts = normalizePath(currentPath).split("/").filter(Boolean);
+    const crumbs = [{ name: "Root", path: "" }];
     let accum = "";
-    for (const part of parts) {
+    parts.forEach(part => {
       accum = accum ? `${accum}/${part}` : part;
       crumbs.push({ name: part, path: accum });
-    }
+    });
     return crumbs;
   }, [currentPath]);
-
-  const visibleBreadcrumbs = useMemo(() => {
-    if (!Array.isArray(breadcrumbs)) return breadcrumbs;
-    return breadcrumbs.filter((c) => {
-      if (c && c.name === "Documents") {
-        const nonRoot = breadcrumbs.filter((b) => b.name !== "/");
-        if (nonRoot.length === 1 && nonRoot[0].name === "Documents") return false;
-      }
-      return true;
-    });
-  }, [breadcrumbs]);
 
   const tableRows = useMemo(() => {
     const rows = [];
 
-    for (const name of immediateFolders) {
+    immediateFolders.forEach(name => {
       const path = currentPath ? `${currentPath}/${name}` : name;
-
-      let folderObj = null;
-      if (Array.isArray(folderPaths) && folderPaths.length) {
-        folderObj =
-          folderPaths.find((fp) => {
-            if (!fp) return false;
-            if (typeof fp === "string") return normalizePath(fp) === normalizePath(path);
-            const fpPath = normalizePath(fp.fol_path || fp.folpath || fp.path || "");
-            return fpPath === normalizePath(path) || fp.fol_name === name || fp.folname === name;
-          }) || null;
-      }
+      let folderObj = folderPaths.find(fp => {
+         const p = typeof fp === "string" ? normalizePath(fp) : normalizePath(fp.fol_path);
+         return p === path || p === `Documents/${path}` || p === `documents/${path}`;
+      });
 
       rows.push({
         id: folderObj?.id ?? `folder:${path}`,
-        fol_name: folderObj?.fol_name ?? folderObj?.folname ?? name,
-        fol_path: folderObj?.fol_path ?? folderObj?.folpath ?? path,
-        fol_index: folderObj?.fol_index ?? folderObj?.folindex ?? "",
-        parent_folder: folderObj?.parent_folder ?? folderObj?.parentfolder ?? null,
-        isFolder: true,
-        raw: folderObj,
+        name: name,
+        path: path,
+        type: "folder",
+        index: folderObj?.fol_index ?? "",
+        owner: folderObj?.created_by?.username || "-",
+        date: folderObj?.created_at,
+        raw: folderObj
       });
-    }
+    });
 
-    for (const f of immediateFiles) {
+    immediateFiles.forEach(f => {
       rows.push({
-        id: f.id ?? `file:${f.doc_path}`,
-        fol_name:
-          f.file_name ||
-          f.doc_title ||
-          f.doctitle ||
-          (f.doc_path || f.docpath || "").split("/").pop(),
-        fol_path: getLatestVersionPath(f),
-        fol_index: f.doc_code || f.doccode || f.doc_number || f.doc_index || "",
-        parent_folder: null,
-        isFolder: false,
-        file: f,
+        id: f.id,
+        name: f.doc_title,
+        // ✅ CHANGED: Use doc_path directly (Live path) instead of version path
+        path: f.doc_path, 
+        type: "file",
+        index: f.doc_code || "",
+        owner: f.doc_owner?.username || "-",
+        date: f.created_at,
+        status: f.doc_status_type || "ORIGINAL",
+        description: f.doc_description || "",
+        downloadUrl: f.download_url,
+        raw: f
       });
-    }
+    });
 
     return rows;
   }, [immediateFolders, immediateFiles, currentPath, folderPaths]);
 
-  // create file form state
+  const toggleSelectAll = () => {
+    if (Object.keys(selectedItems).length === tableRows.length) {
+      setSelectedItems({});
+    } else {
+      const newSel = {};
+      tableRows.forEach(r => { newSel[r.id] = r; });
+      setSelectedItems(newSel);
+    }
+  };
+
+  const toggleSelectRow = (row) => {
+    setSelectedItems(prev => {
+      const next = { ...prev };
+      if (next[row.id]) delete next[row.id];
+      else next[row.id] = row;
+      return next;
+    });
+  };
+
+  const handleNavigate = (path) => {
+    setCurrentPath(path);
+    setSelectedItems({});
+  };
+
+  const handleCreateFolderAction = async (payload) => {
+    const folderName = getFolderNameFromPayload(payload);
+    if (!folderName) return toast.error("Folder name required");
+    const fol_path = getFolderPathFromPayload({ payload, currentPath, folderName });
+    const { value: fol_index, error: indexErr } = normalizeFolderIndex(payload?.fol_index || "GD");
+    
+    if (indexErr) return toast.error(indexErr);
+    
+    let parentId = null;
+    if (currentPath) {
+      const parentObj = folderPaths.find(fp => {
+        const p = typeof fp === "string" ? normalizePath(fp) : normalizePath(fp.fol_path);
+        return p === currentPath || p === `Documents/${currentPath}` || p === `documents/${currentPath}`;
+      });
+      if (parentObj && typeof parentObj !== "string") parentId = parentObj.id;
+    }
+
+    try {
+      await createFolder({
+        fol_name: folderName,
+        fol_path: fol_path,
+        fol_index: fol_index,
+        parent_folder: parentId
+      }).unwrap();
+
+      setLocalFolders(prev => [...prev, normalizePath(fol_path)]);
+      setTimeout(() => { refetchFolders(); refetchDocuments(); }, 500);
+      setCreateOpen(false);
+      toast.success("Folder created");
+    } catch (err) {
+      const msg = err?.data?.fol_name?.[0] || err?.data?.detail || "Failed to create folder";
+      toast.error(msg);
+    }
+  };
+
+  const handleUploadFiles = async (files) => {
+    if (!files?.length) return;
+    setUploading(true);
+    const tasks = Array.from(files).map(f => {
+      const fd = new FormData();
+      fd.append("file", f, f.name);
+      // ✅ Pass current path context so backend knows where to save
+      if (currentPath) fd.append("doc_path", currentPath);
+      
+      // Also try to find parent ID for reference
+      let parentId = null;
+      if (currentPath) {
+        const parentObj = folderPaths.find(fp => {
+            const p = typeof fp === "string" ? normalizePath(fp) : normalizePath(fp.fol_path);
+            return p === currentPath || p === `Documents/${currentPath}` || p === `documents/${currentPath}`;
+        });
+        if (parentObj && typeof parentObj !== 'string') parentId = parentObj.id;
+      }
+      if (parentId) fd.append("parent_folder", parentId);
+
+      return createDocument(fd).unwrap().catch(console.error);
+    });
+    await Promise.allSettled(tasks);
+    setUploading(false);
+    refetchDocuments();
+    toast.success("Files uploaded");
+  };
+
+  const selectedList = Object.values(selectedItems);
   const [newFileName, setNewFileName] = useState("");
   const [newFileObj, setNewFileObj] = useState(null);
 
-  async function handleSubmitNewFile(e) {
-    e?.preventDefault?.();
-    if (!newFileObj) {
-      alert("Please choose a file");
-      return;
-    }
-
+  const handleSubmitNewFile = async (e) => {
+    e?.preventDefault();
+    if (!newFileObj) return toast.error("Please choose a file");
     const fd = new FormData();
     fd.append("file", newFileObj, newFileObj.name);
-
-    const docPath = normalizePath(currentPath || "");
-    if (docPath) {
-      // Compatibility: backend may expect docpath; old clients may send doc_path
-      fd.append("docpath", docPath);
-      fd.append("doc_path", docPath);
+    if (currentPath) fd.append("doc_path", currentPath);
+    if (newFileName) fd.append("doc_title", newFileName);
+    
+    // Find parent ID logic (same as bulk upload)
+    let parentId = null;
+    if (currentPath) {
+        const parentObj = folderPaths.find(fp => {
+            const p = typeof fp === "string" ? normalizePath(fp) : normalizePath(fp.fol_path);
+            return p === currentPath || p === `Documents/${currentPath}` || p === `documents/${currentPath}`;
+        });
+        if (parentObj && typeof parentObj !== 'string') parentId = parentObj.id;
     }
-
-    if (newFileName) {
-      // Compatibility: backend may expect doctitle; old clients may send doc_title
-      fd.append("doctitle", newFileName);
-      fd.append("doc_title", newFileName);
-    }
-
-    dbg("CreateDocument => FormData", {
-      doc_path: docPath || "(root)",
-      doc_title: newFileName || "(auto)",
-      file: newFileObj?.name,
-      size: newFileObj?.size,
-      type: newFileObj?.type,
-    });
+    if (parentId) fd.append("parent_folder", parentId);
 
     try {
-      const resp = await createDocument(fd).unwrap();
-      dbg("CreateDocument <= response", resp);
-      await Promise.all([refetchDocuments?.(), refetchFolders?.()]);
+      await createDocument(fd).unwrap();
+      await Promise.all([refetchDocuments(), refetchFolders()]);
       setShowNewDialog(false);
       setNewFileName("");
       setNewFileObj(null);
+      toast.success("File uploaded");
     } catch (err) {
-      const info = summarizeRtkError(err);
-      dbgErr("create document failed", info);
-      alert(info?.data ? JSON.stringify(info.data) : "Failed to create file");
+      toast.error("Failed to upload file");
     }
-  }
-
-  async function handleCreateFolder(payload) {
-    dbg("CreateFolder onCreate payload:", payload);
-    dbg("CurrentPath:", currentPath, "FieldStyle:", folderFieldStyle);
-
-    try {
-      const folderName = getFolderNameFromPayload(payload);
-      if (!folderName) {
-        dbgErr("CreateFolder blocked: folder name is empty", { payload });
-        alert("Folder name is required");
-        return;
-      }
-
-      const fol_path = getFolderPathFromPayload({ payload, currentPath, folderName });
-
-      const normalizedCurrent = normalizePath(currentPath || "");
-      let parentId = null;
-
-      if (normalizedCurrent) {
-        if (Array.isArray(folderPaths) && folderPaths.length) {
-          const match = folderPaths.find((fp) => {
-            if (!fp) return false;
-            if (typeof fp === "string") return normalizePath(fp) === normalizedCurrent;
-            const fpPath = normalizePath(fp.fol_path || fp.folpath || fp.path || "");
-            return fpPath === normalizedCurrent;
-          });
-          if (match && typeof match !== "string") parentId = match.id ?? null;
-        }
-      }
-
-      const rawIndex =
-        payload?.fol_index ??
-        payload?.folindex ??
-        payload?.folIndex ??
-        payload?.folder_type ??
-        payload?.type ??
-        null;
-
-      const { value: fol_index, error: folIndexError } = normalizeFolderIndex(rawIndex);
-      dbg("CreateFolder fol_index raw =>", rawIndex, "normalized =>", fol_index);
-
-      if (folIndexError) {
-        dbgErr("CreateFolder blocked:", folIndexError, { rawIndex, payload });
-        alert("Folder type is invalid (must be 5 characters max).");
-        return;
-      }
-
-      let body;
-      if (folderFieldStyle === "camel") {
-        body = {
-          folname: folderName,
-          folpath: fol_path,
-          ...(fol_index ? { folindex: fol_index } : {}),
-          parentfolder: payload?.parentfolder ?? payload?.parent_folder ?? parentId ?? null,
-        };
-      } else {
-        body = {
-          fol_name: folderName,
-          fol_path: fol_path,
-          ...(fol_index ? { fol_index: fol_index } : {}),
-          parent_folder: payload?.parent_folder ?? payload?.parentfolder ?? parentId ?? null,
-        };
-      }
-
-      dbg("CreateFolder => request body", body);
-
-      const resp = await createFolder(body).unwrap();
-      dbg("CreateFolder <= response", resp);
-
-      const expectedKey = String(fol_path || "").trim().replace(/^\/+|\/+$/g, "");
-      const expectedLeaf = expectedKey.split("/").filter(Boolean).pop();
-      setLocalFolders((prev) => (prev.includes(expectedKey) ? prev : [...prev, expectedKey]));
-
-      let found = false;
-      for (let attempt = 0; attempt < 4; attempt++) {
-        try {
-          const r1 = await refetchFolders();
-          const data = (r1 && r1.data) || folderPaths || [];
-          const cleaned = (Array.isArray(data) ? data : (data && data.folders) || []).map((p) => {
-            if (typeof p === "string") return normalizePath(p);
-            return normalizePath(p?.fol_path || p?.folpath || p?.path || "");
-          });
-
-          dbg("Refetch attempt", attempt + 1, "folders:", cleaned.length);
-
-          if (
-            cleaned.includes(expectedKey) ||
-            cleaned.some((p) => p.split("/").pop() === expectedLeaf)
-          ) {
-            found = true;
-            break;
-          }
-        } catch (e) {
-          dbgErr("refetch attempt failed", attempt + 1, e);
-        }
-        await new Promise((res) => setTimeout(res, 500));
-      }
-
-      try {
-        await Promise.all([refetchFolders(), refetchDocuments()]);
-      } catch (e) {
-        dbgErr("refetch documents failed", e);
-      }
-
-      setCreateOpen(false);
-
-      if (found) setLocalFolders((prev) => prev.filter((p) => p !== expectedKey));
-      else dbg("Created folder not found in list after retries", expectedKey);
-    } catch (err) {
-      const info = summarizeRtkError(err);
-      dbgErr("create folder failed", info);
-      if (info?.data) alert(JSON.stringify(info.data, null, 2));
-      else alert("Failed to create folder");
-    }
-  }
-
-  React.useEffect(() => {
-    try {
-      refetchFolders();
-    } catch {}
-    try {
-      refetchDocuments();
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function handleUploadFiles(files) {
-    if (!files || !files.length) return;
-    setUploading(true);
-
-    dbg("UploadFiles =>", { count: files.length, currentPath });
-
-    const tasks = Array.from(files).map(async (f) => {
-      const fd = new FormData();
-      fd.append("file", f, f.name);
-
-      const docPath = normalizePath(currentPath || "");
-      if (docPath) {
-        // Compatibility: backend may expect docpath; old clients may send doc_path
-        fd.append("docpath", docPath);
-        fd.append("doc_path", docPath);
-      }
-
-      dbg("Uploading file", {
-        name: f.name,
-        size: f.size,
-        type: f.type,
-        doc_path: docPath || "(root)",
-      });
-
-      try {
-        const resp = await createDocument(fd).unwrap();
-        dbg("Upload success", { name: f.name, resp });
-      } catch (err) {
-        const info = summarizeRtkError(err);
-        dbgErr("upload failed", { file: f.name, ...info });
-      }
-    });
-
-    await Promise.allSettled(tasks);
-    setUploading(false);
-
-    try {
-      await Promise.all([refetchDocuments?.(), refetchFolders?.()]);
-    } catch (e) {
-      dbgErr("refetch after upload failed", e);
-    }
-  }
-
-  function handleRowEdit(r) {
-    if (r.isFolder) {
-      const newName = window.prompt("Rename folder", r.fol_name);
-      if (newName && newName !== r.fol_name) {
-        console.log("rename folder", r.fol_path, "->", newName);
-        // TODO: call rename API
-      }
-    } else {
-      const id = r.file?.id;
-      if (id) {
-        setEditDocId(id);
-        setEditOpen(true);
-      } else {
-        console.log("edit file", r.file);
-      }
-    }
-  }
-
-  async function handleRowDelete(r) {
-    if (r.isFolder) {
-      alert("Folder delete is not implemented yet.");
-      return;
-    }
-    if (!window.confirm(`Delete file '${r.fol_name}'?`)) return;
-
-    const id = r.file?.id;
-    if (!id) return;
-
-    try {
-      await deleteDocument(id).unwrap();
-      await Promise.all([refetchDocuments?.(), refetchFolders?.()]);
-    } catch (err) {
-      const info = summarizeRtkError(err);
-      dbgErr("delete failed", info);
-      alert(info?.data ? JSON.stringify(info.data) : "Failed to delete file");
-    }
-  }
-
-  function handleRowPreview(r) {
-    if (r.isFolder) {
-      setCurrentPath(r.fol_path);
-      return;
-    }
-
-    const url =
-      r.file?.download_url ||
-      r.file?.downloadUrl ||
-      r.file?.url ||
-      r.file?.file ||
-      null;
-
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
-    else console.log("no preview url", r.file);
-  }
-
-  function handleOpenHistory(r) {
-    if (r.isFolder) return;
-    const id = r.file?.id;
-    if (!id) return;
-    setHistoryDocId(id);
-    setHistoryOpen(true);
-  }
-
-  function handleOpenArchiveDocument(r) {
-    if (r.isFolder) return;
-    const id = r.file?.id;
-    if (!id) return;
-    setArchiveDocId(id);
-    setArchiveOpen(true);
-  }
-
-  function handleOpenArchiveFolder(r) {
-    if (!r?.isFolder) return;
-
-    const payload =
-      r.raw && typeof r.raw === "object"
-        ? r.raw
-        : {
-            id: typeof r.id === "number" ? r.id : null,
-            fol_name: r.fol_name,
-            fol_path: r.fol_path,
-          };
-
-    setArchiveFolder(payload);
-    setArchiveFolderOpen(true);
-  }
+  };
 
   return (
-    <div className={`flex flex-col gap-4 ${className}`}>
-      {/* Top toolbar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <nav className="flex items-center gap-2 text-sm text-muted-foreground">
-            {visibleBreadcrumbs.map((c, i) => (
-              <span key={c.path || i} className="inline-flex items-center gap-2">
-                <button
-                  type="button"
-                  className={`px-2 py-1 rounded text-sm hover:underline ${
-                    c.path === currentPath ? "bg-muted/30 text-primary font-medium" : ""
-                  }`}
-                  onClick={() => setCurrentPath(c.path)}
-                >
-                  {c.name}
-                </button>
-                {i < visibleBreadcrumbs.length - 1 && (
-                  <span className="text-muted-foreground/60">/</span>
-                )}
-              </span>
-            ))}
-          </nav>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-            <Plus className="mr-2" size={14} /> New Folder
-          </Button>
-
-          {/* ✅ React Router navigation (admin not prefixed) */}
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/archived-documents">
-              <Archive className="mr-2" size={14} />
-              Archivage
-            </Link>
-          </Button>
-
-          <label className="m-0">
-            <input
-              type="file"
-              multiple
-              onChange={(e) => handleUploadFiles(e.target.files)}
-              style={{ display: "none" }}
-            />
-            <Button size="sm">
-              <UploadCloud className="mr-2" size={14} />
-              {uploading ? "Uploading..." : "Upload"}
+    <div className={`flex flex-col gap-4 ${className} h-full`}>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-3 bg-card p-3 rounded-lg border shadow-sm">
+        {selectedList.length > 0 ? (
+          <div className="flex items-center gap-2 w-full animate-in fade-in slide-in-from-top-1 duration-200">
+            <span className="text-sm font-medium text-primary mr-2 bg-primary/10 px-2 py-1 rounded">
+              {selectedList.length} selected
+            </span>
+            <div className="h-6 w-px bg-border mx-1" />
+            <Button variant="outline" size="sm" onClick={() => setBulkMoveOpen(true)}>
+              <Move size={14} className="mr-2" /> Move To...
             </Button>
-          </label>
-        </div>
+            <Button variant="outline" size="sm" onClick={() => setBulkArchiveOpen(true)}>
+              <Archive size={14} className="mr-2" /> Archive
+            </Button>
+            <div className="flex-1" />
+            <Button variant="ghost" size="icon" onClick={() => setSelectedItems({})}>
+              <X size={16} />
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-3">
+              <h1 className="text-lg font-semibold tracking-tight">Folder Management</h1>
+              {/* ✅ NEW: Sync Button */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                disabled={isSyncing} 
+                onClick={() => syncFolders().then(() => { refetchFolders(); refetchDocuments(); })}
+                title="Sync with S3"
+              >
+                <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2" size={14} /> New Folder
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/archived-documents">
+                  <Archive className="mr-2" size={14} /> Archives
+                </Link>
+              </Button>
+              <label className="m-0">
+                <input type="file" multiple onChange={(e) => handleUploadFiles(e.target.files)} style={{ display: "none" }} />
+                <Button size="sm" disabled={uploading}>
+                  <UploadCloud className="mr-2" size={14} /> {uploading ? "Uploading..." : "Upload"}
+                </Button>
+              </label>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Table */}
-      <div className="bg-card rounded shadow-sm overflow-visible">
+      {/* Breadcrumbs */}
+      <div className="flex items-center gap-1 text-sm text-muted-foreground bg-muted/40 p-2 rounded-md border">
+        <button 
+          onClick={() => handleNavigate("")} 
+          className={`flex items-center px-2 py-1 rounded hover:bg-background transition-colors ${!currentPath ? "font-bold text-foreground bg-background shadow-sm" : "hover:text-primary"}`}
+        >
+          <Home className="w-4 h-4 mr-2" /> Root
+        </button>
+        {breadcrumbs.slice(1).map((crumb, i) => (
+          <React.Fragment key={crumb.path}>
+            <ChevronRight className="w-4 h-4 opacity-40" />
+            <button
+              onClick={() => handleNavigate(crumb.path)}
+              className={`flex items-center px-2 py-1 rounded hover:bg-background transition-colors max-w-[150px] truncate ${
+                crumb.path === currentPath ? "font-bold text-foreground bg-background shadow-sm" : "hover:text-primary"
+              }`}
+            >
+              {crumb.name}
+            </button>
+          </React.Fragment>
+        ))}
+      </div>
+
+      {/* Table Content */}
+      <div className="border rounded-lg bg-card shadow-sm overflow-hidden flex-1 min-h-[500px]">
         <div className="overflow-x-auto">
-          <table className="w-full table-auto text-sm min-w-full">
-            <thead className="bg-muted/10 text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left w-1/6">ID</th>
-                <th className="px-4 py-3 text-left w-1/3">Name</th>
-                <th className="px-4 py-3 text-left w-1/4">Path</th>
-                <th className="px-4 py-3 text-left w-1/6">Index</th>
-                <th className="px-4 py-3 text-left w-1/6">Parent</th>
-                <th className="px-4 py-3 text-right w-28">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-[40px]">
+                  <Checkbox 
+                    checked={tableRows.length > 0 && selectedList.length === tableRows.length}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                </TableHead>
+                <TableHead className="w-[40px]"></TableHead>
+                <TableHead className="min-w-[200px]">Name</TableHead>
+                <TableHead className="min-w-[120px]">Path</TableHead> {/* Renamed Header for clarity */}
+                <TableHead className="min-w-[120px]"><div className="flex items-center gap-1"><Info className="w-3 h-3" /> Index</div></TableHead>
+                <TableHead className="min-w-[100px]">Status</TableHead>
+                <TableHead className="min-w-[200px]">Description</TableHead>
+                <TableHead className="min-w-[120px]"><div className="flex items-center gap-1"><User className="w-3 h-3" /> Owner</div></TableHead>
+                <TableHead className="min-w-[120px]"><div className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Date</div></TableHead>
+                <TableHead className="text-right w-[80px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {tableRows.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                    No folders or files in this path. Use New Folder or Upload to get started.
-                  </td>
-                </tr>
+                <TableRow>
+                  <TableCell colSpan={10} className="h-40 text-center text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <FolderOpen className="w-10 h-10 opacity-20" />
+                      <p>This folder is empty.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : (
-                tableRows.map((r) => (
-                  <tr key={r.id} className="hover:bg-muted/5">
-                    <td className="px-4 py-3 text-sm">{r.id}</td>
-
-                    <td className="px-4 py-3">
-                      {r.isFolder ? (
-                        <button
-                          onClick={() => setCurrentPath(r.fol_path)}
-                          className="flex items-center gap-3 w-full text-left"
-                        >
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded text-primary">
-                            <Folder size={16} />
-                          </span>
-                          <div>
-                            <div className="font-medium">{r.fol_name}</div>
-                          </div>
+                tableRows.map((row) => (
+                  <TableRow 
+                    key={row.id} 
+                    className={`group transition-colors ${row.type === "folder" ? "hover:bg-muted/40 cursor-pointer" : "hover:bg-muted/30"} ${selectedItems[row.id] ? "bg-muted/60" : ""}`}
+                    onDoubleClick={() => row.type === "folder" && handleNavigate(row.path)}
+                    onClick={(e) => {
+                      if(e.ctrlKey || e.metaKey) toggleSelectRow(row);
+                    }}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox 
+                        checked={!!selectedItems[row.id]} 
+                        onCheckedChange={() => toggleSelectRow(row)} 
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {row.type === "folder" ? <Folder className="w-5 h-5 text-amber-500 fill-amber-500/20" /> : <FileText className="w-5 h-5 text-blue-500" />}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {row.type === "folder" ? (
+                        <button onClick={() => handleNavigate(row.path)} className="hover:underline text-left text-foreground">
+                          {row.name}
                         </button>
                       ) : (
-                        <div className="flex items-center gap-3">
-                          <span className="inline-flex items-center justify-center w-8 h-8 rounded bg-primary/10 text-primary">
-                            <FileText size={16} />
-                          </span>
-                          <div>
-                            <a
-                              href={r.file?.download_url || r.file?.url || r.file?.file || "#"}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="font-medium"
-                            >
-                              {r.fol_name}
-                            </a>
-                          </div>
-                        </div>
+                        <span className="text-sm text-foreground">{row.name}</span>
                       )}
-                    </td>
-
-                    <td className="px-4 py-3 text-sm">{r.fol_path}</td>
-
-                    <td className="px-4 py-3 text-sm">
-                      {r.isFolder ? formatFolderIndexLabel(r.fol_index) : r.fol_index || ""}
-                    </td>
-
-                    <td className="px-4 py-3 text-sm">{r.parent_folder ?? "-"}</td>
-
-                    <td className="px-4 py-3 text-right">
-                      <div className="inline-flex items-center gap-1">
-                        {!r.isFolder && (
-                          <button
-                            type="button"
-                            className="p-1 rounded hover:bg-muted/20"
-                            title="Historique"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenHistory(r);
-                            }}
-                          >
-                            <History size={16} />
+                    </TableCell>
+                    {/* ✅ NEW: Display clean path column */}
+                    <TableCell className="text-xs text-muted-foreground truncate max-w-[150px]" title={row.path}>
+                         {row.path}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{row.type === "folder" ? formatFolderIndexLabel(row.index) : row.index}</TableCell>
+                    <TableCell>{row.type === "file" && <Badge variant="outline" className="text-[10px] h-5 font-normal">{row.status}</Badge>}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={row.description}>{row.description || "-"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{row.owner}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{formatDateTime(row.date)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {row.type === "file" && (
+                          <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setHistoryDocId(row.id); setHistoryOpen(true); }} title="History">
+                            <History className="w-4 h-4" />
                           </button>
                         )}
-
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button
-                              className="p-1 rounded hover:bg-muted/20"
-                              onClick={(e) => e.stopPropagation()}
-                              title="Actions"
-                            >
-                              <MoreVertical size={16} />
-                            </button>
+                            <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"><MoreVertical className="w-4 h-4" /></button>
                           </DropdownMenuTrigger>
-
-                          <DropdownMenuContent>
-                            <DropdownMenuLabel>{r.isFolder ? "Folder" : "File"}</DropdownMenuLabel>
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (r.isFolder) setCreateOpen(true);
-                                else setShowNewDialog(true);
-                              }}
-                            >
-                              New
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRowEdit(r);
-                              }}
-                            >
-                              <Pencil size={14} className="mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRowPreview(r);
-                              }}
-                            >
-                              <Eye size={14} className="mr-2" />
-                              Preview
-                            </DropdownMenuItem>
-
-                            {/* ✅ Archive (folder + file) */}
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (r.isFolder) handleOpenArchiveFolder(r);
-                                else handleOpenArchiveDocument(r);
-                              }}
-                            >
-                              <Archive size={14} className="mr-2" />
-                              {r.isFolder ? "Archive folder" : "Archive document"}
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRowDelete(r);
-                              }}
-                              className="text-red-600"
-                            >
-                              <Trash2 size={14} className="mr-2" />
-                              Delete
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            {row.type === "file" && (
+                              <>
+                                <DropdownMenuItem onClick={() => { if (row.downloadUrl) window.open(row.downloadUrl, "_blank"); }}><Eye className="w-3.5 h-3.5 mr-2" /> Preview</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => { setEditDocId(row.id); setEditOpen(true); }}><Pencil className="w-3.5 h-3.5 mr-2" /> Edit</DropdownMenuItem>
+                              </>
+                            )}
+                            <DropdownMenuItem className="text-orange-600 focus:text-orange-700 focus:bg-orange-50" onClick={() => { if (row.type === "folder") { setArchiveFolderObj(row.raw); setArchiveFolderOpen(true); } else { setArchiveDocId(row.id); setArchiveDocOpen(true); } }}>
+                              <Archive className="w-3.5 h-3.5 mr-2" /> Archive
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
-      {/* Create Folder */}
+      {/* --- Bulk Dialogs --- */}
+      <BulkMoveDialog 
+        open={bulkMoveOpen} 
+        onOpenChange={setBulkMoveOpen} 
+        selectedItems={selectedList} 
+        allFolders={folderPaths} 
+        currentFolderId={currentFolderObj?.id}
+        onMoveSuccess={() => { setSelectedItems({}); refetchFolders(); refetchDocuments(); }} 
+      />
+
+      <BulkArchiveDialog 
+        open={bulkArchiveOpen} 
+        onOpenChange={setBulkArchiveOpen} 
+        selectedItems={selectedList}
+        onArchiveSuccess={() => { setSelectedItems({}); refetchFolders(); refetchDocuments(); }} 
+      />
+
+      {/* --- Standard Dialogs --- */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create Folder</DialogTitle>
-          </DialogHeader>
-          <CreateFolder
-            prefix={currentPath ? `${currentPath}/` : "/"}
-            onCreate={handleCreateFolder}
-            onCancel={() => setCreateOpen(false)}
-          />
-        </DialogContent>
+        <DialogContent><DialogHeader><DialogTitle>Create Folder</DialogTitle></DialogHeader><CreateFolder prefix={currentPath ? `${currentPath}/` : "/"} onCreate={handleCreateFolderAction} onCancel={() => setCreateOpen(false)} /></DialogContent>
       </Dialog>
 
-      {/* Edit Document */}
-      <Dialog
-        open={editOpen}
-        onOpenChange={(v) => {
-          setEditOpen(v);
-          if (!v) setEditDocId(null);
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Document</DialogTitle>
-          </DialogHeader>
-          {editDocId && (
-            <EditDocumentForm
-              documentId={editDocId}
-              onClose={() => {
-                setEditOpen(false);
-                setEditDocId(null);
-                try {
-                  refetchDocuments();
-                } catch {}
-              }}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Create New File */}
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Create New File</DialogTitle>
-          </DialogHeader>
-
+        <DialogContent><DialogHeader><DialogTitle>Upload New File</DialogTitle></DialogHeader>
           <form onSubmit={handleSubmitNewFile}>
-            <FieldGroup>
-              <FieldLabel>File name (optional)</FieldLabel>
-              <Input
-                value={newFileName}
-                onChange={(e) => setNewFileName(e.target.value)}
-                placeholder="Document title"
-              />
-
-              <FieldLabel>File</FieldLabel>
-              <input type="file" onChange={(e) => setNewFileObj(e.target.files?.[0] || null)} />
-            </FieldGroup>
-
-            <DialogFooter>
-              <div className="flex gap-2">
-                <button type="button" className="btn btn-ghost" onClick={() => setShowNewDialog(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Create
-                </button>
-              </div>
-            </DialogFooter>
+            <FieldGroup><FieldLabel>Title</FieldLabel><Input value={newFileName} onChange={e=>setNewFileName(e.target.value)} placeholder="File title" /><FieldLabel>File</FieldLabel><input type="file" onChange={e=>setNewFileObj(e.target.files?.[0])} className="text-sm" /></FieldGroup>
+            <DialogFooter><Button variant="ghost" onClick={()=>setShowNewDialog(false)}>Cancel</Button><Button type="submit">Upload</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Historique dialog */}
-      <DocumentHistoryDialog
-        open={historyOpen}
-        documentId={historyDocId}
-        onOpenChange={(v) => {
-          setHistoryOpen(v);
-          if (!v) setHistoryDocId(null);
-        }}
-      />
+      <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if(!v) setEditDocId(null); }}>
+        <DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Edit Document</DialogTitle></DialogHeader>{editDocId && <EditDocumentForm documentId={editDocId} onClose={() => { setEditOpen(false); setEditDocId(null); refetchDocuments(); }} />}</DialogContent>
+      </Dialog>
 
-      {/* Archive document dialog */}
-      <ArchiveDocumentDialog
-        open={archiveOpen}
-        documentId={archiveDocId}
-        onOpenChange={(v) => {
-          setArchiveOpen(v);
-          if (!v) {
-            setArchiveDocId(null);
-            try {
-              refetchDocuments?.();
-              refetchFolders?.();
-            } catch {}
-          }
-        }}
-      />
-
-      {/* ✅ Archive folder dialog */}
-      <ArchiveFolderDialog
-        open={archiveFolderOpen}
-        folder={archiveFolder}
-        onOpenChange={(v) => {
-          setArchiveFolderOpen(v);
-          if (!v) {
-            setArchiveFolder(null);
-            try {
-              refetchDocuments?.();
-              refetchFolders?.();
-            } catch {}
-          }
-        }}
-        onSuccess={() => {
-          try {
-            refetchDocuments?.();
-            refetchFolders?.();
-          } catch {}
-        }}
-      />
+      <DocumentHistoryDialog open={historyOpen} documentId={historyDocId} onOpenChange={(v) => { setHistoryOpen(v); if(!v) setHistoryDocId(null); }} />
+      <ArchiveDocumentDialog open={archiveDocOpen} documentId={archiveDocId} onOpenChange={(v) => { setArchiveDocOpen(v); if(!v) { setArchiveDocId(null); refetchDocuments(); } }} />
+      <ArchiveFolderDialog open={archiveFolderOpen} folder={archiveFolderObj} onOpenChange={(v) => { setArchiveFolderOpen(v); if(!v) { setArchiveFolderObj(null); refetchFolders(); refetchDocuments(); } }} />
     </div>
   );
 }

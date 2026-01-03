@@ -42,10 +42,11 @@ export const documentSlice = apiSlice.injectEndpoints({
       invalidatesTags: [{ type: "Document", id: "LIST" }],
     }),
 
+    // ✅ FIX: Use PATCH for partial updates (Move, Rename)
     updateDocument: builder.mutation({
       query: ({ id, data }) => ({
         url: `/api/documents/${id}/`,
-        method: "PUT",
+        method: "PATCH", 
         body: data,
       }),
       invalidatesTags: (result, error, arg) => [
@@ -115,16 +116,11 @@ export const documentSlice = apiSlice.injectEndpoints({
       ],
     }),
 
-    // ✅ FIX: Ensure parameters match backend expectations
     archiveFolder: builder.mutation({
       query: ({ id, mode, until, note }) => ({
         url: `/api/folders/${id}/archive/`,
         method: "POST",
-        body: { 
-          mode,   // "permanent" or "until"
-          until,  // ISO string or null
-          note 
-        },
+        body: { mode, until, note },
       }),
       invalidatesTags: [
         { type: "Folder", id: "LIST" },
@@ -163,10 +159,11 @@ export const documentSlice = apiSlice.injectEndpoints({
       ],
     }),
 
+    // ✅ FIX: Use PATCH for partial updates (Move, Rename)
     updateFolder: builder.mutation({
       query: ({ id, data }) => ({
         url: `/api/folders/${id}/`,
-        method: "PUT",
+        method: "PATCH", 
         body: data,
       }),
       invalidatesTags: (result, error, arg) => [
@@ -187,6 +184,18 @@ export const documentSlice = apiSlice.injectEndpoints({
         { type: "Folder", id: "LIST" },
         { type: "Folder", id: "TREE" },
         "ArchiveNav",
+      ],
+    }),
+
+    // ✅ NEW: Sync Folders with S3
+    syncFolders: builder.mutation({
+      query: () => ({
+        url: "/api/folders/sync/",
+        method: "POST",
+      }),
+      invalidatesTags: [
+        { type: "Folder", id: "LIST" },
+        { type: "Folder", id: "TREE" },
       ],
     }),
 
@@ -242,7 +251,6 @@ export const {
   useUpdateDocumentMutation,
   useDeleteDocumentMutation,
 
-  // ✅ Archive Hooks
   useGetArchivedDocumentsQuery,
   useGetArchiveNavigationQuery,
   useArchiveDocumentMutation,
@@ -253,6 +261,7 @@ export const {
   useCreateFolderMutation,
   useUpdateFolderMutation,
   useDeleteFolderMutation,
+  useSyncFoldersMutation, // ✅ Export Sync Hook
   useGetFolderContentQuery,
   useGetFoldersQuery,
   useGetFoldersTreeQuery,

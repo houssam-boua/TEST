@@ -1,4 +1,3 @@
-# views.py
 import datetime
 import json
 import logging
@@ -56,16 +55,9 @@ def _normalize_path(p: str) -> str:
 
 
 def _parse_iso_datetime(value):
-    """
-    Accepts:
-      - None
-      - ISO string: "2026-01-02T01:00:00" or "...Z"
-    Returns timezone-aware datetime or None.
-    """
     if not value:
         return None
     s = str(value).strip()
-    # Handle Zulu "Z" manually if needed
     if s.endswith("Z"):
         s = s[:-1] + "+00:00"
     
@@ -80,9 +72,6 @@ def _parse_iso_datetime(value):
 
 
 def _folder_is_archived_anywhere(folder: Folder) -> bool:
-    """
-    If any ancestor is archived, the folder is effectively archived.
-    """
     cur = folder
     while cur:
         if getattr(cur, "is_archived", False):
@@ -92,33 +81,110 @@ def _folder_is_archived_anywhere(folder: Folder) -> bool:
 
 
 def _deny_if_archived_for_non_admin(request, document: Document):
-    """
-    Archived documents must only be visible to admins.
-    """
     if getattr(document, "is_archived", False) and not (request.user and request.user.is_staff):
         return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
     return None
 
 
+def _restore_expired_entities():
+    """
+    Checks for Folders and Documents whose 'archived_until' has passed.
+    Restores them to active status.
+    """
+    now = timezone.now()
+
+    # 1. Find Expired Folders
+    expired_folders = Folder.objects.filter(is_archived=True, archived_until__lte=now)
+    
+    if expired_folders.exists():
+        with transaction.atomic():
+            folder_ids = list(expired_folders.values_list("id", flat=True))
+            
+            # Restore folders
+            Folder.objects.filter(id__in=folder_ids).update(
+                is_archived=False,
+                archived_at=None,
+                archived_until=None,
+                archived_by=None,
+                archived_note=""
+            )
+            
+            # Restore documents inside these folders (cascade restore)
+            docs_in_folders = Document.objects.filter(parent_folder__id__in=folder_ids, is_archived=True)
+            doc_ids_in_folders = list(docs_in_folders.values_list("id", flat=True))
+            
+            docs_in_folders.update(
+                is_archived=False,
+                archived_at=None,
+                archived_until=None,
+                archived_by=None,
+                archive_note=""
+            )
+
+            if doc_ids_in_folders:
+                DocumentArchive.objects.filter(
+                    document_id__in=doc_ids_in_folders, 
+                    status=DocumentArchive.STATUS_ACTIVE
+                ).update(
+                    status=DocumentArchive.STATUS_RESTORED,
+                    restored_at=now
+                )
+
+    # 2. Find Expired Documents
+    expired_docs = Document.objects.filter(is_archived=True, archived_until__lte=now)
+    if expired_docs.exists():
+        with transaction.atomic():
+            doc_ids = list(expired_docs.values_list("id", flat=True))
+            
+            expired_docs.update(
+                is_archived=False,
+                archived_at=None,
+                archived_until=None,
+                archived_by=None,
+                archive_note=""
+            )
+
+            DocumentArchive.objects.filter(
+                document_id__in=doc_ids, 
+                status=DocumentArchive.STATUS_ACTIVE
+            ).update(
+                status=DocumentArchive.STATUS_RESTORED,
+                restored_at=now
+            )
+
+
+# ✅ NEW: S3 Move Helper
+def _move_file_in_storage(old_path, new_path):
+    """
+    Moves a file in S3/MinIO by copying to new path and deleting old path.
+    """
+    if not old_path or not new_path or old_path == new_path:
+        return
+    
+    try:
+        if default_storage.exists(old_path):
+            # Open the old file
+            f = default_storage.open(old_path)
+            # Save to new path
+            default_storage.save(new_path, f)
+            f.close()
+            # Delete old file
+            default_storage.delete(old_path)
+    except Exception as e:
+        print(f"Error moving file from {old_path} to {new_path}: {e}")
+
+
 # ------------------------ NEW: Archive Browser ------------------------
 class ArchiveNavigationView(APIView):
-    """
-    Smart Navigation for Archives [Hierarchical View].
-    GET /api/archives/navigation/?folder_id=...
-    
-    - If folder_id is missing: Returns "Root" archived items (Archived items whose parents are Active).
-    - If folder_id is provided: Returns contents of that specific archived folder.
-    """
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get(self, request):
+        _restore_expired_entities()
+
         folder_id = request.query_params.get("folder_id")
 
         if folder_id:
-            # --- Browse inside an archived folder ---
             parent = get_object_or_404(Folder, id=folder_id)
-            
-            # Fetch contents (both must be archived if parent is archived)
             folders = Folder.objects.filter(parent_folder=parent, is_archived=True)
             documents = Document.objects.filter(parent_folder=parent, is_archived=True)
             
@@ -128,15 +194,9 @@ class ArchiveNavigationView(APIView):
                 "documents": DocumentSerializer(documents, many=True).data
             })
         else:
-            # --- Root of Archive View ---
-            # Show items that are explicitly Archived, but live in an Active location.
-            # This filters out the "children" of archived folders to prevent clutter at the root level.
-            
-            # Folders: Archived AND (No Parent OR Parent is Active)
             f_cond = Q(is_archived=True) & (Q(parent_folder__isnull=True) | Q(parent_folder__is_archived=False))
             folders = Folder.objects.filter(f_cond)
 
-            # Documents: Archived AND Parent is Active
             d_cond = Q(is_archived=True) & Q(parent_folder__is_archived=False)
             documents = Document.objects.filter(d_cond)
 
@@ -147,12 +207,78 @@ class ArchiveNavigationView(APIView):
             })
 
 
+# ------------------------ UPDATED: Sync Folders & Docs ------------------------
+class SyncFoldersView(APIView):
+    """
+    Checks DB folders and documents against S3. 
+    If a folder or document is missing in S3, remove it from DB.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # 1. Sync Folders
+        folders = Folder.objects.all()
+        ids_to_delete_fol = []
+
+        for folder in folders:
+            path = folder.fol_path
+            if not path: continue 
+            
+            # Check S3 existence (look for .keep or any content)
+            exists = False
+            try:
+                keep_path = f"{path}/.keep"
+                if default_storage.exists(keep_path):
+                    exists = True
+                else:
+                    dirs, files = default_storage.listdir(path)
+                    if dirs or files:
+                        exists = True
+            except Exception:
+                # If S3 errors, safe to assume exists to prevent accidental deletion
+                exists = True 
+            
+            if not exists:
+                ids_to_delete_fol.append(folder.id)
+
+        # 2. Sync Documents (✅ NEW LOGIC)
+        documents = Document.objects.all()
+        ids_to_delete_doc = []
+
+        for doc in documents:
+            # If doc has no path, it's invalid
+            if not doc.doc_path or not doc.doc_path.name:
+                ids_to_delete_doc.append(doc.id)
+                continue
+            
+            # Check if file exists in S3
+            try:
+                if not default_storage.exists(doc.doc_path.name):
+                    ids_to_delete_doc.append(doc.id)
+            except Exception:
+                # On error, skip
+                pass
+
+        # Execute Deletions
+        del_fol_count = 0
+        if ids_to_delete_fol:
+            del_fol_count = len(ids_to_delete_fol)
+            Folder.objects.filter(id__in=ids_to_delete_fol).delete()
+
+        del_doc_count = 0
+        if ids_to_delete_doc:
+            del_doc_count = len(ids_to_delete_doc)
+            Document.objects.filter(id__in=ids_to_delete_doc).delete()
+
+        return Response({
+            "status": "synced", 
+            "deleted_ghost_folders": del_fol_count,
+            "deleted_ghost_documents": del_doc_count
+        })
+
+
 # ------------------------ Folders ------------------------
 class FolderViewSet(viewsets.ModelViewSet):
-    """
-    API endpoint for managing folders.
-    Provides CRUD operations, search, ordering, and hierarchical views for Folder objects.
-    """
     queryset = (
         Folder.objects.select_related("parent_folder", "created_by", "archived_by")
         .prefetch_related("subfolders")
@@ -168,7 +294,6 @@ class FolderViewSet(viewsets.ModelViewSet):
     ordering = ["fol_index", "fol_name"]
 
     def get_queryset(self):
-        # By default, hide archived folders from standard views
         return super().get_queryset().filter(is_archived=False)
 
     def perform_create(self, serializer):
@@ -176,47 +301,96 @@ class FolderViewSet(viewsets.ModelViewSet):
         fol_index = folder_data.get("fol_index")
         parent_folder = folder_data.get("parent_folder")
 
-        # Prevent creating inside an archived folder tree
         if parent_folder and _folder_is_archived_anywhere(parent_folder):
             raise ValidationError({"parent_folder": "Cannot create a folder under an archived folder."})
 
         folder = serializer.save(created_by=self.request.user)
 
-        # Auto order for PR folders
         if fol_index == "PR":
             siblings = Folder.objects.filter(parent_folder=parent_folder, fol_index="PR").order_by("id")
             folder.fol_order = siblings.count()
             folder.save(update_fields=["fol_order"])
 
-        # Build the full path: parent path + current folder name
+        self._update_folder_path(folder)
+
+        # ✅ FIX: Create .keep file in S3 for sync visibility
+        try:
+            default_storage.save(f"{folder.fol_path}/.keep", ContentFile(b""))
+        except Exception:
+            pass
+
+    # ✅ Handle Folder Move/Rename (Recursive Update)
+    def perform_update(self, serializer):
+        old_instance = self.get_object()
+        old_path = old_instance.fol_path
+        
+        folder = serializer.save()
+        
+        # Calculate new path
+        self._update_folder_path(folder)
+        new_path = folder.fol_path
+
+        # If path changed, we must move contents recursively
+        if old_path and new_path and old_path != new_path:
+            self._recursive_move(old_path, new_path, folder)
+
+    def _update_folder_path(self, folder):
         parent_path = ""
         if folder.parent_folder:
             parent_path = _normalize_path(folder.parent_folder.fol_path)
-
+        
         folder_name = _normalize_path(folder.fol_name)
         full_path = f"{parent_path}/{folder_name}" if parent_path else folder_name
-
+        
         if folder.fol_path != full_path:
             folder.fol_path = full_path
             folder.save(update_fields=["fol_path"])
 
-        # Create a logical folder in MinIO/S3 by storing a placeholder
-        placeholder_path = f"{full_path}/.keep" if full_path else ".keep"
-        try:
-            default_storage.save(placeholder_path, ContentFile(b""))
-        except Exception:
-            pass
+    def _recursive_move(self, old_prefix, new_prefix, folder):
+        # 1. Update Documents in this folder (S3 Move + DB Update)
+        documents = Document.objects.filter(parent_folder=folder)
+        for doc in documents:
+            old_doc_path = str(doc.doc_path)
+            # Replace prefix
+            if old_doc_path.startswith(old_prefix):
+                # Construct new path preserving filename
+                suffix = old_doc_path[len(old_prefix):].lstrip('/')
+                new_doc_path = f"{new_prefix}/{suffix}"
+                
+                # Move in S3
+                _move_file_in_storage(old_doc_path, new_doc_path)
+                
+                # Update DB
+                doc.doc_path.name = new_doc_path
+                doc.save(update_fields=["doc_path"])
+
+        # 2. Update Subfolders
+        subfolders = Folder.objects.filter(parent_folder=folder)
+        for sub in subfolders:
+            old_sub_path = sub.fol_path
+            
+            # Recalculate subfolder path based on new parent path
+            sub_name = _normalize_path(sub.fol_name)
+            new_sub_path = f"{new_prefix}/{sub_name}"
+            
+            sub.fol_path = new_sub_path
+            sub.save(update_fields=["fol_path"])
+            
+            # Recurse
+            self._recursive_move(old_sub, new_sub, sub)
 
     @action(detail=False, methods=["get"], url_path="roots")
     def roots(self, request):
+        _restore_expired_entities()
         roots = self.get_queryset().filter(parent_folder=None)
         serializer = self.get_serializer(roots, many=True)
         return Response(serializer.data)
 
     @action(detail=False, methods=["get"], url_path="tree")
     def tree(self, request):
+        _restore_expired_entities()
+
         def build_tree(parent, parent_path_index=None):
-            # Only fetch non-archived subfolders
             children = parent.subfolders.filter(is_archived=False)
 
             if parent.fol_order is not None:
@@ -249,24 +423,16 @@ class FolderViewSet(viewsets.ModelViewSet):
         return Response(tree)
 
     def _descendant_folder_ids(self, root: Folder):
-        """
-        Return all descendant folder ids including root.
-        """
         ids = []
         stack = [root]
         while stack:
             node = stack.pop()
             ids.append(node.id)
-            # Fetch subfolders including archived ones for restoration/archive recursion
             stack.extend(list(node.subfolders.all()))
         return ids
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsAdminUser], url_path="archive")
     def archive(self, request, pk=None):
-        """
-        Archive this folder, all subfolders, and all documents inside.
-        """
-        # Use Folder.objects.all() to find it even if is_archived=False filter is on queryset
         folder = get_object_or_404(Folder.objects.all(), pk=pk)
 
         mode = (request.data.get("mode") or "").strip().lower()
@@ -277,23 +443,19 @@ class FolderViewSet(viewsets.ModelViewSet):
             return Response({"detail": "mode must be 'permanent' or 'until'."}, status=status.HTTP_400_BAD_REQUEST)
 
         archived_until = _parse_iso_datetime(until_raw) if mode == "until" else None
-        
         now = timezone.now()
         folder_ids = self._descendant_folder_ids(folder)
 
         with transaction.atomic():
-            # Update folders
             Folder.objects.filter(id__in=folder_ids).update(
                 is_archived=True,
                 archived_at=now,
                 archived_until=archived_until,
                 archived_by=request.user,
+                archived_note=note
             )
 
-            # Archive documents in this folder subtree
             docs_qs = Document.objects.filter(parent_folder_id__in=folder_ids, is_archived=False)
-            
-            # Create history rows
             docs_ids = list(docs_qs.values_list("id", flat=True))
             if docs_ids:
                 records = [
@@ -309,12 +471,12 @@ class FolderViewSet(viewsets.ModelViewSet):
                 ]
                 DocumentArchive.objects.bulk_create(records)
 
-            # Update document fields
             docs_qs.update(
                 is_archived=True,
                 archived_at=now,
                 archived_until=archived_until,
                 archived_by=request.user,
+                archive_note=note
             )
 
             UserActionLog.objects.create(
@@ -338,35 +500,30 @@ class FolderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated, IsAdminUser], url_path="restore")
     def restore(self, request, pk=None):
-        """
-        Restore this folder, all subfolders, and all documents inside.
-        """
         folder = get_object_or_404(Folder.objects.all(), pk=pk)
         now = timezone.now()
         folder_ids = self._descendant_folder_ids(folder)
 
         with transaction.atomic():
-            # Update folders
             Folder.objects.filter(id__in=folder_ids).update(
                 is_archived=False,
                 archived_at=None,
                 archived_until=None,
                 archived_by=None,
+                archived_note=""
             )
 
-            # Find archived docs in these folders
             docs_qs = Document.objects.filter(parent_folder_id__in=folder_ids, is_archived=True)
             doc_ids = list(docs_qs.values_list("id", flat=True))
 
-            # Update docs
             docs_qs.update(
                 is_archived=False,
                 archived_at=None,
                 archived_until=None,
                 archived_by=None,
+                archive_note=""
             )
 
-            # Mark active archive rows as restored
             if doc_ids:
                 DocumentArchive.objects.filter(
                     document_id__in=doc_ids,
@@ -410,16 +567,11 @@ class DocumentNatureViewSet(viewsets.ModelViewSet):
 
 # ------------------------ Documents ViewSet (Actions) ------------------------
 class DocumentViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for Document actions (archive, restore, list archived).
-    Note: Standard CRUD is handled by APIViews below, but this is used for router actions.
-    """
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # By default hide archived
         return Document.objects.filter(is_archived=False)
 
     @action(
@@ -461,9 +613,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
             document.archived_at = timezone.now()
             document.archived_until = retention_until
             document.archived_by = request.user
-            document.save(update_fields=["is_archived", "archived_at", "archived_until", "archived_by"])
+            document.archive_note = note
+            document.save(update_fields=["is_archived", "archived_at", "archived_until", "archived_by", "archive_note"])
 
-            # Expire old records
             DocumentArchive.objects.filter(document=document, status=DocumentArchive.STATUS_ACTIVE).update(
                 status=DocumentArchive.STATUS_EXPIRED
             )
@@ -505,9 +657,9 @@ class DocumentViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             document.is_archived = False
             document.archived_until = None
-            document.save(update_fields=["is_archived", "archived_until"])
+            document.archive_note = ""
+            document.save(update_fields=["is_archived", "archived_until", "archive_note"])
 
-            # Update archive record
             active = (
                 DocumentArchive.objects.filter(document=document, status=DocumentArchive.STATUS_ACTIVE)
                 .order_by("-archived_at")
@@ -535,6 +687,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
         url_path="archived",
     )
     def archived(self, request):
+        _restore_expired_entities()
         qs = (
             DocumentArchive.objects.select_related("document", "archived_by")
             .filter(status=DocumentArchive.STATUS_ACTIVE)
@@ -544,9 +697,6 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
 
 class DocumentArchiveViewSet(viewsets.ReadOnlyModelViewSet):
-    """
-    Optional: dedicated viewset for archive history if needed.
-    """
     queryset = DocumentArchive.objects.select_related("document", "archived_by").all()
     serializer_class = DocumentArchiveSerializer
     permission_classes = [IsAuthenticated]
@@ -563,8 +713,6 @@ class DocumentListCreateView(APIView):
 
     def post(self, request):
         file = request.FILES.get("file")
-
-        # If client sends a custom path, use it; otherwise prefer folder path.
         custom_path = (request.data.get("doc_path") or "").strip()
 
         format_and_types = {
@@ -587,7 +735,6 @@ class DocumentListCreateView(APIView):
         except Folder.DoesNotExist:
             return Response({"error": "Invalid folder ID"}, status=400)
 
-        # Prevent upload into archived folder tree
         if _folder_is_archived_anywhere(folder):
             return Response({"error": "This folder (or a parent folder) is archived."}, status=400)
 
@@ -627,7 +774,8 @@ class DocumentListCreateView(APIView):
 
         safe_name = os.path.basename(file.name)
 
-        # Prefer folder path when no custom path
+        # ✅ FIX: Construct LIVE path based on folder structure
+        # If custom path is provided, use it, else build from folder.fol_path
         if custom_path:
             base = _normalize_path(custom_path)
         else:
@@ -651,10 +799,11 @@ class DocumentListCreateView(APIView):
             parent_folder=folder,
         )
 
+        # Save the LIVE file (at "Folder/Filename.ext")
         document.doc_path.save(upload_path, file, save=False)
         document.save()
 
-        # Create a SAFE COPY for V1 in history (so overwrites don't break V1)
+        # Create a SAFE COPY for V1 in history
         try:
             file.seek(0)
         except Exception:
@@ -666,6 +815,8 @@ class DocumentListCreateView(APIView):
             change_type="AUDITABLE",
             version_comment="Initial version",
         )
+        # ✅ FIX: Save version in "documents/versions/" explicitly (via model upload_to)
+        # Note: Model definition handles the prefix, we just give the name.
         v1_name = f"{document.id}/v1_{safe_name}".replace("\\", "/")
         v1.version_path.save(v1_name, file)
 
@@ -684,6 +835,8 @@ class DocumentListCreateView(APIView):
         )
 
     def get(self, request):
+        _restore_expired_entities()
+
         folder = (request.query_params.get("folder") or "").strip()
         if folder:
             folder = _normalize_path(folder)
@@ -697,7 +850,6 @@ class DocumentListCreateView(APIView):
 
 
 class DocumentDetailView(APIView):
-    # Allows PUT with FormData + file
     parser_classes = (MultiPartParser, FormParser, JSONParser)
     permission_classes = [IsAuthenticated]
 
@@ -710,124 +862,129 @@ class DocumentDetailView(APIView):
         return Response(serializer.data)
 
     def put(self, request, pk):
-        """
-        Supports:
-        - AUDITABLE: metadata-only update -> chains to previous Safe History File
-        - MINOR: file update -> creates new Safe History File & overwrites Live File
-        - SILENT: metadata-only update -> NO new version created
+        return self.handle_update(request, pk)
 
-        Also supports archiving fields via metadata update:
-          - is_archived, archived_until, archive_note
-        When a document is archived/restored, a DocumentArchive history row is created/updated.
-        """
+    def patch(self, request, pk):
+        return self.handle_update(request, pk)
+
+    def handle_update(self, request, pk):
         document = get_object_or_404(Document, pk=pk)
+        
+        # Check permissions
         denied = _deny_if_archived_for_non_admin(request, document)
-        if denied:
-            return denied
+        if denied: return denied
 
+        # ✅ Check for Move (Parent Change)
+        old_path = str(document.doc_path)
+        new_parent_id = request.data.get("parent_folder")
+        
+        if new_parent_id is not None:
+            # Normalize ID: empty string means root
+            new_parent_id = None if new_parent_id == "" else new_parent_id
+            
+            new_folder = None
+            new_path_prefix = ""
+            
+            if new_parent_id:
+                new_folder = get_object_or_404(Folder, id=new_parent_id)
+                new_path_prefix = _normalize_path(new_folder.fol_path)
+            
+            # Construct new S3 key
+            filename = os.path.basename(old_path)
+            new_key = f"{new_path_prefix}/{filename}" if new_path_prefix else filename
+            new_key = _normalize_path(new_key)
+
+            if old_path != new_key:
+                # Move in S3
+                _move_file_in_storage(old_path, new_key)
+                # Update DB field manually to prevent serializer overwriting with old
+                document.doc_path.name = new_key
+                document.save(update_fields=["doc_path"])
+
+        # Continue with standard update logic (versions, metadata)
         uploaded = request.FILES.get("file")
         update_type = (request.data.get("update_type") or "AUDITABLE").upper().strip()
-
         if update_type not in ("MINOR", "AUDITABLE", "SILENT"):
             update_type = "AUDITABLE"
-
         version_comment = request.data.get("version_comment") or ""
 
         with transaction.atomic():
-            last_v = document.versions.order_by("-version_number").first()
-
-            # Ensure initial v1 exists as a SAFE COPY
-            if last_v is None and getattr(document.doc_path, "name", ""):
-                try:
-                    f_content = document.doc_path.read()
-                except Exception:
-                    f_content = b""
-
-                v1 = DocumentVersion.objects.create(
-                    document=document,
-                    version_number=1,
-                    change_type="AUDITABLE",
-                    version_comment="Initial version",
-                )
-                current_name = os.path.basename(document.doc_path.name)
-                v1_name = f"{document.id}/v1_{current_name}".replace("\\", "/")
-                v1.version_path.save(v1_name, ContentFile(f_content))
-                last_v = v1
-
-            next_version = (last_v.version_number + 1) if last_v else 1
-
-            if update_type != "SILENT":
-                if update_type == "MINOR":
-                    if not uploaded:
-                        return Response(
-                            {"error": "file is required for MINOR update"},
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
-
-                    safe_name = os.path.basename(uploaded.name)
-
-                    # 1) Save Safe History Copy
-                    v = DocumentVersion.objects.create(
-                        document=document,
-                        version_number=next_version,
-                        change_type="MINOR",
-                        version_comment=version_comment or "Minor changes",
+            # Handle File Update (Versioning)
+            if uploaded or update_type != "SILENT":
+                last_v = document.versions.order_by("-version_number").first()
+                if last_v is None: # Create initial v1 if missing
+                    v1 = DocumentVersion.objects.create(
+                        document=document, version_number=1, change_type="AUDITABLE", version_comment="Initial"
                     )
-                    version_name = f"{document.id}/v{next_version}_{safe_name}".replace("\\", "/")
-                    v.version_path.save(version_name, uploaded, save=True)
+                    # Try to save content if file exists
+                    try: 
+                        if default_storage.exists(document.doc_path.name):
+                            f = default_storage.open(document.doc_path.name)
+                            v1.version_path.save(f"v1_{os.path.basename(document.doc_path.name)}", f)
+                    except: pass
+                    last_v = v1
 
-                    # Rewind for second save
-                    try:
-                        uploaded.seek(0)
-                    except Exception:
-                        pass
+                next_ver = (last_v.version_number + 1) if last_v else 1
 
-                    # 2) Overwrite Live File (keep it in folder path)
-                    fol_path = _normalize_path(getattr(document.parent_folder, "fol_path", "") or "")
-                    current_key = f"{fol_path}/{safe_name}" if fol_path else safe_name
-                    current_key = current_key.replace("\\", "/")
+                if update_type == "MINOR" and uploaded:
+                    # New version logic
+                    safe_name = os.path.basename(uploaded.name)
+                    v = DocumentVersion.objects.create(
+                        document=document, version_number=next_ver, change_type="MINOR", version_comment=version_comment
+                    )
+                    # Save version to version folder
+                    v.version_path.save(f"{document.id}/v{next_ver}_{safe_name}", uploaded)
+                    
+                    # Reset stream for main save
+                    uploaded.seek(0)
+                    
+                    # ✅ FIX: Update live file at the correct folder path
+                    folder_path = _normalize_path(document.parent_folder.fol_path)
+                    live_key = f"{folder_path}/{safe_name}"
+                    
+                    # If name changed, delete old file first
+                    if document.doc_path.name != live_key:
+                         default_storage.delete(document.doc_path.name)
 
-                    document.doc_path.save(current_key, uploaded, save=False)
+                    document.doc_path.save(live_key, uploaded)
                     document.doc_size = uploaded.size
-
+                    
                     ext = os.path.splitext(safe_name)[1].lstrip(".").lower()
-                    if ext:
+                    if ext: 
                         document.doc_format = ext
                         document.doc_type = ext.upper()
 
-                else:
-                    # AUDITABLE: Link to previous Safe History File
+                elif update_type == "AUDITABLE":
+                    # Metadata only update -> Link to old file
                     v = DocumentVersion.objects.create(
-                        document=document,
-                        version_number=next_version,
-                        change_type="AUDITABLE",
-                        version_comment=version_comment or "Auditable update",
+                        document=document, version_number=next_ver, change_type="AUDITABLE", version_comment=version_comment
                     )
                     if last_v and last_v.version_path:
                         v.version_path.name = last_v.version_path.name
                         v.save(update_fields=["version_path"])
 
-            # Apply metadata updates
+            # Save Metadata
+            # Filter out fields we handled manually
             data = request.data.copy()
             data.pop("file", None)
-            data.pop("doc_path", None)  # never allow direct setting of storage key
+            data.pop("doc_path", None) 
             data.pop("update_type", None)
             data.pop("version_comment", None)
 
             serializer = DocumentSerializer(document, data=data, partial=True)
-            if not serializer.is_valid():
-                return Response(serializer.errors, status=400)
-            serializer.save()
-
-            UserActionLog.objects.create(
-                user=document.doc_owner,
-                action="update",
-                content_type=ContentType.objects.get_for_model(document),
-                object_id=document.id,
-                extra_info={"updated_fields": list(request.data.keys()), "update_type": update_type},
-            )
-
-        return Response(serializer.data, status=200)
+            if serializer.is_valid():
+                serializer.save()
+                
+                # Log action
+                UserActionLog.objects.create(
+                    user=document.doc_owner,
+                    action="update",
+                    content_type=ContentType.objects.get_for_model(document),
+                    object_id=document.id,
+                    extra_info={"updated_fields": list(data.keys())}
+                )
+                return Response(serializer.data)
+            return Response(serializer.errors, status=400)
 
     def delete(self, request, pk):
         document = get_object_or_404(Document, pk=pk)
@@ -885,7 +1042,6 @@ class FolderDocumentsView(APIView):
         folder = _normalize_path(folder)
         prefix = f"{folder}/" if not folder.endswith("/") else folder
 
-        # ✅ hide archived
         documents = Document.objects.filter(doc_path__startswith=prefix, is_archived=False)
         serializer = DocumentSerializer(documents, many=True)
         return Response({"folder": folder, "documents": serializer.data}, status=status.HTTP_200_OK)
@@ -896,8 +1052,6 @@ class DocumentByFolderView(APIView):
 
     def get(self, request, folder_id):
         folder = get_object_or_404(Folder, id=folder_id)
-
-        # ✅ hide archived
         documents = Document.objects.filter(parent_folder=folder, is_archived=False)
         serializer = DocumentSerializer(documents, many=True)
         return Response({"folder": folder.fol_name, "documents": serializer.data}, status=status.HTTP_200_OK)

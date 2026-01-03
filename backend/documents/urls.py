@@ -9,7 +9,8 @@ from .views import (
     FolderDocumentsView,
     DocumentByFolderView,
     DocumentVersionsByDocumentView,
-    ArchiveNavigationView,  # ✅ New Import
+    ArchiveNavigationView,
+    SyncFoldersView,  # ✅ NEW IMPORT
 
     # ViewSets
     DocumentViewSet,
@@ -79,6 +80,9 @@ urlpatterns = [
     # Folder-related helpers
     path("documents/by-folder/", FolderDocumentsView.as_view()),  # ?folder=path/to/folder
     path("documents/by-folder/<int:folder_id>/", DocumentByFolderView.as_view()),
+    
+    # ✅ NEW: Sync Folders Endpoint (S3 Ghost Cleanup)
+    path("folders/sync/", SyncFoldersView.as_view(), name="sync-folders"),
 
     # OnlyOffice
     path("documents/<int:pk>/onlyoffice-config/", onlyoffice_config),

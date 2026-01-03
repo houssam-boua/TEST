@@ -69,7 +69,10 @@ class DocumentSerializer(serializers.ModelSerializer):
     # Path index
     path_index = serializers.SerializerMethodField(read_only=True)
 
-    # Optional: show who archived it (useful for admin)
+    # ✅ FIX: Explicitly nest the owner details so frontend gets { username: "..." } instead of just ID
+    doc_owner = UserMiniSerializer(read_only=True)
+    
+    # Optional: show who archived it
     archived_by = UserMiniSerializer(read_only=True)
 
     def validate_doc_code(self, value):
@@ -105,7 +108,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = "__all__"
-        read_only_fields = ("doc_path",)
+        read_only_fields = ("doc_path", "doc_owner")  # Owner is set in view, read-only here
 
 
 class DocumentMiniSerializer(serializers.ModelSerializer):
@@ -212,7 +215,6 @@ class FolderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "children",
-            # ✅ folder archiving fields (added in your updated model)
             "is_archived",
             "archived_at",
             "archived_until",
