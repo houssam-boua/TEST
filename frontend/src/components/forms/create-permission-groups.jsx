@@ -1,9 +1,10 @@
-import React, { useState, useId } from "react";
-import { useGetPermissionsQuery } from "../../slices/permissionSlice";
-import { cn } from "@/lib/utils";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
+import { useGetPermissionsQuery } from "@/slices/permissionSlice";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Form,
@@ -12,6 +13,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import {
   Command,
@@ -26,34 +28,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Check as CheckIcon,
-  ChevronsUpDown as ChevronsUpDownIcon,
-  X as XIcon,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Check, ChevronsUpDown, X, Loader2 } from "lucide-react";
 
-const CreatePermissionGroups = ({ onSubmit, loading }) => {
-  const [localError, setLocalError] = useState(null);
-  const { data: permissions } = useGetPermissionsQuery();
-
-  // helpers: permissions may be array of strings (codenames) or objects
-  const getPermCodename = (perm) =>
-    typeof perm === "string" ? perm : perm?.codename ?? String(perm?.id ?? "");
-  const getPermLabel = (permOrCodename) => {
-    if (!permOrCodename) return "";
-    if (typeof permOrCodename === "string") {
-      return permOrCodename
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (s) => s.toUpperCase());
-    }
-    return (
-      permOrCodename.label ||
-      permOrCodename.name ||
-      permOrCodename.codename ||
-      String(permOrCodename)
-    );
-  };
+export default function CreatePermissionGroups({ onSubmit, onCancel, loading }) {
+  const [open, setOpen] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  
+  // Fetch available permissions from API
+  const { data: permissions = [], isLoading: isLoadingPerms } = useGetPermissionsQuery();
 
   const form = useForm({
     defaultValues: {
@@ -62,211 +44,162 @@ const CreatePermissionGroups = ({ onSubmit, loading }) => {
     },
   });
 
-  const id = useId();
-  const [permOpen, setPermOpen] = useState(false);
-  const [permExpanded, setPermExpanded] = useState(false);
-
-  const handleLocalSubmit = async (values) => {
-    setLocalError(null);
-    if (!onSubmit) return;
+  const handleFormSubmit = async (values) => {
+    setSubmitError(null);
     try {
-      await onSubmit(values);
-      form.reset();
+      if (onSubmit) {
+        await onSubmit(values);
+        form.reset();
+      }
     } catch (err) {
-      setLocalError(err?.message || String(err));
-      throw err;
+      setSubmitError(err?.data?.error || "Failed to create group.");
     }
   };
 
+  // Helper to remove a selected permission tag
+  const removePermission = (codename) => {
+    const current = form.getValues("permissions");
+    form.setValue(
+      "permissions",
+      current.filter((c) => c !== codename)
+    );
+  };
+
   return (
-    <div className={cn("flex flex-col gap-6 ")}>
-      <Card className="border-4 border-border ">
-        <CardContent>
-          {localError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{localError}</AlertDescription>
-            </Alert>
-          )}
+    <div className="flex flex-col gap-4">
+      {submitError && (
+        <Alert variant="destructive">
+          <AlertDescription>{submitError}</AlertDescription>
+        </Alert>
+      )}
 
-          <Form {...form}>
-            <form
-              className="space-y-6"
-              onSubmit={form.handleSubmit(handleLocalSubmit)}
-            >
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Group name</FormLabel>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
+          
+          {/* Group Name */}
+          <FormField
+            control={form.control}
+            name="name"
+            rules={{ required: "Group name is required" }}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Group Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g. Editors, Auditors" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          {/* Permissions Multi-Select */}
+          <FormField
+            control={form.control}
+            name="permissions"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Permissions</FormLabel>
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
                     <FormControl>
-                      <input
-                        className="w-full rounded-md border px-3 py-2"
-                        placeholder="Group name"
-                        {...field}
-                      />
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className={cn(
+                          "w-full justify-between h-auto min-h-[40px]",
+                          !field.value?.length && "text-muted-foreground"
+                        )}
+                        disabled={isLoadingPerms}
+                      >
+                        {field.value?.length > 0
+                          ? `${field.value.length} permission(s) selected`
+                          : isLoadingPerms ? "Loading permissions..." : "Select permissions"}
+                        {isLoadingPerms ? (
+                          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        )}
+                      </Button>
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search permissions..." />
+                      <CommandList className="max-h-[300px] overflow-auto">
+                        <CommandEmpty>No permission found.</CommandEmpty>
+                        <CommandGroup>
+                          {permissions.map((perm) => {
+                            const codename = perm.codename || perm; // Handle object or string
+                            const isSelected = field.value?.includes(codename);
+                            const label = perm.label || perm.name || codename; // Fallback label
 
-              <FormField
-                control={form.control}
-                name="permissions"
-                render={({ field }) => {
-                  const selected = Array.isArray(field.value)
-                    ? field.value
-                    : [];
-                  const maxShownItems = 2;
-                  const visibleItems = permExpanded
-                    ? selected
-                    : selected.slice(0, maxShownItems);
-                  const hiddenCount = selected.length - visibleItems.length;
+                            return (
+                              <CommandItem
+                                key={codename}
+                                value={label} // Search by label
+                                onSelect={() => {
+                                  const current = field.value || [];
+                                  if (current.includes(codename)) {
+                                    field.onChange(current.filter((c) => c !== codename));
+                                  } else {
+                                    field.onChange([...current, codename]);
+                                  }
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    isSelected ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span>{label}</span>
+                                  <span className="text-xs text-muted-foreground">{codename}</span>
+                                </div>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                
+                {/* Selected Permissions Tags */}
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {field.value?.map((codename) => (
+                    <Badge key={codename} variant="secondary" className="pr-1">
+                      {codename}
+                      <button
+                        type="button"
+                        className="ml-1 hover:bg-destructive/20 rounded-full p-0.5 transition-colors"
+                        onClick={() => removePermission(codename)}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+                <FormDescription>
+                  Select the access rights for users in this group.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-                  const removeSelection = (value, e) => {
-                    e.stopPropagation();
-                    const prev = Array.isArray(field.value) ? field.value : [];
-                    field.onChange(prev.filter((v) => v !== value));
-                  };
-
-                  return (
-                    <FormItem>
-                      <FormLabel>Permissions</FormLabel>
-                      <Popover open={permOpen} onOpenChange={setPermOpen}>
-                        <PopoverTrigger asChild>
-                          <Button
-                            id={id}
-                            variant="outline"
-                            role="combobox"
-                            aria-expanded={permOpen}
-                            className="h-auto min-h-8 w-full justify-between hover:bg-transparent"
-                          >
-                            <div className="flex flex-wrap items-center gap-1 pr-2.5">
-                              {selected.length > 0 ? (
-                                <>
-                                  {visibleItems.map((codename) => {
-                                    // find object if available
-                                    const permObj = (permissions || []).find(
-                                      (p) =>
-                                        typeof p === "string"
-                                          ? p === codename
-                                          : (p.codename || String(p.id)) ===
-                                            codename
-                                    );
-                                    const label = permObj
-                                      ? getPermLabel(permObj)
-                                      : getPermLabel(codename);
-                                    return (
-                                      <Badge key={codename} variant="outline">
-                                        {label}
-                                        <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="size-4"
-                                          onClick={(e) =>
-                                            removeSelection(codename, e)
-                                          }
-                                          asChild
-                                        >
-                                          <span>
-                                            <XIcon className="size-3" />
-                                          </span>
-                                        </Button>
-                                      </Badge>
-                                    );
-                                  })}
-                                  {hiddenCount > 0 || permExpanded ? (
-                                    <Badge
-                                      variant="outline"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setPermExpanded((p) => !p);
-                                      }}
-                                    >
-                                      {permExpanded
-                                        ? "Show Less"
-                                        : `+${hiddenCount} more`}
-                                    </Badge>
-                                  ) : null}
-                                </>
-                              ) : (
-                                <span className="text-muted-foreground">
-                                  Select permissions...
-                                </span>
-                              )}
-                            </div>
-                            <ChevronsUpDownIcon
-                              size={16}
-                              className="text-muted-foreground/80 shrink-0"
-                              aria-hidden="true"
-                            />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-(--radix-popper-anchor-width) p-0">
-                          <Command>
-                            <CommandInput placeholder="Search permissions..." />
-                            <CommandList>
-                              <CommandEmpty>No permission found.</CommandEmpty>
-                              <CommandGroup>
-                                {(permissions || []).map((perm) => {
-                                  const codename =
-                                    getPermCodename(perm) || String(perm);
-                                  const checked = selected.includes(codename);
-                                  const label = getPermLabel(perm);
-                                  return (
-                                    <CommandItem
-                                      key={codename}
-                                      value={codename}
-                                      onSelect={() => {
-                                        const prev = Array.isArray(field.value)
-                                          ? field.value
-                                          : [];
-                                        const next = prev.includes(codename)
-                                          ? prev.filter((v) => v !== codename)
-                                          : [...prev, codename];
-                                        field.onChange(next);
-                                      }}
-                                    >
-                                      <span className="truncate">{label}</span>
-                                      {checked && (
-                                        <CheckIcon
-                                          size={16}
-                                          className="ml-auto"
-                                        />
-                                      )}
-                                    </CommandItem>
-                                  );
-                                })}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  );
-                }}
-              />
-
-              <div className="flex gap-3">
-                <Button type="submit">
-                  {loading ? "Creating..." : "Create"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => form.reset()}
-                >
-                  Reset
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create Group
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div>
   );
-};
-
-export default CreatePermissionGroups;
+}

@@ -25,7 +25,7 @@ const baseQuery = fetchBaseQuery({
       headers.set("Content-Type", "application/json");
     }
 
-    return headers;
+    return headers; 
   },
 });
 

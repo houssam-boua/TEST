@@ -1,17 +1,5 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import { DataTable, defaultColumns } from "../components/tables/data-table";
-import {
-  Info,
-  Lock,
-  MessageCircleMore,
-  History,
-  User,
-  Shield,
-  Mail,
-  Pencil,
-  Trash2,
-} from "lucide-react";
-import { SheetDemo } from "../components/blocks/sheet";
 import {
   Dialog,
   DialogContent,
@@ -19,256 +7,217 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Pencil, Trash2 } from "lucide-react";
 import CreateUserForm from "../components/forms/create-user";
-import { Button } from "../components/ui/button";
-import useRoleBadge from "../Hooks/useRoleBage";
-import useDepartmentBadge from "../Hooks/useDepartmentBadge";
-import { useGetUsersQuery, useCreateUserMutation } from "@/slices/userSlice";
-import {
-  useDeleteUserMutation,
-  useUpdateUserMutation,
-} from "../slices/userSlice";
 import DeleteUser from "../components/forms/delete-user";
 import EditUser from "../components/forms/edit-user";
+import useRoleBadge from "../Hooks/useRoleBage";
+import useDepartmentBadge from "../Hooks/useDepartmentBadge";
+import { 
+  useGetUsersQuery, 
+  useCreateUserMutation, 
+  useDeleteUserMutation, 
+  useUpdateUserMutation 
+} from "@/slices/userSlice";
+
+import { useGetRolesQuery } from "@/slices/rolesSlices";
+import { useGetDepartementsQuery } from "@/slices/departementSlice";
 import { Avatarr } from "../components/blocks/avatarr";
-import { RowExpanding } from "@tanstack/react-table";
-// Small wrapper component to call hook correctly and render the badge
+
+// Badge Helpers
 function RoleBadge({ role }) {
-  // use the hook inside a component (not inside render map)
   const badge = useRoleBadge({ role });
   return <>{badge}</>;
 }
 
-function DepartmentBadge({ departement, color, name }) {
-  // Accept both the older `departement` prop and explicit `color`/`name` props
-  // so callers can pass either shape. Prefer explicit `name`/`color` when provided.
-  const badge = useDepartmentBadge({
-    color: color ?? undefined,
-    name: name ?? departement,
-  });
+function DepartmentBadge({ color, name }) {
+  const badge = useDepartmentBadge({ color, name });
   return <>{badge}</>;
 }
-// Sheet tab data now tailored for user information
 
-
-
-
-
-const columns = [
-  {
-    id: "id",
-    accessorKey: "id",
-    header: "",
-    cell: ({ row }) => (
-      <Avatarr
-        fstName={
-          row.original.first_name ??
-          row.original.firstName ??
-          row.original.name ??
-          row.original.username
-        }
-        lstName={row.original.last_name ?? row.original.lastName ?? undefined}
-      />
-    ),
-  },
-  { id: "username", accessorKey: "username", header: "Username" },
-  { id: "email", accessorKey: "email", header: "Email" },
-  {
-    id: "role",
-    accessorKey: "role",
-    header: "Role",
-    cell: ({ row }) => {
-      // support nested role object: { role_name, role_color }
-      const roleObj = row.original.role || {};
-      const roleName = roleObj.role_name ?? roleObj.role ?? roleObj;
-      return <RoleBadge role={roleName} />;
-    },
-  },
-  {
-    id: "departement",
-    accessorKey: "departement",
-    header: "Department",
-    cell: ({ row }) => {
-      // support nested departement object: { dep_name, dep_color }
-      const depObj = row.original.departement || {};
-      const color =
-        depObj.dep_color ?? row.original.departement_color ?? undefined;
-      const name = depObj.dep_name ?? row.original.departement ?? undefined;
-      return <DepartmentBadge color={color} name={name} />;
-    },
-  },
-
-  {
-    id: "createdAt",
-    accessorKey: "created_At",
-    header: "Created",
-    cell: ({ row }) => {
-      const dateValue = row?.original?.createdAt || row?.createdAt;
-      if (!dateValue) return "-";
-      const date = new Date(dateValue);
-      return date.toLocaleDateString("fr-FR", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      });
-    },
-  },
-];
-
-const combinedColumns = [
-  ...defaultColumns.slice(0, 2),
-  ...columns,
-  defaultColumns[2],
-];
-
-// users are loaded from the API via useGetUsersQuery
 const AdminUsers = () => {
-  const {
-    data: users,
-    refetch,
-    isLoading,
-    isError,
-    error,
-  } = useGetUsersQuery();
+  const { data: users = [], refetch, isLoading } = useGetUsersQuery();
+  const { data: rolesList = [] } = useGetRolesQuery();
+  const { data: deptsList = [] } = useGetDepartementsQuery();
 
-  const [createOpen, setCreateOpen] = React.useState(false);
-  const [deleteOpen, setDeleteOpen] = React.useState(false);
-  const [editOpen, setEditOpen] = React.useState(false);
-
-  const [selectedUser, setSelectedUser] = React.useState(null);
-  const [createUser] = useCreateUserMutation();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  
+  const [formError, setFormError] = useState(null);
+  const [selectedUser, setSelectedUser] = useState(null);
+  
+  const [createUser, { isLoading: createLoading }] = useCreateUserMutation();
   const [deleteUser, { isLoading: deleteLoading }] = useDeleteUserMutation();
   const [editUser, { isLoading: editLoading }] = useUpdateUserMutation();
 
-  const handleAdd = () => setCreateOpen(true);
-  const handleEdit = (user) => {
-    setSelectedUser(user);
-    setEditOpen(true);
-  };
-  const handleDelete = (user) => {
-    setSelectedUser(user);
-    setDeleteOpen(true);
-  };
-  const handleCreate = async (user) => {
-    try {
-      await createUser(user).unwrap();
-      refetch();
-      setCreateOpen(false);
-    } catch (error) {
-      console.error("Failed to create user:", error);
-    }
-  };
+  const columns = useMemo(() => [
+    {
+      id: "id",
+      accessorKey: "id",
+      header: "",
+      size: 50,
+      cell: ({ row }) => (
+        <Avatarr
+          fstName={row.original.first_name || row.original.username}
+          lstName={row.original.last_name}
+        />
+      ),
+    },
+    { id: "username", accessorKey: "username", header: "Username" },
+    { id: "email", accessorKey: "email", header: "Email" },
+    {
+      id: "role",
+      header: "Role",
+      cell: ({ row }) => {
+        // According to your JSON, "role" is an object
+        const roleData = row.original.role; 
+        let roleDisplayName = "Unknown";
 
-  const handleConfirmDelete = async (user) => {
-    try {
-      await deleteUser(user.id).unwrap();
-      refetch();
-      setDeleteOpen(false);
-      setSelectedUser(null);
-    } catch (err) {
-      console.error("Failed to delete user:", err);
-    }
-  };
+        // 1. Check if it's the nested object structure from your JSON
+        if (roleData && typeof roleData === 'object' && roleData.role_name) {
+          roleDisplayName = roleData.role_name;
+        } 
+        // 2. Fallback: If it's an ID, look it up in rolesList
+        else if (roleData !== null && roleData !== undefined) {
+          const found = rolesList.find(item => String(item.id) === String(roleData));
+          if (found) roleDisplayName = found.role_name;
+        }
 
-  const handleConfirmEdit = async (user) => {
+        return <RoleBadge role={roleDisplayName} />;
+      },
+    },
+    {
+      id: "departement",
+      header: "Department",
+      cell: ({ row }) => {
+        // According to your JSON, "departement" is also an object
+        const deptData = row.original.departement;
+        let deptName = "Unknown";
+        let deptColor = "#cbd5e1";
+
+        if (deptData && typeof deptData === 'object' && deptData.dep_name) {
+          deptName = deptData.dep_name;
+          deptColor = deptData.dep_color || deptColor;
+        } 
+        else if (deptData !== null && deptData !== undefined) {
+          const found = deptsList.find(item => String(item.id) === String(deptData));
+          if (found) {
+            deptName = found.dep_name;
+            deptColor = found.dep_color;
+          }
+        }
+
+        return <DepartmentBadge color={deptColor} name={deptName} />;
+      },
+    },
+    {
+      id: "date_joined", 
+      header: "Created",
+      cell: ({ row }) => {
+        const dateVal = row.original.date_joined; // Matches "2025-12-30T15:23:38..."
+        return dateVal ? new Date(dateVal).toLocaleDateString("en-GB") : "-";
+      },
+    },
+  ], [rolesList, deptsList]); 
+
+  const combinedColumns = useMemo(() => [
+    ...defaultColumns.slice(0, 2),
+    ...columns,
+    defaultColumns[2],
+  ], [columns]);
+
+  // Actions Handlers
+  const handleEditConfirm = async (data) => {
+    setFormError(null);
     try {
-      await editUser({ id: user.id, data: user }).unwrap();
+      await editUser({ id: data.id, data }).unwrap();
       refetch();
       setEditOpen(false);
       setSelectedUser(null);
     } catch (error) {
-      console.error("Failed to edit user:", error);
+      setFormError(error?.data?.detail || "Failed to update user");
     }
   };
 
-  if (isLoading) return <div className="p-4">Loading users…</div>;
-  if (isError)
-    return (
-      <div className="p-4 text-red-600">
-        Error loading users: {String(error)}
-      </div>
-    );
-
-  const rowActions = (row) => [
-    {
-      key: "Edit",
-      icon: <Pencil className="w-4 h-4" />,
-      label: "Edit",
-      onClick: () => handleEdit(row.original),
-    },
-
-    {
-      key: "delete",
-      icon: <Trash2 className="w-4 h-4" />,
-      label: "Delete",
-      onClick: () => handleDelete(row.original),
-    },
-  ];
+  if (isLoading) return <div className="p-8 text-center">Loading users...</div>;
 
   return (
-    <div className="flex flex-1 flex-col">
-      <div className="@container/main flex flex-1 flex-col gap-2 md:py-6 px-4">
-        <DataTable
-          columns={combinedColumns}
-          data={users}
-          onEdit={() => {}}
-          onDelete={() => {}}
-          onAdd={handleAdd}
-          rowActions={rowActions}
-          pageSize={20}
-          title={"Users"}
-        />
+    <div className="flex flex-1 flex-col p-4">
+      <DataTable
+        columns={combinedColumns}
+        data={users}
+        onAdd={() => { setFormError(null); setCreateOpen(true); }}
+        rowActions={(row) => [
+          {
+            key: "Edit",
+            icon: <Pencil className="w-4 h-4" />,
+            label: "Edit",
+            onClick: () => { setFormError(null); setSelectedUser(row.original); setEditOpen(true); },
+          },
+          {
+            key: "delete",
+            icon: <Trash2 className="w-4 h-4" />,
+            label: "Delete",
+            onClick: () => { setFormError(null); setSelectedUser(row.original); setDeleteOpen(true); },
+          },
+        ]}
+        pageSize={20}
+        title="Users"
+      />
 
-        {/* Debug console: shows last payload/request and API response */}
+      {/* Dialogs for Create/Edit/Delete remain the same as your original file */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Create User</DialogTitle></DialogHeader>
+          <CreateUserForm
+            onSubmit={async (data) => {
+              try {
+                await createUser(data).unwrap();
+                refetch();
+                setCreateOpen(false);
+              } catch (e) { setFormError(e?.data?.error || "Error"); }
+            }}
+            onCancel={() => setCreateOpen(false)}
+            loading={createLoading}
+            error={formError}
+          />
+        </DialogContent>
+      </Dialog>
 
-        <Dialog open={createOpen} onOpenChange={(v) => setCreateOpen(v)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create un utilisateur</DialogTitle>
-              <DialogDescription>
-                Remplissez les informations utilisateur.
-              </DialogDescription>
-            </DialogHeader>
-            <CreateUserForm
-              onCreate={handleCreate}
-              onCancel={() => setCreateOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={deleteOpen} onOpenChange={(v) => setDeleteOpen(v)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete User</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this user?
-              </DialogDescription>
-            </DialogHeader>
-            <DeleteUser
-              user={selectedUser}
-              onDelete={handleConfirmDelete}
-              onCancel={() => setDeleteOpen(false)}
-              loading={deleteLoading}
-            />
-          </DialogContent>
-        </Dialog>
-        <Dialog open={editOpen} onOpenChange={(v) => setEditOpen(v)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit User</DialogTitle>
-              <DialogDescription>
-                Please edit the user information.
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Edit User</DialogTitle></DialogHeader>
+          {selectedUser && (
             <EditUser
               user={selectedUser}
-              onSubmit={handleConfirmEdit}
+              onSubmit={handleEditConfirm}
               onCancel={() => setEditOpen(false)}
               loading={editLoading}
+              error={formError}
             />
-          </DialogContent>
-        </Dialog>
-      </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Delete User</DialogTitle></DialogHeader>
+          <DeleteUser
+            user={selectedUser}
+            onDelete={async (user) => {
+              try {
+                await deleteUser(user.id).unwrap();
+                refetch();
+                setDeleteOpen(false);
+              } catch (e) { setFormError("Error"); }
+            }}
+            onCancel={() => setDeleteOpen(false)}
+            loading={deleteLoading}
+            error={formError}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

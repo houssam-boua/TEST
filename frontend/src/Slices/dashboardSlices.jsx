@@ -3,6 +3,15 @@ import { apiSlice } from "./apiSlice";
 // Dashboard endpoints (per-widget) + invalidate cache
 export const dashboardSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
+    // ✅ ADDED: Main Dashboard Stats (Aggregated) - Fixes the SyntaxError
+    getDashboardStats: builder.query({
+      query: () => ({
+        url: "/api/dashboard/",
+        method: "GET",
+      }),
+      providesTags: ["Dashboard"],
+    }),
+
     // Documents by departement
     getDashboardDocumentsByDepartement: builder.query({
       query: () => ({
@@ -55,7 +64,6 @@ export const dashboardSlice = apiSlice.injectEndpoints({
         url: "/api/dashboard/invalidate-cache/",
         method: "POST",
       }),
-      // invalidate cached dashboard queries so UI refetches
       invalidatesTags: ["Dashboard"],
     }),
 
@@ -99,6 +107,8 @@ export const dashboardSlice = apiSlice.injectEndpoints({
 });
 
 export const {
+  // ✅ EXPORTED: Missing hook causing the error
+  useGetDashboardStatsQuery,
   useGetDashboardDocumentsByDepartementQuery,
   useGetDashboardDocumentsByStatusQuery,
   useGetDashboardDocumentsCountQuery,

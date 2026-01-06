@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   useGetFoldersQuery,
   useGetDocumentsQuery,
@@ -12,7 +12,7 @@ import {
   useArchiveDocumentMutation,
   useArchiveFolderMutation,
   useDeleteDocumentMutation,
-  useSyncFoldersMutation // ✅ NEW: Import Sync Hook
+  useSyncFoldersMutation
 } from "@/slices/documentSlice";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import {
   Table,
@@ -45,6 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Folder,
+  FolderPlus,
   FileText,
   UploadCloud,
   Plus,
@@ -53,15 +55,40 @@ import {
   Pencil,
   History,
   Archive,
-  ChevronRight,
-  Home,
   User,
   Calendar,
   Info,
   Move,
   X,
   FolderOpen,
-  RefreshCw // ✅ NEW: Import Refresh Icon
+  RefreshCw,
+  MapPin,
+  FileType,
+  GitBranch,
+  Sparkles,
+  Search,
+  Filter,
+  Download,
+  Grid3x3,
+  List,
+  SortAsc,
+  SortDesc,
+  TrendingUp,
+  FileCheck,
+  Clock,
+  ArrowUpDown,
+  Hash,
+  Building2,
+  FolderTree,
+  AlignLeft,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+  Circle,
+  Copy,
+  Share2,
+  Star,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -102,17 +129,6 @@ function formatDateTime(val) {
   }).format(d);
 }
 
-// Keep strictly for history dialogs if needed, but NOT for main table
-function getLatestVersionPath(doc) {
-  if (!doc) return "";
-  const vs = doc.versions || [];
-  if (Array.isArray(vs) && vs.length > 0) {
-    const sorted = [...vs].sort((a, b) => (b.version_number || 0) - (a.version_number || 0));
-    return sorted[0]?.version_path || doc.doc_path || "";
-  }
-  return doc.doc_path || "";
-}
-
 function getFolderNameFromPayload(payload) {
   return payload?.fol_name || payload?.folname || payload?.name || "";
 }
@@ -123,7 +139,24 @@ function getFolderPathFromPayload({ payload, currentPath, folderName }) {
   return normalizePath(currentPath ? `${currentPath}/${folderName}` : folderName);
 }
 
-// --- Bulk Action Dialogs ---
+// Get status icon and color
+function getStatusInfo(status) {
+  const statusLower = (status || "").toLowerCase();
+  switch(statusLower) {
+    case "approved":
+      return { icon: CheckCircle2, color: "text-green-600", bgColor: "bg-green-50", borderColor: "border-green-200" };
+    case "pending":
+      return { icon: Clock, color: "text-orange-600", bgColor: "bg-orange-50", borderColor: "border-orange-200" };
+    case "rejected":
+      return { icon: XCircle, color: "text-red-600", bgColor: "bg-red-50", borderColor: "border-red-200" };
+    case "draft":
+      return { icon: AlertCircle, color: "text-gray-600", bgColor: "bg-gray-50", borderColor: "border-gray-200" };
+    default:
+      return { icon: Circle, color: "text-blue-600", bgColor: "bg-blue-50", borderColor: "border-blue-200" };
+  }
+}
+
+// --- Enhanced Bulk Action Dialogs ---
 
 function BulkMoveDialog({ open, onOpenChange, selectedItems, allFolders, currentFolderId, onMoveSuccess }) {
   const [targetFolder, setTargetFolder] = useState(null);
@@ -132,9 +165,6 @@ function BulkMoveDialog({ open, onOpenChange, selectedItems, allFolders, current
   const [updateFolder] = useUpdateFolderMutation();
 
   const availableTargets = useMemo(() => {
-    // Filter out: 
-    // 1. The selected items themselves (can't move folder into itself)
-    // 2. The current folder (can't move items to where they already are)
     const movingIds = new Set(selectedItems.filter(i => i.type === "folder").map(i => i.id));
     return allFolders.filter(f => !movingIds.has(f.id) && f.id !== currentFolderId);
   }, [allFolders, selectedItems, currentFolderId]);
@@ -147,7 +177,6 @@ function BulkMoveDialog({ open, onOpenChange, selectedItems, allFolders, current
       
       const promises = selectedItems.map(item => {
         if (item.type === "folder") {
-          // Safety: Can't move virtual folders (ID is string)
           if (typeof item.id !== 'number') return Promise.resolve(); 
           if (item.id === targetId) return Promise.resolve();
           return updateFolder({ id: item.id, data: { parent_folder: targetId } }).unwrap();
@@ -175,32 +204,49 @@ function BulkMoveDialog({ open, onOpenChange, selectedItems, allFolders, current
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] flex flex-col">
+      <DialogContent className="max-h-[80vh] flex flex-col shadow-2xl border-0 bg-white/95 backdrop-blur-xl">
         <DialogHeader>
-          <DialogTitle>Move {selectedItems.length} items to...</DialogTitle>
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Move {selectedItems.length} items
+          </DialogTitle>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto min-h-[300px] border rounded-md p-2">
+        <div className="flex-1 overflow-y-auto min-h-[300px] border-2 border-gray-100 rounded-xl p-3 bg-gradient-to-br from-gray-50 to-white shadow-inner">
           <div 
-            className={`p-2 rounded cursor-pointer flex items-center gap-2 ${targetFolder === "root" ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}
+            className={`p-3 rounded-lg cursor-pointer flex items-center gap-3 transition-all duration-300 hover:scale-[1.02] ${
+              targetFolder === "root" 
+                ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-200 transform scale-[1.02]" 
+                : "bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 border border-gray-200 hover:border-blue-300 hover:shadow-md"
+            }`}
             onClick={() => setTargetFolder("root")}
           >
-            <Home size={16} /> <span>Root Directory</span>
+            <Folder size={18} className={targetFolder === "root" ? "" : "text-blue-500"} />
+            <span className="font-medium">Root Directory</span>
           </div>
           {availableTargets.map(folder => (
             <div 
               key={folder.id} 
-              className={`p-2 ml-4 rounded cursor-pointer flex items-center gap-2 truncate ${targetFolder === folder.id ? "bg-primary/10 text-primary" : "hover:bg-muted"}`}
+              className={`p-3 ml-4 rounded-lg cursor-pointer flex items-center gap-3 mt-2 truncate transition-all duration-300 hover:scale-[1.02] ${
+                targetFolder === folder.id 
+                  ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg shadow-blue-200 transform scale-[1.02]" 
+                  : "bg-white hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 border border-gray-200 hover:border-blue-300 hover:shadow-md"
+              }`}
               onClick={() => setTargetFolder(folder.id)}
             >
-              <Folder size={16} /> 
-              <span>{folder.fol_name}</span>
-              <span className="text-xs text-muted-foreground ml-auto max-w-[150px] truncate">{folder.fol_path}</span>
+              <Folder size={16} className={targetFolder === folder.id ? "" : "text-blue-400"} />
+              <span className="font-medium">{folder.fol_name}</span>
+              <span className={`text-xs ml-auto max-w-[150px] truncate ${targetFolder === folder.id ? "text-white/80" : "text-gray-500"}`}>
+                {folder.fol_path}
+              </span>
             </div>
           ))}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleMove} disabled={!targetFolder || isMoving}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-2 hover:bg-gray-50">Cancel</Button>
+          <Button 
+            onClick={handleMove} 
+            disabled={!targetFolder || isMoving}
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          >
             {isMoving ? "Moving..." : "Move Here"}
           </Button>
         </DialogFooter>
@@ -224,9 +270,7 @@ function BulkArchiveDialog({ open, onOpenChange, selectedItems, onArchiveSuccess
     let errors = 0;
 
     const promises = selectedItems.map(item => {
-      // Skip virtual items
       if (item.type === "folder" && typeof item.id !== "number") return Promise.resolve();
-
       const payload = { id: item.id, mode, until: isoUntil, note };
       if (item.type === "folder") return archiveFolder(payload).unwrap();
       return archiveDoc(payload).unwrap();
@@ -248,23 +292,47 @@ function BulkArchiveDialog({ open, onOpenChange, selectedItems, onArchiveSuccess
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Archive {selectedItems.length} items</DialogTitle></DialogHeader>
+      <DialogContent className="shadow-2xl border-0 bg-white/95 backdrop-blur-xl">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+            Archive {selectedItems.length} items
+          </DialogTitle>
+        </DialogHeader>
         <div className="space-y-4 py-2">
-          <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="radio" checked={mode==="permanent"} onChange={()=>setMode("permanent")} className="accent-primary" /> Permanent
+          <div className="flex flex-col gap-3 p-4 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border-2 border-orange-100">
+            <label className="flex items-center gap-3 text-sm cursor-pointer p-2 rounded-lg hover:bg-white/50 transition-all">
+              <input type="radio" checked={mode==="permanent"} onChange={()=>setMode("permanent")} className="accent-orange-600 w-4 h-4" /> 
+              <span className="font-medium">Permanent Archive</span>
             </label>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input type="radio" checked={mode==="until"} onChange={()=>setMode("until")} className="accent-primary" /> Temporarily (Until date)
+            <label className="flex items-center gap-3 text-sm cursor-pointer p-2 rounded-lg hover:bg-white/50 transition-all">
+              <input type="radio" checked={mode==="until"} onChange={()=>setMode("until")} className="accent-orange-600 w-4 h-4" /> 
+              <span className="font-medium">Temporary (Until date)</span>
             </label>
           </div>
-          {mode === "until" && <Input type="datetime-local" value={until} onChange={e=>setUntil(e.target.value)} />}
-          <Input placeholder="Archive Note..." value={note} onChange={e=>setNote(e.target.value)} />
+          {mode === "until" && (
+            <Input 
+              type="datetime-local" 
+              value={until} 
+              onChange={e=>setUntil(e.target.value)} 
+              className="border-2 border-orange-200 focus:border-orange-400 shadow-sm"
+            />
+          )}
+          <Input 
+            placeholder="Archive Note..." 
+            value={note} 
+            onChange={e=>setNote(e.target.value)} 
+            className="border-2 border-gray-200 focus:border-orange-400 shadow-sm"
+          />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleArchive} disabled={isArchiving}>{isArchiving ? "Archiving..." : "Confirm"}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-2 hover:bg-gray-50">Cancel</Button>
+          <Button 
+            onClick={handleArchive} 
+            disabled={isArchiving}
+            className="bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+          >
+            {isArchiving ? "Archiving..." : "Confirm Archive"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -274,8 +342,14 @@ function BulkArchiveDialog({ open, onOpenChange, selectedItems, onArchiveSuccess
 // --- Main Component ---
 
 export default function FolderManager({ initialPath = "/", className = "" }) {
+  const navigate = useNavigate();
   const [currentPath, setCurrentPath] = useState(normalizePath(initialPath));
   const [selectedItems, setSelectedItems] = useState({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [sortField, setSortField] = useState("date");
+  const [sortDirection, setSortDirection] = useState("desc");
 
   // Dialog States
   const [createOpen, setCreateOpen] = useState(false);
@@ -294,32 +368,17 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
 
   const [uploading, setUploading] = useState(false);
   const [localFolders, setLocalFolders] = useState([]); 
+  const [dragActive, setDragActive] = useState(false);
 
+  // --- API Hooks ---
+  const { data: documents = [], refetch: refetchDocuments } = useGetDocumentsQuery();
   const { data: foldersApiData = [], refetch: refetchFolders } = useGetFoldersQuery();
-  const { data: documents = [], refetch: refetchDocuments } = useGetDocumentsQuery(
-    currentPath ? { folder: currentPath } : undefined
-  );
 
   const [createFolder] = useCreateFolderMutation();
   const [createDocument] = useCreateDocumentMutation();
-  const [syncFolders, { isLoading: isSyncing }] = useSyncFoldersMutation(); // ✅ Sync Hook
+  const [syncFolders, { isLoading: isSyncing }] = useSyncFoldersMutation();
 
-  // ✅ AUTO-SYNC ON MOUNT/REFRESH
-  const hasSyncedRef = useRef(false);
-  useEffect(() => {
-    if (!hasSyncedRef.current) {
-      syncFolders()
-        .unwrap()
-        .then((res) => {
-          if (res.deleted_ghost_folders > 0) {
-            console.log(`Synced: Removed ${res.deleted_ghost_folders} ghost folders.`);
-            refetchFolders(); // Refresh list after sync
-          }
-        })
-        .catch(err => console.error("Sync failed", err));
-      hasSyncedRef.current = true;
-    }
-  }, [syncFolders, refetchFolders]);
+  // --- Memos & Derived State ---
 
   const folderPaths = useMemo(() => {
     if (Array.isArray(foldersApiData)) return foldersApiData;
@@ -335,128 +394,125 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
     });
   }, [folderPaths, currentPath]);
 
-  const _autoFixedRef = useRef(false);
+  // Get unique document types for filter
+  const documentTypes = useMemo(() => {
+    const types = new Set();
+    documents.forEach(doc => {
+      const typeName = doc.document_type_details?.name;
+      if (typeName && typeName !== "-") {
+        types.add(typeName);
+      }
+    });
+    return Array.from(types).sort();
+  }, [documents]);
+
+  // --- Auto Sync Effect ---
+  const hasSyncedRef = useRef(false);
   useEffect(() => {
-    if (_autoFixedRef.current) return;
-    if (folderPaths.length > 0 || documents.length > 0) {
-      const cur = normalizePath(currentPath);
-      let candidate = cur;
-      if (candidate.toLowerCase() === "documents") candidate = "";
-      else if (candidate.toLowerCase().startsWith("documents/")) candidate = candidate.slice("documents/".length);
-      if (candidate !== cur) setCurrentPath(candidate);
-      _autoFixedRef.current = true;
+    if (!hasSyncedRef.current) {
+      syncFolders()
+        .unwrap()
+        .then((res) => {
+          let shouldRefetchFolders = false;
+          let shouldRefetchDocs = false;
+
+          if (res.deleted_ghost_folders > 0) shouldRefetchFolders = true;
+          if (res.deleted_ghost_documents > 0) shouldRefetchDocs = true;
+
+          if (shouldRefetchFolders) refetchFolders();
+          if (shouldRefetchDocs) refetchDocuments();
+          
+          if (shouldRefetchFolders || shouldRefetchDocs) {
+              toast.success("Cleanup complete: Missing files removed.");
+          }
+        })
+        .catch(err => console.error("Sync failed", err));
+      hasSyncedRef.current = true;
     }
-  }, [folderPaths, documents, currentPath]);
+  }, [syncFolders, refetchFolders, refetchDocuments]);
 
-  const { folders: immediateFolders, files: immediateFiles } = useMemo(() => {
-    const folderSet = new Set();
-    const fileList = [];
-    const cur = normalizePath(currentPath || "");
-    const curParts = cur ? cur.split("/").filter(Boolean) : [];
-    const curDepth = curParts.length;
-
-    const sourcePaths = (
-      folderPaths.map((fp) => typeof fp === "string" ? fp : fp.fol_path || "")
-    ).concat(localFolders);
-
-    for (const raw of sourcePaths) {
-      const p = normalizePath(raw);
-      if (!p) continue;
-      
-      let effectivePath = p;
-      if (effectivePath.toLowerCase().startsWith("documents/") && cur === "") {
-         effectivePath = effectivePath.substring("documents/".length);
-      } else if (effectivePath.toLowerCase() === "documents" && cur === "") {
-         continue; 
-      }
-
-      const parts = effectivePath.split("/").filter(Boolean);
-      
-      if (curDepth === 0) {
-        if (parts.length >= 1) folderSet.add(parts[0]);
-      } else {
-        const prefix = curParts.join("/");
-        if (effectivePath.startsWith(prefix + "/") || effectivePath === prefix) {
-           const relative = effectivePath.slice(prefix.length).replace(/^\//, "");
-           const relativeParts = relative.split("/").filter(Boolean);
-           if (relativeParts.length > 0) folderSet.add(relativeParts[0]);
-        }
-      }
-    }
-
-    for (const d of documents) {
-      // ✅ Use doc_path directly and strip optional prefix if needed
-      let p = normalizePath(d.doc_path || "");
-      if (p.toLowerCase().startsWith("documents/") && cur === "") {
-         p = p.substring("documents/".length);
-      }
-      const parts = p.split("/").filter(Boolean);
-      if (curDepth === 0) {
-        if (parts.length === 1) fileList.push(d);
-      } else {
-        const prefix = curParts.join("/");
-        if (p.startsWith(prefix + "/")) {
-          const rest = p.replace(prefix + "/", "");
-          if (rest && !rest.includes("/")) fileList.push(d);
-        }
-      }
-    }
-
-    return { folders: Array.from(folderSet).sort(), files: fileList };
-  }, [folderPaths, documents, currentPath, localFolders]);
-
-  const breadcrumbs = useMemo(() => {
-    const parts = normalizePath(currentPath).split("/").filter(Boolean);
-    const crumbs = [{ name: "Root", path: "" }];
-    let accum = "";
-    parts.forEach(part => {
-      accum = accum ? `${accum}/${part}` : part;
-      crumbs.push({ name: part, path: accum });
-    });
-    return crumbs;
-  }, [currentPath]);
-
+  // --- Table Row Generation with Filtering & Sorting ---
   const tableRows = useMemo(() => {
-    const rows = [];
+    let rows = [];
 
-    immediateFolders.forEach(name => {
-      const path = currentPath ? `${currentPath}/${name}` : name;
-      let folderObj = folderPaths.find(fp => {
-         const p = typeof fp === "string" ? normalizePath(fp) : normalizePath(fp.fol_path);
-         return p === path || p === `Documents/${path}` || p === `documents/${path}`;
-      });
+    documents.forEach(f => {
+      let displayPath = normalizePath(f.doc_path || "");
+      if (displayPath.toLowerCase().startsWith("documents/")) {
+         displayPath = displayPath.substring("documents/".length);
+      }
 
-      rows.push({
-        id: folderObj?.id ?? `folder:${path}`,
-        name: name,
-        path: path,
-        type: "folder",
-        index: folderObj?.fol_index ?? "",
-        owner: folderObj?.created_by?.username || "-",
-        date: folderObj?.created_at,
-        raw: folderObj
-      });
-    });
+      let versionNum = f.latest_version; 
+      if (versionNum === undefined && Array.isArray(f.versions) && f.versions.length > 0) {
+          const sorted = [...f.versions].sort((a, b) => b.version_number - a.version_number);
+          versionNum = sorted[0].version_number; 
+      }
+      if (!versionNum) versionNum = 1;
 
-    immediateFiles.forEach(f => {
       rows.push({
         id: f.id,
         name: f.doc_title,
-        // ✅ CHANGED: Use doc_path directly (Live path) instead of version path
-        path: f.doc_path, 
+        path: displayPath, 
         type: "file",
         index: f.doc_code || "",
+        version: `v${versionNum}`,
         owner: f.doc_owner?.username || "-",
         date: f.created_at,
         status: f.doc_status_type || "ORIGINAL",
         description: f.doc_description || "",
         downloadUrl: f.download_url,
+        siteName: f.site_details?.name || "-",
+        docTypeName: f.document_type_details?.name || "-",
+        docTypeCode: f.document_type_details?.code || "",
+        
         raw: f
       });
     });
 
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      rows = rows.filter(row => 
+        row.name.toLowerCase().includes(query) ||
+        row.description.toLowerCase().includes(query) ||
+        row.owner.toLowerCase().includes(query) ||
+        row.index.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      rows = rows.filter(row => row.status.toLowerCase() === statusFilter.toLowerCase());
+    }
+
+    // Apply document type filter
+    if (typeFilter !== "all") {
+      rows = rows.filter(row => row.docTypeName === typeFilter);
+    }
+
+    // Apply sorting
+    rows.sort((a, b) => {
+      let aVal = a[sortField];
+      let bVal = b[sortField];
+
+      if (sortField === "date") {
+        aVal = new Date(aVal).getTime();
+        bVal = new Date(bVal).getTime();
+      } else if (typeof aVal === "string") {
+        aVal = aVal.toLowerCase();
+        bVal = bVal.toLowerCase();
+      }
+
+      if (sortDirection === "asc") {
+        return aVal > bVal ? 1 : -1;
+      } else {
+        return aVal < bVal ? 1 : -1;
+      }
+    });
+
     return rows;
-  }, [immediateFolders, immediateFiles, currentPath, folderPaths]);
+  }, [documents, searchQuery, statusFilter, typeFilter, sortField, sortDirection]);
+
+  // --- Handlers ---
 
   const toggleSelectAll = () => {
     if (Object.keys(selectedItems).length === tableRows.length) {
@@ -475,11 +531,6 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
       else next[row.id] = row;
       return next;
     });
-  };
-
-  const handleNavigate = (path) => {
-    setCurrentPath(path);
-    setSelectedItems({});
   };
 
   const handleCreateFolderAction = async (payload) => {
@@ -510,7 +561,7 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
       setLocalFolders(prev => [...prev, normalizePath(fol_path)]);
       setTimeout(() => { refetchFolders(); refetchDocuments(); }, 500);
       setCreateOpen(false);
-      toast.success("Folder created");
+      toast.success("Folder created successfully");
     } catch (err) {
       const msg = err?.data?.fol_name?.[0] || err?.data?.detail || "Failed to create folder";
       toast.error(msg);
@@ -523,10 +574,9 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
     const tasks = Array.from(files).map(f => {
       const fd = new FormData();
       fd.append("file", f, f.name);
-      // ✅ Pass current path context so backend knows where to save
+      
       if (currentPath) fd.append("doc_path", currentPath);
       
-      // Also try to find parent ID for reference
       let parentId = null;
       if (currentPath) {
         const parentObj = folderPaths.find(fp => {
@@ -542,10 +592,67 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
     await Promise.allSettled(tasks);
     setUploading(false);
     refetchDocuments();
-    toast.success("Files uploaded");
+    toast.success(`${files.length} file(s) uploaded successfully`);
+  };
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleUploadFiles(e.dataTransfer.files);
+    }
+  };
+
+  const handleExportCSV = () => {
+    const headers = ["Name", "Path", "Index", "Version", "Type", "Site", "Status", "Description", "Owner", "Date"];
+    const csvData = tableRows.map(row => [
+      row.name,
+      row.path,
+      row.index,
+      row.version,
+      row.docTypeName,
+      row.siteName,
+      row.status,
+      row.description,
+      row.owner,
+      formatDateTime(row.date)
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `documents_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    toast.success("Documents exported to CSV");
+  };
+
+  const handleCopyLink = (row) => {
+    if (row.downloadUrl) {
+      navigator.clipboard.writeText(row.downloadUrl);
+      toast.success("Link copied to clipboard");
+    }
   };
 
   const selectedList = Object.values(selectedItems);
+
   const [newFileName, setNewFileName] = useState("");
   const [newFileObj, setNewFileObj] = useState(null);
 
@@ -557,7 +664,6 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
     if (currentPath) fd.append("doc_path", currentPath);
     if (newFileName) fd.append("doc_title", newFileName);
     
-    // Find parent ID logic (same as bulk upload)
     let parentId = null;
     if (currentPath) {
         const parentObj = folderPaths.find(fp => {
@@ -581,189 +687,531 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
   };
 
   return (
-    <div className={`flex flex-col gap-4 ${className} h-full`}>
-      {/* Toolbar */}
-      <div className="flex items-center justify-between gap-3 bg-card p-3 rounded-lg border shadow-sm">
-        {selectedList.length > 0 ? (
-          <div className="flex items-center gap-2 w-full animate-in fade-in slide-in-from-top-1 duration-200">
-            <span className="text-sm font-medium text-primary mr-2 bg-primary/10 px-2 py-1 rounded">
-              {selectedList.length} selected
-            </span>
-            <div className="h-6 w-px bg-border mx-1" />
-            <Button variant="outline" size="sm" onClick={() => setBulkMoveOpen(true)}>
-              <Move size={14} className="mr-2" /> Move To...
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setBulkArchiveOpen(true)}>
-              <Archive size={14} className="mr-2" /> Archive
-            </Button>
-            <div className="flex-1" />
-            <Button variant="ghost" size="icon" onClick={() => setSelectedItems({})}>
-              <X size={16} />
-            </Button>
+    <div 
+      className={`flex flex-col gap-6 ${className} h-full p-6 bg-gradient-to-br from-gray-50 via-white to-blue-50 min-h-screen`}
+      onDragEnter={handleDrag}
+      onDragLeave={handleDrag}
+      onDragOver={handleDrag}
+      onDrop={handleDrop}
+    >
+      {/* Drag & Drop Overlay */}
+      {dragActive && (
+        <div className="fixed inset-0 bg-blue-500/10 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white/90 backdrop-blur-xl rounded-2xl border-4 border-dashed border-blue-500 p-12 shadow-2xl transform scale-100 animate-pulse">
+            <UploadCloud className="w-24 h-24 text-blue-500 mx-auto mb-4 animate-bounce" />
+            <p className="text-3xl font-bold text-blue-600 text-center">Drop files here to upload</p>
           </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-3">
-              <h1 className="text-lg font-semibold tracking-tight">Folder Management</h1>
-              {/* ✅ NEW: Sync Button */}
+        </div>
+      )}
+
+      {/* Enhanced Header */}
+      <div className="relative overflow-hidden">
+        <div className="relative bg-white rounded-2xl border-2 border-gray-200 shadow-xl p-6">
+          {selectedList.length > 0 ? (
+            <div className="flex items-center gap-3 w-full animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="flex items-center gap-3 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl shadow-lg shadow-blue-300/50 transform hover:scale-105 transition-all duration-300">
+                <Sparkles size={16} className="animate-pulse" />
+                <span className="font-bold">{selectedList.length} selected</span>
+              </div>
+              <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setBulkMoveOpen(true)}
+                className="border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md hover:scale-105 transition-all duration-300"
+              >
+                <Move size={14} className="mr-2" /> Move To...
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setBulkArchiveOpen(true)}
+                className="border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50 hover:shadow-md hover:scale-105 transition-all duration-300"
+              >
+                <Archive size={14} className="mr-2" /> Archive
+              </Button>
+              <div className="flex-1" />
               <Button 
                 variant="ghost" 
                 size="icon" 
-                disabled={isSyncing} 
-                onClick={() => syncFolders().then(() => { refetchFolders(); refetchDocuments(); })}
-                title="Sync with S3"
+                onClick={() => setSelectedItems({})}
+                className="hover:bg-red-50 hover:text-red-600 hover:rotate-90 transition-all duration-300"
               >
-                <RefreshCw size={16} className={isSyncing ? "animate-spin" : ""} />
+                <X size={18} />
               </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus className="mr-2" size={14} /> New Folder
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/archived-documents">
-                  <Archive className="mr-2" size={14} /> Archives
-                </Link>
-              </Button>
-              <label className="m-0">
-                <input type="file" multiple onChange={(e) => handleUploadFiles(e.target.files)} style={{ display: "none" }} />
-                <Button size="sm" disabled={uploading}>
-                  <UploadCloud className="mr-2" size={14} /> {uploading ? "Uploading..." : "Upload"}
+          ) : (
+            <div className="flex items-center justify-between">
+              <div className="flex items-start gap-3">
+                <div className="grid h-12 w-12 place-items-center rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 shadow-lg">
+                  <FileText className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-semibold text-foreground leading-tight">
+                    Document Manager
+                  </h1>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Manage and organize your documents efficiently
+                  </p>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  disabled={isSyncing} 
+                  onClick={() => syncFolders().unwrap().then((res) => { 
+                     if(res.deleted_ghost_documents > 0) refetchDocuments();
+                     if(res.deleted_ghost_folders > 0) refetchFolders();
+                     toast.success("Synced with S3");
+                  })}
+                  title="Sync with S3"
+                  className="ml-2 hover:bg-blue-50 hover:scale-110 transition-all duration-300 hover:shadow-md"
+                >
+                  <RefreshCw size={18} className={`${isSyncing ? "animate-spin text-blue-600" : "text-gray-600"}`} />
                 </Button>
-              </label>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* NEW: Create Folder Button - Styled like Archives */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setCreateOpen(true)}
+                  className="border-2 border-green-200 hover:border-green-400 hover:bg-green-50 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                >
+                  <FolderPlus className="mr-2" size={14} /> New Folder
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  asChild
+                  className="border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                >
+                  <Link to="/archived-documents">
+                    <Archive className="mr-2" size={14} /> Archives
+                  </Link>
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={() => navigate('/creer-documents')}
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                >
+                  <Plus className="mr-2" size={14} /> 
+                  Create Document
+                </Button>
+              </div>
             </div>
-          </>
-        )}
-      </div>
-
-      {/* Breadcrumbs */}
-      <div className="flex items-center gap-1 text-sm text-muted-foreground bg-muted/40 p-2 rounded-md border">
-        <button 
-          onClick={() => handleNavigate("")} 
-          className={`flex items-center px-2 py-1 rounded hover:bg-background transition-colors ${!currentPath ? "font-bold text-foreground bg-background shadow-sm" : "hover:text-primary"}`}
-        >
-          <Home className="w-4 h-4 mr-2" /> Root
-        </button>
-        {breadcrumbs.slice(1).map((crumb, i) => (
-          <React.Fragment key={crumb.path}>
-            <ChevronRight className="w-4 h-4 opacity-40" />
-            <button
-              onClick={() => handleNavigate(crumb.path)}
-              className={`flex items-center px-2 py-1 rounded hover:bg-background transition-colors max-w-[150px] truncate ${
-                crumb.path === currentPath ? "font-bold text-foreground bg-background shadow-sm" : "hover:text-primary"
-              }`}
-            >
-              {crumb.name}
-            </button>
-          </React.Fragment>
-        ))}
-      </div>
-
-      {/* Table Content */}
-      <div className="border rounded-lg bg-card shadow-sm overflow-hidden flex-1 min-h-[500px]">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-[40px]">
-                  <Checkbox 
-                    checked={tableRows.length > 0 && selectedList.length === tableRows.length}
-                    onCheckedChange={toggleSelectAll}
-                  />
-                </TableHead>
-                <TableHead className="w-[40px]"></TableHead>
-                <TableHead className="min-w-[200px]">Name</TableHead>
-                <TableHead className="min-w-[120px]">Path</TableHead> {/* Renamed Header for clarity */}
-                <TableHead className="min-w-[120px]"><div className="flex items-center gap-1"><Info className="w-3 h-3" /> Index</div></TableHead>
-                <TableHead className="min-w-[100px]">Status</TableHead>
-                <TableHead className="min-w-[200px]">Description</TableHead>
-                <TableHead className="min-w-[120px]"><div className="flex items-center gap-1"><User className="w-3 h-3" /> Owner</div></TableHead>
-                <TableHead className="min-w-[120px]"><div className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Date</div></TableHead>
-                <TableHead className="text-right w-[80px]">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {tableRows.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="h-40 text-center text-muted-foreground">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <FolderOpen className="w-10 h-10 opacity-20" />
-                      <p>This folder is empty.</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                tableRows.map((row) => (
-                  <TableRow 
-                    key={row.id} 
-                    className={`group transition-colors ${row.type === "folder" ? "hover:bg-muted/40 cursor-pointer" : "hover:bg-muted/30"} ${selectedItems[row.id] ? "bg-muted/60" : ""}`}
-                    onDoubleClick={() => row.type === "folder" && handleNavigate(row.path)}
-                    onClick={(e) => {
-                      if(e.ctrlKey || e.metaKey) toggleSelectRow(row);
-                    }}
-                  >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <Checkbox 
-                        checked={!!selectedItems[row.id]} 
-                        onCheckedChange={() => toggleSelectRow(row)} 
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {row.type === "folder" ? <Folder className="w-5 h-5 text-amber-500 fill-amber-500/20" /> : <FileText className="w-5 h-5 text-blue-500" />}
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      {row.type === "folder" ? (
-                        <button onClick={() => handleNavigate(row.path)} className="hover:underline text-left text-foreground">
-                          {row.name}
-                        </button>
-                      ) : (
-                        <span className="text-sm text-foreground">{row.name}</span>
-                      )}
-                    </TableCell>
-                    {/* ✅ NEW: Display clean path column */}
-                    <TableCell className="text-xs text-muted-foreground truncate max-w-[150px]" title={row.path}>
-                         {row.path}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{row.type === "folder" ? formatFolderIndexLabel(row.index) : row.index}</TableCell>
-                    <TableCell>{row.type === "file" && <Badge variant="outline" className="text-[10px] h-5 font-normal">{row.status}</Badge>}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={row.description}>{row.description || "-"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{row.owner}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{formatDateTime(row.date)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {row.type === "file" && (
-                          <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground" onClick={(e) => { e.stopPropagation(); setHistoryDocId(row.id); setHistoryOpen(true); }} title="History">
-                            <History className="w-4 h-4" />
-                          </button>
-                        )}
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-foreground"><MoreVertical className="w-4 h-4" /></button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            {row.type === "file" && (
-                              <>
-                                <DropdownMenuItem onClick={() => { if (row.downloadUrl) window.open(row.downloadUrl, "_blank"); }}><Eye className="w-3.5 h-3.5 mr-2" /> Preview</DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => { setEditDocId(row.id); setEditOpen(true); }}><Pencil className="w-3.5 h-3.5 mr-2" /> Edit</DropdownMenuItem>
-                              </>
-                            )}
-                            <DropdownMenuItem className="text-orange-600 focus:text-orange-700 focus:bg-orange-50" onClick={() => { if (row.type === "folder") { setArchiveFolderObj(row.raw); setArchiveFolderOpen(true); } else { setArchiveDocId(row.id); setArchiveDocOpen(true); } }}>
-                              <Archive className="w-3.5 h-3.5 mr-2" /> Archive
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+          )}
         </div>
       </div>
 
-      {/* --- Bulk Dialogs --- */}
+      {/* Search & Filter Bar */}
+      <div className="relative overflow-hidden rounded-2xl">
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 to-purple-500/5 blur-xl -z-10" />
+        <div className="relative bg-white/80 backdrop-blur-xl border-2 border-white shadow-lg p-4">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div className="flex-1 relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                placeholder="Search documents..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-11 border-2 border-gray-200 focus:border-blue-400 shadow-sm h-11"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Status Filter */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-2 hover:bg-gray-50 h-11">
+                    <Tag className="w-4 h-4 mr-2" />
+                    Status: <span className="font-semibold ml-1">{statusFilter === "all" ? "All" : statusFilter}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-white/95 backdrop-blur-xl">
+                  <DropdownMenuItem onClick={() => setStatusFilter("all")} className="cursor-pointer">
+                    <Circle className="w-3 h-3 mr-2 text-gray-400" /> All Statuses
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setStatusFilter("pending")} className="cursor-pointer">
+                    <Clock className="w-3 h-3 mr-2 text-orange-500" /> Pending
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter("approved")} className="cursor-pointer">
+                    <CheckCircle2 className="w-3 h-3 mr-2 text-green-500" /> Approved
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter("draft")} className="cursor-pointer">
+                    <AlertCircle className="w-3 h-3 mr-2 text-gray-500" /> Draft
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter("rejected")} className="cursor-pointer">
+                    <XCircle className="w-3 h-3 mr-2 text-red-500" /> Rejected
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Document Type Filter */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-2 hover:bg-gray-50 h-11">
+                    <FileType className="w-4 h-4 mr-2" />
+                    Type: <span className="font-semibold ml-1">{typeFilter === "all" ? "All" : typeFilter}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-white/95 backdrop-blur-xl max-h-80 overflow-y-auto">
+                  <DropdownMenuItem onClick={() => setTypeFilter("all")} className="cursor-pointer">
+                    <Circle className="w-3 h-3 mr-2 text-gray-400" /> All Types
+                  </DropdownMenuItem>
+                  {documentTypes.length > 0 && <DropdownMenuSeparator />}
+                  {documentTypes.map(type => (
+                    <DropdownMenuItem 
+                      key={type} 
+                      onClick={() => setTypeFilter(type)} 
+                      className="cursor-pointer"
+                    >
+                      <FileType className="w-3 h-3 mr-2 text-emerald-500" /> {type}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-2 hover:bg-gray-50 h-11">
+                    <ArrowUpDown className="w-4 h-4 mr-2" />
+                    Sort
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="bg-white/95 backdrop-blur-xl">
+                  <DropdownMenuLabel>Sort By</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => {setSortField("name"); setSortDirection("asc");}} className="cursor-pointer">
+                    <SortAsc className="w-3 h-3 mr-2" /> Name (A-Z)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {setSortField("name"); setSortDirection("desc");}} className="cursor-pointer">
+                    <SortDesc className="w-3 h-3 mr-2" /> Name (Z-A)
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {setSortField("date"); setSortDirection("desc");}} className="cursor-pointer">
+                    <Calendar className="w-3 h-3 mr-2" /> Newest First
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {setSortField("date"); setSortDirection("asc");}} className="cursor-pointer">
+                    <Calendar className="w-3 h-3 mr-2" /> Oldest First
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {setSortField("owner"); setSortDirection("asc");}} className="cursor-pointer">
+                    <User className="w-3 h-3 mr-2" /> Owner
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCSV}
+                className="border-2 border-green-200 hover:border-green-400 hover:bg-green-50 h-11 hover:scale-105 transition-all"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+            </div>
+          </div>
+
+          {(searchQuery || statusFilter !== "all" || typeFilter !== "all") && (
+            <div className="mt-3 flex items-center gap-2 flex-wrap animate-in fade-in slide-in-from-top-1">
+              <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
+                {tableRows.length} result{tableRows.length !== 1 ? 's' : ''} found
+              </Badge>
+              {statusFilter !== "all" && (
+                <Badge 
+                  variant="outline" 
+                  className="text-xs cursor-pointer hover:bg-red-50"
+                  onClick={() => setStatusFilter("all")}
+                >
+                  Status: {statusFilter} <X className="w-3 h-3 ml-1" />
+                </Badge>
+              )}
+              {typeFilter !== "all" && (
+                <Badge 
+                  variant="outline" 
+                  className="text-xs cursor-pointer hover:bg-red-50"
+                  onClick={() => setTypeFilter("all")}
+                >
+                  Type: {typeFilter} <X className="w-3 h-3 ml-1" />
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Enhanced Table */}
+      <div className="relative overflow-hidden rounded-2xl flex-1">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-pink-500/5 blur-2xl -z-10" />
+        <div className="relative bg-white/90 backdrop-blur-xl border-2 border-white shadow-2xl shadow-gray-500/20 overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-gray-200 hover:bg-gradient-to-r">
+                  <TableHead className="w-[40px]">
+                    <Checkbox 
+                      checked={tableRows.length > 0 && selectedList.length === tableRows.length}
+                      onCheckedChange={toggleSelectAll}
+                      className="border-2 border-gray-300 data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-blue-600 data-[state=checked]:to-purple-600"
+                    />
+                  </TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead className="min-w-[250px]">
+                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                      <FileText className="w-4 h-4 text-blue-500" /> Document Name
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[150px]">
+                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                      <FolderTree className="w-4 h-4 text-amber-500" /> Path
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[100px]">
+                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                      <Hash className="w-4 h-4 text-indigo-500" /> Index
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[90px]">
+                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                      <GitBranch className="w-4 h-4 text-purple-500" /> Version
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[120px]">
+                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                      <FileType className="w-4 h-4 text-emerald-500" /> Type
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[120px]">
+                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                      <Building2 className="w-4 h-4 text-red-500" /> Site
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[120px]">
+                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                      <Tag className="w-4 h-4 text-cyan-500" /> Status
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[250px]">
+                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                      <AlignLeft className="w-4 h-4 text-slate-500" /> Description
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[140px]">
+                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                      <User className="w-4 h-4 text-orange-500" /> Owner
+                    </div>
+                  </TableHead>
+                  <TableHead className="min-w-[150px]">
+                    <div className="flex items-center gap-2 font-bold text-gray-700">
+                      <Calendar className="w-4 h-4 text-pink-500" /> Created
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right w-[100px] font-bold text-gray-700">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {tableRows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={13} className="h-80 text-center">
+                      <div className="flex flex-col items-center justify-center gap-6">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-purple-400 rounded-full blur-3xl opacity-20 animate-pulse" />
+                          <FolderOpen className="relative w-24 h-24 text-gray-300" />
+                        </div>
+                        <div>
+                          <p className="text-gray-400 text-xl font-semibold mb-2">
+                            {searchQuery || statusFilter !== "all" || typeFilter !== "all" 
+                              ? "No documents match your filters" 
+                              : "No documents found"}
+                          </p>
+                          {(searchQuery || statusFilter !== "all" || typeFilter !== "all") && (
+                            <div className="flex gap-2 justify-center">
+                              <button
+                                onClick={() => {
+                                  setSearchQuery("");
+                                  setStatusFilter("all");
+                                  setTypeFilter("all");
+                                }}
+                                className="text-sm text-blue-600 hover:text-blue-700 underline"
+                              >
+                                Clear all filters
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  tableRows.map((row, idx) => {
+                    const statusInfo = getStatusInfo(row.status);
+                    const StatusIcon = statusInfo.icon;
+
+                    return (
+                      <TableRow 
+                        key={row.id} 
+                        className={`group transition-all duration-300 hover:bg-gradient-to-r hover:from-blue-50/50 hover:via-white hover:to-purple-50/50 hover:shadow-lg border-b border-gray-100 ${
+                          selectedItems[row.id] ? "bg-gradient-to-r from-blue-100/70 to-purple-100/70 shadow-md" : ""
+                        }`}
+                        onClick={(e) => {
+                          if(e.ctrlKey || e.metaKey) toggleSelectRow(row);
+                        }}
+                        style={{ animationDelay: `${idx * 20}ms` }}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox 
+                            checked={!!selectedItems[row.id]} 
+                            onCheckedChange={() => toggleSelectRow(row)} 
+                            className="border-2 border-gray-300 data-[state=checked]:bg-gradient-to-r data-[state=checked]:from-blue-600 data-[state=checked]:to-purple-600 transition-all duration-300"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 shadow-sm group-hover:shadow-lg group-hover:from-blue-100 group-hover:to-purple-100 transition-all duration-300 group-hover:scale-110">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold">
+                          <div className="flex flex-col">
+                            <span className="text-sm text-gray-900 group-hover:text-blue-700 transition-colors duration-300 font-medium">
+                              {row.name}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <FolderTree className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                            <span className="text-xs text-gray-600 truncate max-w-[130px] group-hover:text-gray-800" title={row.path}>
+                              {row.path || "/"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <Badge variant="outline" className="font-mono text-[10px] bg-indigo-50 border-indigo-200 text-indigo-700 group-hover:bg-indigo-100 group-hover:shadow-sm transition-all duration-300">
+                            {row.index}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <Badge 
+                            variant="outline" 
+                            className="font-mono text-[10px] bg-gradient-to-r from-purple-50 to-pink-50 text-purple-700 border-purple-200 shadow-sm group-hover:shadow-md group-hover:scale-105 transition-all duration-300"
+                          >
+                            {row.version}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {row.docTypeName !== "-" ? (
+                            <Badge 
+                              variant="secondary" 
+                              className="font-normal text-[10px] bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border border-emerald-200 shadow-sm group-hover:shadow-md transition-all duration-300"
+                            >
+                              {row.docTypeName}
+                            </Badge>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="flex items-center gap-2">
+                            <Building2 className="w-3.5 h-3.5 text-red-400 flex-shrink-0" />
+                            <span className="text-gray-600 group-hover:text-gray-800 transition-colors truncate max-w-[100px]" title={row.siteName}>
+                              {row.siteName}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant="outline" 
+                            className={`text-[10px] font-medium ${statusInfo.bgColor} ${statusInfo.borderColor} ${statusInfo.color} shadow-sm group-hover:shadow-md transition-all duration-300 flex items-center gap-1.5 w-fit`}
+                          >
+                            <StatusIcon className="w-3 h-3" />
+                            {row.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-600 truncate max-w-[240px] group-hover:text-gray-800" title={row.description}>
+                          {row.description || <span className="text-gray-400 italic">No description</span>}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          <div className="flex items-center gap-2">
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-[11px] font-bold shadow-md group-hover:scale-110 transition-all duration-300 ring-2 ring-white">
+                              {row.owner.charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-gray-700 group-hover:text-gray-900 font-medium">{row.owner}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-gray-500 group-hover:text-gray-700">
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-3.5 h-3.5 text-pink-400" />
+                            {formatDateTime(row.date)}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button 
+                              className="p-2 rounded-lg hover:bg-blue-100 text-gray-500 hover:text-blue-600 transition-all duration-300 hover:scale-110 hover:shadow-md" 
+                              onClick={(e) => { e.stopPropagation(); setHistoryDocId(row.id); setHistoryOpen(true); }} 
+                              title="View History"
+                            >
+                              <History className="w-4 h-4" />
+                            </button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-2 rounded-lg hover:bg-purple-100 text-gray-500 hover:text-purple-600 transition-all duration-300 hover:scale-110 hover:shadow-md">
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-white/95 backdrop-blur-xl border-2 border-gray-200 shadow-2xl w-48">
+                                <DropdownMenuLabel className="text-gray-700 font-bold flex items-center gap-2">
+                                  <Sparkles className="w-3 h-3" /> Actions
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => { if (row.downloadUrl) window.open(row.downloadUrl, "_blank"); }}
+                                  className="hover:bg-blue-50 cursor-pointer transition-colors"
+                                >
+                                  <Eye className="w-3.5 h-3.5 mr-2 text-blue-600" /> Preview
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={(e) => { e.stopPropagation(); handleCopyLink(row); }}
+                                  className="hover:bg-green-50 cursor-pointer transition-colors"
+                                >
+                                  <Copy className="w-3.5 h-3.5 mr-2 text-green-600" /> Copy Link
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  onClick={() => { setEditDocId(row.id); setEditOpen(true); }}
+                                  className="hover:bg-purple-50 cursor-pointer transition-colors"
+                                >
+                                  <Pencil className="w-3.5 h-3.5 mr-2 text-purple-600" /> Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 cursor-pointer transition-colors" 
+                                  onClick={() => { setArchiveDocId(row.id); setArchiveDocOpen(true); }}
+                                >
+                                  <Archive className="w-3.5 h-3.5 mr-2" /> Archive
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </div>
+
+      {/* Bulk Dialogs */}
       <BulkMoveDialog 
         open={bulkMoveOpen} 
         onOpenChange={setBulkMoveOpen} 
@@ -780,27 +1228,87 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
         onArchiveSuccess={() => { setSelectedItems({}); refetchFolders(); refetchDocuments(); }} 
       />
 
-      {/* --- Standard Dialogs --- */}
+      {/* Standard Dialogs */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent><DialogHeader><DialogTitle>Create Folder</DialogTitle></DialogHeader><CreateFolder prefix={currentPath ? `${currentPath}/` : "/"} onCreate={handleCreateFolderAction} onCancel={() => setCreateOpen(false)} /></DialogContent>
+        <DialogContent className="shadow-2xl border-0 bg-white/95 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              Create New Folder
+            </DialogTitle>
+          </DialogHeader>
+          <CreateFolder prefix={currentPath ? `${currentPath}/` : "/"} onCreate={handleCreateFolderAction} onCancel={() => setCreateOpen(false)} />
+        </DialogContent>
       </Dialog>
 
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
-        <DialogContent><DialogHeader><DialogTitle>Upload New File</DialogTitle></DialogHeader>
-          <form onSubmit={handleSubmitNewFile}>
-            <FieldGroup><FieldLabel>Title</FieldLabel><Input value={newFileName} onChange={e=>setNewFileName(e.target.value)} placeholder="File title" /><FieldLabel>File</FieldLabel><input type="file" onChange={e=>setNewFileObj(e.target.files?.[0])} className="text-sm" /></FieldGroup>
-            <DialogFooter><Button variant="ghost" onClick={()=>setShowNewDialog(false)}>Cancel</Button><Button type="submit">Upload</Button></DialogFooter>
+        <DialogContent className="shadow-2xl border-0 bg-white/95 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Upload New File
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmitNewFile} className="space-y-4">
+            <FieldGroup>
+              <FieldLabel className="font-semibold text-gray-700">Title</FieldLabel>
+              <Input 
+                value={newFileName} 
+                onChange={e=>setNewFileName(e.target.value)} 
+                placeholder="File title" 
+                className="border-2 border-gray-200 focus:border-blue-400 shadow-sm"
+              />
+              <FieldLabel className="font-semibold text-gray-700 mt-4">File</FieldLabel>
+              <input 
+                type="file" 
+                onChange={e=>setNewFileObj(e.target.files?.[0])} 
+                className="text-sm border-2 border-dashed border-gray-300 rounded-lg p-3 w-full hover:border-blue-400 transition-colors" 
+              />
+            </FieldGroup>
+            <DialogFooter>
+              <Button variant="outline" onClick={()=>setShowNewDialog(false)} className="border-2 hover:bg-gray-50">
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              >
+                Upload
+              </Button>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
       <Dialog open={editOpen} onOpenChange={(v) => { setEditOpen(v); if(!v) setEditDocId(null); }}>
-        <DialogContent className="max-w-3xl"><DialogHeader><DialogTitle>Edit Document</DialogTitle></DialogHeader>{editDocId && <EditDocumentForm documentId={editDocId} onClose={() => { setEditOpen(false); setEditDocId(null); refetchDocuments(); }} />}</DialogContent>
+        <DialogContent className="max-w-3xl shadow-2xl border-0 bg-white/95 backdrop-blur-xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              Edit Document
+            </DialogTitle>
+          </DialogHeader>
+          {editDocId && (
+            <EditDocumentForm 
+              documentId={editDocId} 
+              onClose={() => { setEditOpen(false); setEditDocId(null); refetchDocuments(); }} 
+            />
+          )}
+        </DialogContent>
       </Dialog>
 
-      <DocumentHistoryDialog open={historyOpen} documentId={historyDocId} onOpenChange={(v) => { setHistoryOpen(v); if(!v) setHistoryDocId(null); }} />
-      <ArchiveDocumentDialog open={archiveDocOpen} documentId={archiveDocId} onOpenChange={(v) => { setArchiveDocOpen(v); if(!v) { setArchiveDocId(null); refetchDocuments(); } }} />
-      <ArchiveFolderDialog open={archiveFolderOpen} folder={archiveFolderObj} onOpenChange={(v) => { setArchiveFolderOpen(v); if(!v) { setArchiveFolderObj(null); refetchFolders(); refetchDocuments(); } }} />
+      <DocumentHistoryDialog 
+        open={historyOpen} 
+        documentId={historyDocId} 
+        onOpenChange={(v) => { setHistoryOpen(v); if(!v) setHistoryDocId(null); }} 
+      />
+      <ArchiveDocumentDialog 
+        open={archiveDocOpen} 
+        documentId={archiveDocId} 
+        onOpenChange={(v) => { setArchiveDocOpen(v); if(!v) { setArchiveDocId(null); refetchDocuments(); } }} 
+      />
+      <ArchiveFolderDialog 
+        open={archiveFolderOpen} 
+        folder={archiveFolderObj} 
+        onOpenChange={(v) => { setArchiveFolderOpen(v); if(!v) { setArchiveFolderObj(null); refetchFolders(); refetchDocuments(); } }} 
+      />
     </div>
   );
 }

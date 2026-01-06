@@ -19,6 +19,8 @@ import {
   useGetDocumentNatureQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
+  useGetSitesQuery,        // ✅ NEW
+  useGetDocumentTypesQuery // ✅ NEW
 } from "@/slices/documentSlice";
 import { Trash2, ChevronDown, ChevronUp, FileUp } from "lucide-react";
 import mlean from "@/lib/mlean";
@@ -33,6 +35,8 @@ export default function BatchCreateDocumentsForm({
   const { data: departements } = useGetDepartementsQuery();
   const { data: folders } = useGetFoldersQuery();
   const { data: natures } = useGetDocumentNatureQuery();
+  const { data: sites } = useGetSitesQuery();          // ✅ NEW
+  const { data: docTypes } = useGetDocumentTypesQuery(); // ✅ NEW
 
   const [items, setItems] = useState([]);
   const [error, setError] = useState(null);
@@ -69,6 +73,11 @@ export default function BatchCreateDocumentsForm({
       doc_status: "pending",
       doc_departement: departements?.[0]?.id ? String(departements[0].id) : "",
       doc_nature: natures?.[0]?.id ? String(natures[0].id) : "",
+      
+      // ✅ NEW FIELDS
+      site: "",
+      document_type: "",
+
       doc_perimeters: "", // REQUIRED for mLean
       doc_description: "",
 
@@ -136,6 +145,10 @@ export default function BatchCreateDocumentsForm({
         if (it.doc_title) fd.append("doc_title", String(it.doc_title));
         if (it.doc_status) fd.append("doc_status", String(it.doc_status));
         if (it.doc_description) fd.append("doc_description", String(it.doc_description));
+        
+        // ✅ NEW: Append Site and Type
+        if (it.site) fd.append("site", String(it.site));
+        if (it.document_type) fd.append("document_type", String(it.document_type));
 
         const resp = await createDocument(fd).unwrap();
         localDocId = extractLocalDocumentId(resp);
@@ -295,6 +308,8 @@ export default function BatchCreateDocumentsForm({
 
                     {it.expanded && (
                       <div className="grid grid-cols-1 gap-3 md:grid-cols-4 p-5 bg-muted/25">
+                        
+                        {/* Title */}
                         <div className="col-span-1 md:col-span-1">
                           <label className="block text-sm mb-1">Title</label>
                           <Input
@@ -303,6 +318,74 @@ export default function BatchCreateDocumentsForm({
                           />
                         </div>
 
+                        {/* ✅ NEW: Site */}
+                        <div className="col-span-1 md:col-span-1">
+                          <label className="block text-sm mb-1">Site</label>
+                          <Select
+                            value={String(it.site || "")}
+                            onValueChange={(v) => updateItem(it.id, { site: v })}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select Site" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                <SelectLabel>Sites</SelectLabel>
+                                {sites?.map((s) => (
+                                  <SelectItem key={s.id} value={String(s.id)}>
+                                    {s.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                         {/* ✅ NEW: Document Type */}
+                         <div className="col-span-1 md:col-span-1">
+                          <label className="block text-sm mb-1">Type</label>
+                          <Select
+                            value={String(it.document_type || "")}
+                            onValueChange={(v) => updateItem(it.id, { document_type: v })}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select Type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                <SelectLabel>Types</SelectLabel>
+                                {docTypes?.map((t) => (
+                                  <SelectItem key={t.id} value={String(t.id)}>
+                                    {t.name} ({t.code})
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Status */}
+                        <div className="col-span-1 md:col-span-1">
+                          <label className="block text-sm mb-1">Status</label>
+                          <Select
+                            value={it.doc_status}
+                            onValueChange={(v) => updateItem(it.id, { doc_status: v })}
+                          >
+                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                <SelectLabel>Statuts</SelectLabel>
+                                <SelectItem value="draft">Draft</SelectItem>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="approved">Approved</SelectItem>
+                                <SelectItem value="rejected">Rejected</SelectItem>
+                                <SelectItem value="archived">Archived</SelectItem>
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Department */}
                         <div className="md:col-span-1">
                           <label className="block text-sm mb-1">Departement</label>
                           <Select
@@ -323,6 +406,7 @@ export default function BatchCreateDocumentsForm({
                           </Select>
                         </div>
 
+                        {/* Perimeters */}
                         <div className="md:col-span-1">
                           <label className="block text-sm mb-1">Perimeters (required)</label>
                           <Select
@@ -343,6 +427,7 @@ export default function BatchCreateDocumentsForm({
                           </Select>
                         </div>
 
+                        {/* Nature */}
                         <div className="md:col-span-1">
                           <label className="block text-sm mb-1">Nature</label>
                           <Select
@@ -363,7 +448,8 @@ export default function BatchCreateDocumentsForm({
                           </Select>
                         </div>
 
-                        <div>
+                        {/* Folder */}
+                        <div className="md:col-span-1">
                           <label className="block text-sm mb-1">Folder</label>
                           <Select
                             value={String(it.parent_folder || it.doc_path || "")}
@@ -404,26 +490,7 @@ export default function BatchCreateDocumentsForm({
                           </Select>
                         </div>
 
-                        <div>
-                          <label className="block text-sm mb-1">Status</label>
-                          <Select
-                            value={it.doc_status}
-                            onValueChange={(v) => updateItem(it.id, { doc_status: v })}
-                          >
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectLabel>Statuts</SelectLabel>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="approved">Approved</SelectItem>
-                                <SelectItem value="rejected">Rejected</SelectItem>
-                                <SelectItem value="archived">Archived</SelectItem>
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
+                        {/* Description */}
                         <div className="md:col-span-4">
                           <label className="block text-sm mb-1">Description</label>
                           <Textarea

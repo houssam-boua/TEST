@@ -42,7 +42,6 @@ export const documentSlice = apiSlice.injectEndpoints({
       invalidatesTags: [{ type: "Document", id: "LIST" }],
     }),
 
-    // ✅ FIX: Use PATCH for partial updates (Move, Rename)
     updateDocument: builder.mutation({
       query: ({ id, data }) => ({
         url: `/api/documents/${id}/`,
@@ -159,7 +158,6 @@ export const documentSlice = apiSlice.injectEndpoints({
       ],
     }),
 
-    // ✅ FIX: Use PATCH for partial updates (Move, Rename)
     updateFolder: builder.mutation({
       query: ({ id, data }) => ({
         url: `/api/folders/${id}/`,
@@ -187,7 +185,6 @@ export const documentSlice = apiSlice.injectEndpoints({
       ],
     }),
 
-    // ✅ NEW: Sync Folders with S3
     syncFolders: builder.mutation({
       query: () => ({
         url: "/api/folders/sync/",
@@ -224,6 +221,8 @@ export const documentSlice = apiSlice.injectEndpoints({
     }),
 
     // -------------------- Dictionaries --------------------
+    
+    // Legacy Dictionaries
     getDocumentNature: builder.query({
       query: () => ({
         url: "/api/document-natures/",
@@ -239,18 +238,88 @@ export const documentSlice = apiSlice.injectEndpoints({
       }),
       providesTags: [{ type: "DocumentCategory", id: "LIST" }],
     }),
+
+    // ✅ NEW: SITES (CRUD)
+    getSites: builder.query({
+      query: () => ({ url: "/api/sites/", method: "GET" }),
+      providesTags: (result) =>
+        result
+          ? [
+              { type: "Site", id: "LIST" },
+              ...(Array.isArray(result) ? result.map(({ id }) => ({ type: "Site", id })) : []),
+            ]
+          : [{ type: "Site", id: "LIST" }],
+    }),
+
+    createSite: builder.mutation({
+      query: (body) => ({ url: "/api/sites/", method: "POST", body }),
+      invalidatesTags: [{ type: "Site", id: "LIST" }],
+    }),
+
+    updateSite: builder.mutation({
+      query: ({ id, ...patch }) => ({
+        url: `/api/sites/${id}/`,
+        method: "PATCH",
+        body: patch,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "Site", id },
+        { type: "Site", id: "LIST" },
+      ],
+    }),
+
+    deleteSite: builder.mutation({
+      query: (id) => ({ url: `/api/sites/${id}/`, method: "DELETE" }),
+      invalidatesTags: [{ type: "Site", id: "LIST" }],
+    }),
+
+    // ✅ NEW: DOCUMENT TYPES (CRUD)
+    getDocumentTypes: builder.query({
+      query: () => ({ url: "/api/document-types/", method: "GET" }),
+      providesTags: (result) =>
+        result
+          ? [
+              { type: "DocumentType", id: "LIST" },
+              ...(Array.isArray(result) ? result.map(({ id }) => ({ type: "DocumentType", id })) : []),
+            ]
+          : [{ type: "DocumentType", id: "LIST" }],
+    }),
+
+    createDocumentType: builder.mutation({
+      query: (body) => ({ url: "/api/document-types/", method: "POST", body }),
+      invalidatesTags: [{ type: "DocumentType", id: "LIST" }],
+    }),
+
+    updateDocumentType: builder.mutation({
+      query: ({ id, ...patch }) => ({
+        url: `/api/document-types/${id}/`,
+        method: "PATCH",
+        body: patch,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "DocumentType", id },
+        { type: "DocumentType", id: "LIST" },
+      ],
+    }),
+
+    deleteDocumentType: builder.mutation({
+      query: (id) => ({ url: `/api/document-types/${id}/`, method: "DELETE" }),
+      invalidatesTags: [{ type: "DocumentType", id: "LIST" }],
+    }),
   }),
 
   overrideExisting: false,
 });
 
 export const {
+  // Documents
   useGetDocumentsQuery,
   useGetDocumentByIdQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
   useDeleteDocumentMutation,
 
+  // Archives
   useGetArchivedDocumentsQuery,
   useGetArchiveNavigationQuery,
   useArchiveDocumentMutation,
@@ -258,14 +327,27 @@ export const {
   useArchiveFolderMutation,
   useRestoreFolderMutation,
 
+  // Folders
   useCreateFolderMutation,
   useUpdateFolderMutation,
   useDeleteFolderMutation,
-  useSyncFoldersMutation, // ✅ Export Sync Hook
+  useSyncFoldersMutation,
   useGetFolderContentQuery,
   useGetFoldersQuery,
   useGetFoldersTreeQuery,
 
+  // Old Dictionaries
   useGetDocumentNatureQuery,
   useGetDocumentCategoriesQuery,
+
+  // ✅ New Dictionaries Hooks
+  useGetSitesQuery,
+  useCreateSiteMutation,
+  useUpdateSiteMutation,
+  useDeleteSiteMutation,
+
+  useGetDocumentTypesQuery,
+  useCreateDocumentTypeMutation,
+  useUpdateDocumentTypeMutation,
+  useDeleteDocumentTypeMutation,
 } = documentSlice;

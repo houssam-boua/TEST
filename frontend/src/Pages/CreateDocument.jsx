@@ -14,6 +14,7 @@ const CreateDocument = () => {
     const formData = new FormData();
     for (const [key, value] of Object.entries(values || {})) {
       if (value === null || value === undefined) continue;
+      
       if (value instanceof File) {
         formData.append("file", value, value.name);
       } else {
@@ -55,7 +56,7 @@ const CreateDocument = () => {
       toast.success("Document créé");
     } catch (err) {
       console.error("createDocument error:", err);
-      const msg = parseApiError(err) || "Erreur lors de la Creating";
+      const msg = parseApiError(err) || "Erreur lors de la création";
       toast.error(msg);
       throw err;
     }
@@ -63,7 +64,7 @@ const CreateDocument = () => {
 
   return (
     <div className="flex min-h-svh w-full items-start justify-center p-6 md:p-10 bg-muted/5">
-      <div className="w-full  space-y-4">
+      <div className="w-full space-y-4">
         <CreateDocumentForm onSubmit={handleSubmit} loading={isLoading} />
       </div>
     </div>

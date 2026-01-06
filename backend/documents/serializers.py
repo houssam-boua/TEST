@@ -2,7 +2,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from users.models import User
+from users.models import User, Departement  # ✅ Updated import to include Departement
 from .models import (
     Document,
     DocumentCategory,
@@ -10,6 +10,8 @@ from .models import (
     DocumentVersion,
     DocumentArchive,
     Folder,
+    Site,
+    DocumentType,
 )
 
 
@@ -17,6 +19,27 @@ class UserMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "username", "first_name", "last_name"]
+
+
+# ✅ NEW: Department Mini Serializer for display purposes
+class DepartementMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Departement
+        fields = ["id", "dep_name", "dep_color"]
+
+
+# ✅ NEW: Site Serializer
+class SiteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Site
+        fields = "__all__"
+
+
+# ✅ NEW: DocumentType Serializer
+class DocumentTypeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentType
+        fields = "__all__"
 
 
 class DocumentCategorySerializer(serializers.ModelSerializer):
@@ -66,14 +89,24 @@ class DocumentSerializer(serializers.ModelSerializer):
     # Nested versions (history)
     versions = serializers.SerializerMethodField(read_only=True)
 
+    # ✅ NEW: Latest version number helper
+    latest_version = serializers.SerializerMethodField()
+
     # Path index
     path_index = serializers.SerializerMethodField(read_only=True)
 
-    # ✅ FIX: Explicitly nest the owner details so frontend gets { username: "..." } instead of just ID
+    # Explicitly nest the owner details so frontend gets { username: "..." }
     doc_owner = UserMiniSerializer(read_only=True)
     
     # Optional: show who archived it
     archived_by = UserMiniSerializer(read_only=True)
+
+    # ✅ NEW: Nested details for Site and Type (Read-Only)
+    site_details = SiteSerializer(source='site', read_only=True)
+    document_type_details = DocumentTypeSerializer(source='document_type', read_only=True)
+
+    # ✅ NEW: Explicitly nest department details so frontend can display name
+    doc_departement_details = DepartementMiniSerializer(source='doc_departement', read_only=True)
 
     def validate_doc_code(self, value):
         # Only validate if doc_code provided (PUT/PATCH may omit it)
@@ -105,10 +138,16 @@ class DocumentSerializer(serializers.ModelSerializer):
         qs = obj.versions.order_by("-version_number", "-version_date")
         return DocumentVersionSerializer(qs, many=True).data
 
+    def get_latest_version(self, obj):
+        # Efficiently get the highest version number
+        last_v = obj.versions.order_by("-version_number").first()
+        return last_v.version_number if last_v else 1
+
     class Meta:
         model = Document
         fields = "__all__"
-        read_only_fields = ("doc_path", "doc_owner")  # Owner is set in view, read-only here
+        # Ensure new system fields are read-only
+        read_only_fields = ("doc_path", "doc_owner", "doc_code", "document_type_order")
 
 
 class DocumentMiniSerializer(serializers.ModelSerializer):

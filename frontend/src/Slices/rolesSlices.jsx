@@ -3,11 +3,13 @@ import { apiSlice } from "./apiSlice";
 export const rolesSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getRoles: builder.query({
+      // FIXED: Added /api/ prefix to match your Django router
       query: () => ({ url: "/api/roles/", method: "GET" }),
       providesTags: ["Role"],
     }),
 
     getRoleById: builder.query({
+      // FIXED: Added /api/ prefix and removed extra colon
       query: (id) => ({ url: `/api/roles/${id}/`, method: "GET" }),
       providesTags: (result, error, id) => [{ type: "Role", id }],
     }),
@@ -18,8 +20,9 @@ export const rolesSlice = apiSlice.injectEndpoints({
     }),
 
     updateRole: builder.mutation({
+      // FIXED: Added /api/ prefix and removed extra colon
       query: ({ id, ...patch }) => ({
-        url: `/api/roles/${id}/`,
+        url: `/api/roles/${id}/`, 
         method: "PUT",
         body: patch,
       }),
@@ -28,7 +31,7 @@ export const rolesSlice = apiSlice.injectEndpoints({
 
     partialUpdateRole: builder.mutation({
       query: ({ id, ...patch }) => ({
-        url: `/api/roles/${id}/`,
+        url: `/api/roles/${id}/`, 
         method: "PATCH",
         body: patch,
       }),

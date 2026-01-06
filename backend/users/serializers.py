@@ -1,159 +1,29 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from .models import User, UserActionLog, Role, Departement
-
-# for permission handling
+from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import Group, Permission
+
 
 User = get_user_model()
 
-class UserSerializer(serializers.ModelSerializer):
-    # keep accepting IDs on write, but return nested objects on read
-    role = serializers.PrimaryKeyRelatedField(queryset=Role.objects.all())
-    departement = serializers.PrimaryKeyRelatedField(queryset=Departement.objects.all())
-    # allow assigning groups via API (list of group PKs)
-    groups = serializers.PrimaryKeyRelatedField(queryset=Group.objects.all(), many=True, required=False)
-    
-    class Meta:
-        model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password', 'role', 'departement', 'groups']
-        extra_kwargs = {'password': {'write_only': True, "required": False}}
- 
-    def validate(self, data):
-        if not data.get("role"):
-            raise serializers.ValidationError({"role": "This field is required."})
-        if not data.get("departement"):
-            raise serializers.ValidationError({"departement": "This field is required."})
-        return data
- 
-    def create(self, validated_data):
-        # Extract password and required foreign keys explicitly to ensure DB NOT NULL constraints are satisfied
-        password = validated_data.pop("password", None)
-        role = validated_data.pop("role")
-        departement = validated_data.pop("departement")
-        # pop groups if present (PrimaryKeyRelatedField returns Group instances)
-        groups = validated_data.pop("groups", [])
-        # Remove username/email from validated_data to avoid passing them twice
-        username = validated_data.pop("username", None)
-        email = validated_data.pop("email", None)
-    
-        user = User.objects.create_user(
-            username=username,
-            email=email,
-            password=password,
-            role=role,
-            departement=departement,
-            **validated_data
-        )
-        # assign any provided groups after user creation
-        user.groups.set(groups)
-        return user
 
-    def to_representation(self, instance):
-        """
-        Return nested representations for role, departement, groups and effective permissions
-        while keeping write interface as IDs (clients still POST/PUT with role/departement/group IDs).
-        """
-        data = super().to_representation(instance)
-        try:
-            data["role"] = RoleSerializer(instance.role).data if getattr(instance, "role", None) else None
-        except Exception:
-            data["role"] = None
-        try:
-            data["departement"] = (
-                DepartementSerializer(instance.departement).data if getattr(instance, "departement", None) else None
-            )
-        except Exception:
-            data["departement"] = None
+# --- 1. PRE-DEFINED SERIALIZERS (Must be above UserSerializer) ---
 
-        # Provide a read-only nested groups representation for convenience
-        try:
-            data["groups"] = GroupSerializer(instance.groups.all(), many=True).data
-        except Exception:
-            data["groups"] = []
-
-        # Effective permissions (read-only): prefer model helper, fall back to utils
-        try:
-            if hasattr(instance, "get_effective_permissions"):
-                perms = instance.get_effective_permissions()
-            else:
-                from .utils import get_effective_permissions
-                perms = get_effective_permissions(instance)
-            data["permissions"] = sorted(list(perms)) if perms is not None else []
-        except Exception:
-            data["permissions"] = []
-
-        return data
-
-class UserMiniSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ['username', 'email', 'first_name', 'last_name']
-
-class UserActionLogSerializer(serializers.ModelSerializer):
-    user_info = serializers.SerializerMethodField(read_only=True)
-    target = serializers.SerializerMethodField(read_only=True)
-
-    class Meta:
-        model = UserActionLog
-        # include all model fields plus computed 'user_info' and 'target'
-        fields = [
-            'id', 'user', 'user_info', 'action', 'content_type', 'object_id',
-            'target', 'timestamp', 'extra_info'
-        ]
-
-    def get_user_info(self, obj):
-        """Return a minimal user summary for the actor (id, username, names, role)."""
-        user = getattr(obj, 'user', None)
-        if not user:
-            return None
-        return {
-            'id': user.id,
-            'username': getattr(user, 'username', None),
-            'first_name': getattr(user, 'first_name', None),
-            'last_name': getattr(user, 'last_name', None),
-            'role': getattr(getattr(user, 'role', None), 'role_name', None),
-        }
-
-    def get_target(self, obj):
-        """Return a small representation of the target object (id, model, repr and common attrs).
-
-        This uses the GenericForeignKey (target_object) if available and will try to
-        surface handy attributes such as title/name/doc_title/filename when present.
-        """
-        target = getattr(obj, 'target_object', None)
-        if target is None:
-            # If GenericForeignKey didn't resolve, at least return type/id
-            return {
-                'id': obj.object_id,
-                'model': getattr(obj.content_type, 'model', None),
-                'repr': None,
-            }
-        data = {
-            'id': getattr(target, 'id', obj.object_id),
-            'model': getattr(obj.content_type, 'model', None),
-            'repr': str(target),
-        }
-
-        # try to include some common descriptive fields if present
-        for attr in ('title', 'name', 'doc_title', 'filename', 'file_name', 'document_title'):
-            if hasattr(target, attr):
-                try:
-                    data[attr] = getattr(target, attr)
-                except Exception:
-                    data[attr] = None
-
-        return data
 
 class RoleSerializer(serializers.ModelSerializer):
+    """Serializer for the custom Role model."""
     class Meta:
         model = Role
         fields = "__all__"
 
+
 class DepartementSerializer(serializers.ModelSerializer):
+    """Serializer for the custom Departement model."""
     class Meta:
         model = Departement
         fields = "__all__"
+
 
 class PermissionSerializer(serializers.ModelSerializer):
     """
@@ -217,6 +87,7 @@ class PermissionSerializer(serializers.ModelSerializer):
 
 
 class GroupSerializer(serializers.ModelSerializer):
+    """Serializer for Django Auth Groups with permission codename support."""
     permissions = serializers.ListField(
         child=serializers.CharField(),
         write_only=True,
@@ -229,18 +100,15 @@ class GroupSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "permissions"]
 
     def validate_permissions(self, value):
-        unkown = []
+        unknown = []
         perms = []
-
         for codename in value:
             try:
                 perms.append(Permission.objects.get(codename=codename))
             except Permission.DoesNotExist:
-                unkown.append(codename)
-
-        if unkown:
-            raise serializers.ValidationError({"permissions": f"Unkown codenames: {unkown}"})
-
+                unknown.append(codename)
+        if unknown:
+            raise serializers.ValidationError({"permissions": f"Unknown codenames: {unknown}"})
         return perms
 
     def create(self, validated_data):
@@ -254,17 +122,239 @@ class GroupSerializer(serializers.ModelSerializer):
         permissions = validated_data.pop("permissions", None)
         instance.name = validated_data.get("name", instance.name)
         instance.save()
-
         if permissions is not None:
             instance.permissions.set(permissions)
         return instance
 
 
+# --- 2. MAIN USER SERIALIZER ---
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """
+    Main User serializer with support for both CREATE and UPDATE operations.
+    - Accepts IDs for role/departement/groups from frontend
+    - Returns full nested objects in responses
+    - Handles password updates securely
+    """
+    # WRITE interface: Accepts IDs from the frontend
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(),
+        required=False  # ✅ Not required for PATCH updates
+    )
+    departement = serializers.PrimaryKeyRelatedField(
+        queryset=Departement.objects.all(),
+        required=False  # ✅ Not required for PATCH updates
+    )
+    groups = serializers.PrimaryKeyRelatedField(
+        queryset=Group.objects.all(),
+        many=True,
+        required=False
+    )
+    
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 
+            'password', 'role', 'departement', 'groups', 'date_joined'
+        ]
+        extra_kwargs = {
+            'password': {'write_only': True, 'required': False},
+            'role': {'required': False},
+            'departement': {'required': False},
+        }
+ 
+    def validate(self, data):
+        """
+        Validation that differentiates between CREATE and UPDATE operations.
+        - CREATE: role and departement are required
+        - UPDATE: role and departement are optional
+        """
+        # Check if this is a create operation (no instance exists yet)
+        is_create = self.instance is None
+        
+        if is_create:
+            # For CREATE: role and departement are mandatory
+            if not data.get("role"):
+                raise serializers.ValidationError({"role": "This field is required for new users."})
+            if not data.get("departement"):
+                raise serializers.ValidationError({"departement": "This field is required for new users."})
+        else:
+            # For UPDATE: validation is optional
+            # If role/departement are provided, they'll be validated by PrimaryKeyRelatedField
+            pass
+        
+        return data
+ 
+    def create(self, validated_data):
+        """
+        Create a new user with proper password hashing.
+        """
+        password = validated_data.pop("password", None)
+        role = validated_data.pop("role")
+        departement = validated_data.pop("departement")
+        groups = validated_data.pop("groups", [])
+        username = validated_data.pop("username", None)
+        email = validated_data.pop("email", None)
+    
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            role=role,
+            departement=departement,
+            **validated_data
+        )
+        user.groups.set(groups)
+        return user
+
+    def update(self, instance, validated_data):
+        """
+        Update existing user with partial data support (PATCH).
+        - Only updates fields that are provided
+        - Handles password hashing if password is included
+        - Preserves existing role/departement if not provided
+        """
+        password = validated_data.pop('password', None)
+        role = validated_data.pop('role', None)
+        departement = validated_data.pop('departement', None)
+        groups = validated_data.pop('groups', None)
+        
+        # Update basic fields (username, email, first_name, last_name, etc.)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        # Update password only if provided (will be hashed)
+        if password:
+            instance.set_password(password)
+        
+        # Update role if provided
+        if role is not None:
+            instance.role = role
+        
+        # Update departement if provided
+        if departement is not None:
+            instance.departement = departement
+        
+        instance.save()
+        
+        # Update groups if provided
+        if groups is not None:
+            instance.groups.set(groups)
+        
+        return instance
+
+    def to_representation(self, instance):
+        """
+        Custom representation to return full nested objects for Role/Dept to the frontend
+        while maintaining ID-based writes.
+        """
+        response = super().to_representation(instance)
+        
+        # --- ROBUST ROLE MAPPING ---
+        if instance.role_id:
+            try:
+                # Standard relationship access
+                response["role"] = RoleSerializer(instance.role).data
+            except (ObjectDoesNotExist, Exception):
+                # Manual DB fallback for data integrity issues
+                try:
+                    r = Role.objects.get(pk=instance.role_id)
+                    response["role"] = RoleSerializer(r).data
+                except Role.DoesNotExist:
+                    response["role"] = None
+        else:
+            response["role"] = None
+
+        # --- ROBUST DEPARTMENT MAPPING ---
+        if instance.departement_id:
+            try:
+                response["departement"] = DepartementSerializer(instance.departement).data
+            except (ObjectDoesNotExist, Exception):
+                try:
+                    d = Departement.objects.get(pk=instance.departement_id)
+                    response["departement"] = DepartementSerializer(d).data
+                except Departement.DoesNotExist:
+                    response["departement"] = None
+        else:
+            response["departement"] = None
+
+        # NESTED GROUPS (Read Only)
+        try:
+            response["groups"] = GroupSerializer(instance.groups.all(), many=True).data
+        except Exception:
+            response["groups"] = []
+
+        # PERMISSIONS (Read Only)
+        try:
+            if hasattr(instance, "get_effective_permissions"):
+                perms = instance.get_effective_permissions()
+            else:
+                from .utils import get_effective_permissions
+                perms = get_effective_permissions(instance)
+            response["permissions"] = sorted(list(perms)) if perms is not None else []
+        except Exception:
+            response["permissions"] = []
+
+        return response
+
+
+class UserMiniSerializer(serializers.ModelSerializer):
+    """Minimal serializer for quick user identification."""
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name', 'last_name']
+
+
+class UserActionLogSerializer(serializers.ModelSerializer):
+    """Serializer for audit logs of user actions."""
+    user_info = serializers.SerializerMethodField(read_only=True)
+    target = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = UserActionLog
+        fields = [
+            'id', 'user', 'user_info', 'action', 'content_type', 'object_id',
+            'target', 'timestamp', 'extra_info'
+        ]
+
+    def get_user_info(self, obj):
+        user = getattr(obj, 'user', None)
+        if not user:
+            return None
+        return {
+            'id': user.id,
+            'username': getattr(user, 'username', None),
+            'first_name': getattr(user, 'first_name', None),
+            'last_name': getattr(user, 'last_name', None),
+            'role': getattr(getattr(user, 'role', None), 'role_name', None),
+        }
+
+    def get_target(self, obj):
+        target = getattr(obj, 'target_object', None)
+        if target is None:
+            return {
+                'id': obj.object_id,
+                'model': getattr(obj.content_type, 'model', None),
+                'repr': None,
+            }
+        data = {
+            'id': getattr(target, 'id', obj.object_id),
+            'model': getattr(obj.content_type, 'model', None),
+            'repr': str(target),
+        }
+        # Attempt to find a descriptive label
+        for attr in ('title', 'name', 'doc_title', 'filename', 'file_name', 'document_title'):
+            if hasattr(target, attr):
+                try:
+                    data[attr] = getattr(target, attr)
+                except Exception:
+                    data[attr] = None
+        return data
+
+
 class UserGroupAssignSerializer(serializers.Serializer):
-    """
-    Serializer for assigning/removing groups via API.
-    Accepts either group_id or name.
-    """
+    """Simple serializer for adding/removing groups by ID or Name."""
     group_id = serializers.IntegerField(required=False)
     name = serializers.CharField(required=False)
 

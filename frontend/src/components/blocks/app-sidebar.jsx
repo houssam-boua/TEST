@@ -25,12 +25,12 @@ import {
   SquareTerminal,
   UserRoundCog,
   Workflow,
+  ListTodo, // ✅ Icon for My Tasks
 } from "lucide-react";
 
 import { NavMain } from "@/components/blocks/nav-main";
 import { NavProjects } from "@/components/blocks/nav-projects";
 import { NavUser } from "@/components/blocks/nav-user";
-// logo/header will use Avatarr component instead of the TeamSwitcher
 import {
   Sidebar,
   SidebarContent,
@@ -90,6 +90,11 @@ const data = {
           title: "Consulter",
           url: "/consulter",
         },
+        {
+          title: "Metadata",
+          url: "/metadata",
+          requiredRoles: ["admin"],
+        },
       ],
     },
     {
@@ -102,62 +107,30 @@ const data = {
           url: "/creer-workflow",
         },
         {
-          title: "Consulter",
+          title: "All Workflows",
           url: "/consulter-workflow",
+        },
+        {
+          title: "My Tasks", // ✅ Personal task view
+          url: "/my-tasks",
         },
       ],
     },
-    // {
-    //   title: "OCR",
-    //   url: "#",
-    //   icon: ScanEye,
-    //   items: [
-    //     {
-    //       title: "Introduction",
-    //       url: "#",
-    //     },
-    //     {
-    //       title: "Get Started",
-    //       url: "#",
-    //     },
-    //     {
-    //       title: "Tutorials",
-    //       url: "#",
-    //     },
-    //     {
-    //       title: "Changelog",
-    //       url: "#",
-    //     },
-    //   ],
-    // },
     {
       title: "History",
       url: "#",
       icon: History,
       items: [
         {
-          title: "Acitivity Log",
+          title: "Activity Log",
           url: "/activity-history",
         },
-        // {
-        //   title: "Team",
-        //   url: "#",
-        // },
-        // {
-        //   title: "Billing",
-        //   url: "#",
-        // },
-        // {
-        //   title: "Limits",
-        //   url: "#",
-        // },
       ],
     },
     {
       title: "Settings",
       url: "#",
       icon: Cog,
-      // show settings only to admins by default
       requiredRoles: ["admin"],
       items: [
         {
@@ -165,7 +138,6 @@ const data = {
           url: "/users",
           requiredRoles: ["admin"],
         },
-
         {
           title: "Departments",
           url: "/departments",
@@ -176,66 +148,16 @@ const data = {
           url: "/roles",
           requiredRoles: ["admin"],
         },
-        {
-          title: "Permissions",
-          url: "/permissions",
-          requiredRoles: ["admin"],
-        },
-        {
-          title: "Permission Groups",
-          url: "/permission-groups",
-          requiredRoles: ["admin"],
-        },
+        // ❌ REMOVED: Permissions
+        // ❌ REMOVED: Permission Groups
       ],
     },
     {
       title: "Visual Standard",
-      url: 'https://mps-partners.mlean.com/visual-standards/overview',
+      url: "https://mps-partners.mlean.com/visual-standards/overview",
       icon: CircleDotDashed,
-      
-      // show admin only to admins by default
     },
-    // {
-    //   title: "Permissions",
-    //   url: "#",
-    //   icon: Lock,
-    //   items: [
-    //     {
-    //       title: "General",
-    //       url: "#",
-    //     },
-    //     {
-    //       title: "Team",
-    //       url: "#",
-    //     },
-    //     {
-    //       title: "Billing",
-    //       url: "#",
-    //     },
-    //     {
-    //       title: "Limits",
-    //       url: "#",
-    //     },
-    //   ],
-    // },
   ],
-  // projects: [
-  //   {
-  //     name: "Design Engineering",
-  //     url: "#",
-  //     icon: Frame,
-  //   },
-  //   {
-  //     name: "Sales & Marketing",
-  //     url: "#",
-  //     icon: PieChart,
-  //   },
-  //   {
-  //     name: "Travel",
-  //     url: "#",
-  //     icon: Map,
-  //   },
-  // ],
 };
 
 const AppSidebar = ({ ...props }) => {
@@ -286,7 +208,7 @@ const AppSidebar = ({ ...props }) => {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={filteredNav} />
-        {/* <NavProjects projects={data.projects} /> */}
+        {/* <NavProjects projects={data.teams} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser />

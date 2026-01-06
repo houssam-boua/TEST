@@ -17,8 +17,10 @@ import {
   FileCheck,
   FileSignature,
   Send,
-  ChevronRight,
-  Workflow as WorkflowIcon
+  Workflow as WorkflowIcon,
+  CheckSquare, // Added for Tasks
+  AlertCircle, // Added for Overdue
+  Clock4       // Added for Pending
 } from "lucide-react";
 import { 
   BarChart, 
@@ -40,8 +42,11 @@ import {
   useGetDashboardDocumentsByDepartementQuery,
   useGetDashboardDocumentsRecentQuery,
   useGetWorkflowsByStateQuery,
+  useGetDashboardStatsQuery // Make sure this query exists in your slices
 } from "../../slices/dashboardslices";
 import { useGetLogsQuery } from "../../slices/logsSlice";
+
+// ... [Existing StatusIcon, RelativeTimeDisplay, ActivityItem components remain exactly the same] ...
 
 const StatusIcon = React.memo(function StatusIcon({ status, className, IconComponent }) {
   const normalized = String(status || "").toLowerCase();
@@ -90,7 +95,8 @@ function ActivityItem({ log, index }) {
   );
 }
 
-// Workflow State Configuration
+// ... [Existing WORKFLOW_STATES and WorkflowItem components remain exactly the same] ...
+
 const WORKFLOW_STATES = {
   "Élaboration": { 
     icon: FileEdit, 
@@ -118,7 +124,6 @@ const WORKFLOW_STATES = {
   },
 };
 
-// Workflow Item Component - Consistent with Activity/Document items
 function WorkflowItem({ workflow, index }) {
   const state = workflow.etat || "Unknown";
   const config = WORKFLOW_STATES[state] || {
@@ -179,7 +184,8 @@ function WorkflowItem({ workflow, index }) {
   );
 }
 
-// Enhanced Custom Tooltip
+// ... [Existing CustomTooltip, CHART_COLORS, Card3D, SectionHeader components remain exactly the same] ...
+
 const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -206,14 +212,13 @@ const CustomTooltip = ({ active, payload }) => {
 };
 
 const CHART_COLORS = [
-  "hsl(217, 91%, 60%)",  // Blue
-  "hsl(262, 83%, 58%)",  // Purple
-  "hsl(340, 82%, 52%)",  // Pink
-  "hsl(142, 71%, 45%)",  // Green
-  "hsl(48, 96%, 53%)",   // Yellow
+  "hsl(217, 91%, 60%)",
+  "hsl(262, 83%, 58%)",
+  "hsl(340, 82%, 52%)",
+  "hsl(142, 71%, 45%)",
+  "hsl(48, 96%, 53%)",
 ];
 
-// Cleaner 3D Card Component
 const Card3D = ({ children, delay = 0, className = "" }) => {
   return (
     <motion.div
@@ -250,7 +255,6 @@ const Card3D = ({ children, delay = 0, className = "" }) => {
   );
 };
 
-// Section Header Component
 const SectionHeader = ({ icon: Icon, title, subtitle, delay = 0 }) => {
   return (
     <motion.div
@@ -269,6 +273,10 @@ const SectionHeader = ({ icon: Icon, title, subtitle, delay = 0 }) => {
     </motion.div>
   );
 };
+
+// ----------------------------------------------------------------------------------
+// Main Component
+// ----------------------------------------------------------------------------------
 
 const DashboardSectionCards = ({ departmentCounts, onOpenFolder }) => {
   const {
@@ -289,7 +297,27 @@ const DashboardSectionCards = ({ departmentCounts, onOpenFolder }) => {
     isError: workflowsError 
   } = useGetWorkflowsByStateQuery();
 
+  const { 
+    data: statsResponse, 
+    isLoading: statsLoading 
+  } = useGetDashboardStatsQuery();
+
   const { data: logsResponse, isLoading: logsLoading, isError: logsError } = useGetLogsQuery();
+
+  const taskStats = React.useMemo(() => {
+    console.log("Stats Response RAW:", statsResponse); // Check your browser console!
+    
+    if (!statsResponse) return { pending: 0, overdue: 0 };
+    
+    // Handle the nesting safely
+    const data = statsResponse.data || statsResponse || {};
+    
+    return {
+      pending: data.pending_tasks ?? 0,
+      overdue: data.overdue_tasks ?? 0
+    };
+  }, [statsResponse]);
+
 
   const recentDocs = React.useMemo(() => {
     const items = Array.isArray(recentDocumentsResponse)
@@ -321,11 +349,9 @@ const DashboardSectionCards = ({ departmentCounts, onOpenFolder }) => {
     return arr;
   }, [departmentCounts, byDeptResponse]);
 
-  // Flatten workflows into a single list
   const allWorkflows = React.useMemo(() => {
     const source = Array.isArray(workflowsResponse) ? workflowsResponse : workflowsResponse?.data || [];
     
-    // Flatten all workflows from all states
     const workflows = source.flatMap(state => 
       (state.workflows || []).map(wf => ({
         ...wf,
@@ -333,7 +359,6 @@ const DashboardSectionCards = ({ departmentCounts, onOpenFolder }) => {
       }))
     );
 
-    // Order by workflow progression
     const order = ["Élaboration", "Vérification", "Approbation", "Diffusion"];
     return workflows.sort((a, b) => {
       const aIndex = order.indexOf(a.etat);
@@ -354,195 +379,91 @@ const DashboardSectionCards = ({ departmentCounts, onOpenFolder }) => {
 
   return (
     <div className="space-y-10">
-      {/* Section 1: Recent Activity Grid - 3 columns */}
+      {/* Section 1: Recent Activity Grid - Now 4 columns to include Tasks */}
       <section>
         <SectionHeader 
           icon={Activity} 
-          title="Recent Activity" 
-          subtitle="Latest documents, activities, and workflow status"
+          title="Overview & Activity" 
+          subtitle="Real-time insights into tasks, workflows, and documents"
           delay={0.1}
         />
         
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {/* Recent Documents */}
-          <Card3D delay={0.15}>
-            <Card className="border-0 bg-transparent shadow-none h-full">
-              <CardHeader className="pb-4 pt-6 px-6">
+        {/* Changed grid to 4 columns on large screens to fit Tasks */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          
+          {/* NEW TASKS OVERVIEW CARD */}
+          <Card3D delay={0.1}>
+            <Card className="border-0 bg-transparent shadow-none h-full relative overflow-hidden">
+               {/* Decorative background element */}
+              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                 <CheckSquare className="w-32 h-32 text-emerald-500" />
+              </div>
+
+              <CardHeader className="pb-2 pt-6 px-6 relative z-10">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <CostumeCardTitle title="Recent Documents" />
+                    <CheckSquare className="h-4 w-4 text-emerald-600" />
+                    <CostumeCardTitle title="Tasks Overview" />
                   </div>
-                  <motion.div
-                    animate={{ 
-                      rotate: [0, 10, 0],
-                      scale: [1, 1.1, 1]
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    <Badge variant="outline" className="text-[10px] px-2">
-                      {recentDocs.length}
-                    </Badge>
-                  </motion.div>
                 </div>
               </CardHeader>
 
-              <CardContent className="pt-0 pb-6 px-6">
-                {recentLoading ? (
-                  <div className="space-y-3">
-                    {[...Array(4)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0.3, 0.6, 0.3] }}
-                        transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.15 }}
-                        className="h-16 bg-gradient-to-r from-blue-50 via-purple-50 to-blue-50 rounded-lg"
-                      />
-                    ))}
-                  </div>
-                ) : recentError ? (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center justify-center py-12 text-center"
-                  >
-                    <CircleAlert className="h-10 w-10 text-red-400 mb-2" />
-                    <p className="text-xs text-destructive">Unable to load documents</p>
-                  </motion.div>
-                ) : recentDocs.length === 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center justify-center py-12 text-center"
-                  >
-                    <Sparkles className="h-10 w-10 text-gray-300 mb-2" />
-                    <p className="text-xs text-muted-foreground">No recent documents</p>
-                  </motion.div>
-                ) : (
-                  <div className="space-y-2 max-h-[380px] overflow-auto pr-2 scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent">
-                    <AnimatePresence mode="popLayout">
-                      {recentDocs.map((doc, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: 20 }}
-                          transition={{ delay: idx * 0.05 }}
-                          whileHover={{
-                            scale: 1.01,
-                            x: 4,
-                            backgroundColor: "rgba(59, 130, 246, 0.04)",
-                          }}
-                          className="py-3 px-3 cursor-pointer rounded-lg transition-all duration-200 border border-gray-100 hover:border-blue-200 hover:shadow-sm group"
-                          onClick={() => onOpenFolder?.(doc.raw)}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="text-sm font-medium truncate text-foreground group-hover:text-blue-600 transition-colors">
-                                {doc.title}
-                              </div>
-                              <div className="text-[11px] text-muted-foreground truncate mt-1 flex items-center gap-1.5">
-                                <span>{doc.type}</span>
-                                <span className="opacity-50">•</span>
-                                <span>{doc.owner}</span>
-                              </div>
-                            </div>
+              <CardContent className="pt-2 pb-6 px-6 relative z-10 flex flex-col justify-end h-[calc(100%-60px)]">
+                 {statsLoading ? (
+                    <div className="space-y-4">
+                      <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
+                      <div className="h-20 bg-slate-100 rounded-lg animate-pulse" />
+                    </div>
+                 ) : (
+                    <div className="space-y-4">
+                      {/* Pending Tasks Block */}
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 flex items-center justify-between group cursor-pointer hover:shadow-md transition-all duration-300"
+                      >
+                         <div className="flex items-center gap-3">
+                           <div className="p-2 bg-white rounded-lg shadow-sm group-hover:scale-110 transition-transform">
+                             <Clock4 className="w-5 h-5 text-amber-600" />
+                           </div>
+                           <div>
+                             <p className="text-xs text-amber-800 font-medium">Pending Tasks</p>
+                             <p className="text-[10px] text-amber-600/80">Require action</p>
+                           </div>
+                         </div>
+                         <div className="text-2xl font-bold text-amber-700">
+                           {taskStats.pending}
+                         </div>
+                      </motion.div>
 
-                            <div className="flex flex-col items-end gap-1.5 shrink-0">
-                              <Badge 
-                                variant="secondary" 
-                                className="text-[10px] bg-blue-50 border-blue-200 text-blue-700"
-                              >
-                                {doc.status}
-                              </Badge>
-                              <RelativeTimeDisplay date={doc.rawDate} />
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                )}
+                      {/* Overdue Tasks Block */}
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="p-4 rounded-xl bg-gradient-to-br from-red-50 to-rose-50 border border-red-100 flex items-center justify-between group cursor-pointer hover:shadow-md transition-all duration-300"
+                      >
+                         <div className="flex items-center gap-3">
+                           <div className="p-2 bg-white rounded-lg shadow-sm group-hover:scale-110 transition-transform">
+                             <AlertCircle className="w-5 h-5 text-red-600" />
+                           </div>
+                           <div>
+                             <p className="text-xs text-red-800 font-medium">Overdue</p>
+                             <p className="text-[10px] text-red-600/80">Critical attention</p>
+                           </div>
+                         </div>
+                         <div className="text-2xl font-bold text-red-700">
+                           {taskStats.overdue}
+                         </div>
+                      </motion.div>
+                    </div>
+                 )}
               </CardContent>
             </Card>
           </Card3D>
 
-          {/* Recent Activities */}
+          {/* Workflow Status */}
           <Card3D delay={0.2}>
-            <Card className="border-0 bg-transparent shadow-none h-full">
-              <CardHeader className="pb-4 pt-6 px-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-4 w-4 text-purple-600" />
-                    <CostumeCardTitle title="System Activity" />
-                  </div>
-                  <motion.div
-                    animate={{
-                      scale: [1, 1.2, 1],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    <Badge variant="outline" className="text-[10px] px-2">
-                      {logs.length}
-                    </Badge>
-                  </motion.div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="pt-0 pb-6 px-6">
-                {logsLoading ? (
-                  <div className="space-y-3">
-                    {[...Array(5)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: [0.3, 0.6, 0.3] }}
-                        transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.15 }}
-                        className="h-14 bg-gradient-to-r from-purple-50 via-pink-50 to-purple-50 rounded-lg"
-                      />
-                    ))}
-                  </div>
-                ) : logsError ? (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center justify-center py-12 text-center"
-                  >
-                    <CircleAlert className="h-10 w-10 text-red-400 mb-2" />
-                    <p className="text-xs text-destructive">Unable to load activities</p>
-                  </motion.div>
-                ) : logs.length === 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center justify-center py-12 text-center"
-                  >
-                    <Clock className="h-10 w-10 text-gray-300 mb-2" />
-                    <p className="text-xs text-muted-foreground">No recent activity</p>
-                  </motion.div>
-                ) : (
-                  <ul className="space-y-1 max-h-[380px] overflow-auto pr-2 scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-transparent">
-                    <AnimatePresence mode="popLayout">
-                      {logs.map((log, idx) => (
-                        <ActivityItem key={log?.id ?? idx} log={log} index={idx} />
-                      ))}
-                    </AnimatePresence>
-                  </ul>
-                )}
-              </CardContent>
-            </Card>
-          </Card3D>
-
-          {/* Workflow Status - UPDATED DESIGN */}
-          <Card3D delay={0.25}>
             <Card className="border-0 bg-transparent shadow-none h-full">
               <CardHeader className="pb-4 pt-6 px-6">
                 <div className="flex items-center justify-between">
@@ -550,20 +471,9 @@ const DashboardSectionCards = ({ departmentCounts, onOpenFolder }) => {
                     <WorkflowIcon className="h-4 w-4 text-indigo-600" />
                     <CostumeCardTitle title="Workflow Status" />
                   </div>
-                  <motion.div
-                    animate={{
-                      scale: [1, 1.2, 1],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    <Badge variant="outline" className="text-[10px] px-2">
-                      {allWorkflows.length}
-                    </Badge>
-                  </motion.div>
+                  <Badge variant="outline" className="text-[10px] px-2">
+                    {allWorkflows.length}
+                  </Badge>
                 </div>
               </CardHeader>
 
@@ -581,25 +491,17 @@ const DashboardSectionCards = ({ departmentCounts, onOpenFolder }) => {
                     ))}
                   </div>
                 ) : workflowsError ? (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex flex-col items-center justify-center py-12 text-center"
-                  >
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
                     <CircleAlert className="h-10 w-10 text-red-400 mb-2" />
                     <p className="text-xs text-destructive">Unable to load workflows</p>
-                  </motion.div>
+                  </div>
                 ) : allWorkflows.length === 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="flex flex-col items-center justify-center py-12 text-center"
-                  >
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
                     <WorkflowIcon className="h-10 w-10 text-gray-300 mb-2" />
                     <p className="text-xs text-muted-foreground">No active workflows</p>
-                  </motion.div>
+                  </div>
                 ) : (
-                  <div className="space-y-1 max-h-[380px] overflow-auto pr-2 scrollbar-thin scrollbar-thumb-indigo-200 scrollbar-track-transparent">
+                  <div className="space-y-1 max-h-[300px] overflow-auto pr-2 scrollbar-thin scrollbar-thumb-indigo-200 scrollbar-track-transparent">
                     <AnimatePresence mode="popLayout">
                       {allWorkflows.map((workflow, idx) => (
                         <WorkflowItem 
@@ -614,6 +516,103 @@ const DashboardSectionCards = ({ departmentCounts, onOpenFolder }) => {
               </CardContent>
             </Card>
           </Card3D>
+
+          {/* Recent Documents */}
+          <Card3D delay={0.3}>
+            <Card className="border-0 bg-transparent shadow-none h-full">
+              <CardHeader className="pb-4 pt-6 px-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    <CostumeCardTitle title="Recent Documents" />
+                  </div>
+                  <Badge variant="outline" className="text-[10px] px-2">
+                    {recentDocs.length}
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pt-0 pb-6 px-6">
+                {recentLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="h-16 bg-slate-50 rounded-lg animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[300px] overflow-auto pr-2 scrollbar-thin scrollbar-thumb-blue-200 scrollbar-track-transparent">
+                    <AnimatePresence mode="popLayout">
+                      {recentDocs.map((doc, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="py-3 px-3 cursor-pointer rounded-lg transition-all duration-200 border border-gray-100 hover:border-blue-200 hover:shadow-sm group"
+                          onClick={() => onOpenFolder?.(doc.raw)}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-medium truncate text-foreground group-hover:text-blue-600 transition-colors">
+                                {doc.title}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground truncate mt-1 flex items-center gap-1.5">
+                                <span>{doc.type}</span>
+                                <span className="opacity-50">•</span>
+                                <span>{doc.owner}</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end gap-1.5 shrink-0">
+                              <Badge variant="secondary" className="text-[10px] bg-blue-50 border-blue-200 text-blue-700">
+                                {doc.status}
+                              </Badge>
+                              <RelativeTimeDisplay date={doc.rawDate} />
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </Card3D>
+
+          {/* System Activity */}
+          <Card3D delay={0.4}>
+            <Card className="border-0 bg-transparent shadow-none h-full">
+              <CardHeader className="pb-4 pt-6 px-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-purple-600" />
+                    <CostumeCardTitle title="System Activity" />
+                  </div>
+                  <Badge variant="outline" className="text-[10px] px-2">
+                    {logs.length}
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pt-0 pb-6 px-6">
+                {logsLoading ? (
+                  <div className="space-y-3">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="h-14 bg-slate-50 rounded-lg animate-pulse" />
+                    ))}
+                  </div>
+                ) : (
+                  <ul className="space-y-1 max-h-[300px] overflow-auto pr-2 scrollbar-thin scrollbar-thumb-purple-200 scrollbar-track-transparent">
+                    <AnimatePresence mode="popLayout">
+                      {logs.map((log, idx) => (
+                        <ActivityItem key={log?.id ?? idx} log={log} index={idx} />
+                      ))}
+                    </AnimatePresence>
+                  </ul>
+                )}
+              </CardContent>
+            </Card>
+          </Card3D>
+
         </div>
       </section>
 
@@ -623,10 +622,10 @@ const DashboardSectionCards = ({ departmentCounts, onOpenFolder }) => {
           icon={TrendingUp} 
           title="Department Analytics" 
           subtitle="Document distribution across departments"
-          delay={0.3}
+          delay={0.5}
         />
         
-        <Card3D delay={0.35}>
+        <Card3D delay={0.55}>
           <Card className="border-0 bg-transparent shadow-none">
             <CardHeader className="pb-4 pt-6 px-6">
               <div className="flex items-center justify-between">

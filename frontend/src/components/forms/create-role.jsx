@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { CirclePicker } from "react-color";
+import { Loader2 } from "lucide-react";
 
-// Simple controlled form that mirrors CreateDepartement logic.
 export default function CreateRoleForm({
   onCreate,
   onCancel,
@@ -18,59 +19,54 @@ export default function CreateRoleForm({
     setForm((p) => ({ ...p, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (typeof onCreate === "function") {
-      return onCreate({ ...form });
-    }
-    console.debug("CreateRoleForm payload", form);
+    if (onCreate) onCreate({ ...form });
   };
 
   return (
     <form
       onSubmit={handleSubmit}
-      className={"flex flex-col gap-4 max-w-md w-full " + (className || "")}
+      className={`flex flex-col gap-6 w-full ${className || ""}`}
       {...props}
     >
-      <div className="flex flex-col gap-1">
-        <label htmlFor="role_name" className="text-sm font-medium">
-          Nom du rôle
-        </label>
+      <div className="space-y-2">
+        <Label htmlFor="role_name">Role Name</Label>
         <Input
           id="role_name"
           name="role_name"
-          placeholder="Nom du rôle"
+          placeholder="e.g. Author, Reviewer"
           value={form.role_name}
           onChange={handleChange}
           required
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="role_color" className="text-sm font-medium">
-          Couleur
-        </label>
-        <div id="role_color">
+      <div className="space-y-3">
+        <Label>Badge Color</Label>
+        <div className="p-4 border rounded-md bg-slate-50 flex justify-center">
           <CirclePicker
-            color={form.role_color || "#000000"}
+            color={form.role_color}
             onChangeComplete={(color) =>
-              setForm((p) => ({ ...p, role_color: color?.hex || p.role_color }))
+              setForm((p) => ({ ...p, role_color: color.hex }))
             }
           />
         </div>
       </div>
 
-      <div className="flex gap-2 justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={loading}
-        >
+      <div className="flex justify-end gap-3">
+        <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
           Cancel
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Create"}
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Creating...
+            </>
+          ) : (
+            "Create Role"
+          )}
         </Button>
       </div>
     </form>

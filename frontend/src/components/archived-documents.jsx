@@ -20,6 +20,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import DocumentHistoryDialog from "@/components/DocumentHistoryDialog";
 import EditDocumentForm from "@/components/forms/edit-document";
@@ -27,7 +28,8 @@ import EditDocumentForm from "@/components/forms/edit-document";
 import { 
   ArrowLeft, RefreshCcw, Folder, FileText, Loader2, 
   RotateCcw, ChevronRight, Home, Eye, History, Pencil, 
-  StickyNote, Clock, Calendar, User
+  StickyNote, Clock, Calendar, User, MapPin, FileType, X,
+  GitBranch // ✅ Added Icon for Version
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -77,7 +79,10 @@ export default function ArchivedDocuments() {
   const [editOpen, setEditOpen] = useState(false);
   const [editDocId, setEditDocId] = useState(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [itemToRestore, setItemToRestore] = useState(null); 
+  
+  // Selection State
+  const [selectedItems, setSelectedItems] = useState({});
+  const [bulkRestoreLoading, setBulkRestoreLoading] = useState(false);
 
   // Filter Logic
   const filteredData = useMemo(() => {
@@ -96,37 +101,82 @@ export default function ArchivedDocuments() {
     };
   }, [data, q]);
 
+  const folders = filteredData.folders;
+  const documents = filteredData.documents;
+  const isEmpty = folders.length === 0 && documents.length === 0;
+
   // Handlers
   const handleNavigate = (folder) => {
     setNavStack([...navStack, { id: folder.id, name: folder.fol_name }]);
     setQ("");
+    setSelectedItems({}); // Clear selection on navigate
   };
 
   const handleBreadcrumbClick = (index) => {
     if (index === -1) setNavStack([]);
     else setNavStack(navStack.slice(0, index + 1));
+    setSelectedItems({});
   };
 
-  const handleRestoreClick = (type, item) => {
-    setItemToRestore({ type, ...item });
-    setConfirmOpen(true);
+  // Selection Handlers
+  const toggleSelectAll = () => {
+    const totalItems = folders.length + documents.length;
+    const currentSelectedCount = Object.keys(selectedItems).length;
+
+    if (currentSelectedCount === totalItems && totalItems > 0) {
+      setSelectedItems({});
+    } else {
+      const newSel = {};
+      folders.forEach(f => { newSel[`folder-${f.id}`] = { type: "folder", id: f.id, name: f.fol_name }; });
+      documents.forEach(d => { newSel[`doc-${d.id}`] = { type: "doc", id: d.id, name: d.doc_title }; });
+      setSelectedItems(newSel);
+    }
   };
 
-  const executeRestore = async () => {
-    if (!itemToRestore) return;
+  const toggleSelectItem = (type, item) => {
+    const key = `${type}-${item.id}`;
+    setSelectedItems(prev => {
+      const next = { ...prev };
+      if (next[key]) delete next[key];
+      else next[key] = { type, id: item.id, name: type === "folder" ? item.fol_name : item.doc_title };
+      return next;
+    });
+  };
+
+  // Restore Logic
+  const executeBulkRestore = async () => {
+    const itemsToRestore = Object.values(selectedItems);
+    if (itemsToRestore.length === 0) return;
+
+    setBulkRestoreLoading(true);
+    let errors = 0;
+
     try {
-      if (itemToRestore.type === "folder") {
-        await restoreFolder(itemToRestore.id).unwrap();
-        toast.success("Folder restored successfully");
+      const promises = itemsToRestore.map(item => {
+        if (item.type === "folder") {
+          return restoreFolder(item.id).unwrap();
+        } else {
+          return restoreDoc(item.id).unwrap();
+        }
+      });
+
+      await Promise.allSettled(promises).then(results => {
+        results.forEach(res => { if (res.status === 'rejected') errors++; });
+      });
+
+      if (errors === 0) {
+        toast.success(`Successfully restored ${itemsToRestore.length} items.`);
       } else {
-        await restoreDoc(itemToRestore.id).unwrap();
-        toast.success("Document restored successfully");
+        toast.warning(`Restored with ${errors} errors.`);
       }
+      
+      setSelectedItems({});
       setConfirmOpen(false);
-      setItemToRestore(null);
     } catch (err) {
       console.error(err);
-      toast.error("Restore failed");
+      toast.error("Bulk restore failed.");
+    } finally {
+      setBulkRestoreLoading(false);
     }
   };
 
@@ -135,34 +185,55 @@ export default function ArchivedDocuments() {
     else toast.error("No preview URL available.");
   };
 
-  const folders = filteredData.folders;
-  const documents = filteredData.documents;
-  const isEmpty = folders.length === 0 && documents.length === 0;
+  const selectedList = Object.values(selectedItems);
 
   return (
     <div className="flex flex-col gap-4 p-4 h-full bg-background min-h-screen">
       {/* Header */}
       <div className="flex items-center justify-between gap-3 bg-card p-3 rounded-lg border shadow-sm">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back
-          </Button>
-          <div className="flex flex-col">
-            <h1 className="text-lg font-semibold tracking-tight">Archive Management</h1>
-            <span className="text-xs text-muted-foreground">Manage archived folders and documents</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Input 
-            value={q} 
-            onChange={(e) => setQ(e.target.value)} 
-            placeholder="Search in view..." 
-            className="w-[250px] h-9" 
-          />
-          <Button variant="outline" size="sm" onClick={refetch}>
-            <RefreshCcw className="mr-2 h-4 w-4" /> Refresh
-          </Button>
-        </div>
+        {selectedList.length > 0 ? (
+           <div className="flex items-center gap-2 w-full animate-in fade-in slide-in-from-top-1 duration-200">
+             <span className="text-sm font-medium text-primary mr-2 bg-primary/10 px-2 py-1 rounded">
+               {selectedList.length} selected
+             </span>
+             <div className="h-6 w-px bg-border mx-1" />
+             <Button 
+               size="sm" 
+               className="bg-green-600 hover:bg-green-700 text-white"
+               onClick={() => setConfirmOpen(true)}
+               disabled={bulkRestoreLoading}
+             >
+               <RotateCcw className="mr-2 h-4 w-4" /> Restore Selected
+             </Button>
+             <div className="flex-1" />
+             <Button variant="ghost" size="icon" onClick={() => setSelectedItems({})}>
+               <X size={16} />
+             </Button>
+           </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <div className="flex flex-col">
+                <h1 className="text-lg font-semibold tracking-tight">Archive Management</h1>
+                <span className="text-xs text-muted-foreground">Manage archived folders and documents</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input 
+                value={q} 
+                onChange={(e) => setQ(e.target.value)} 
+                placeholder="Search in view..." 
+                className="w-[250px] h-9" 
+              />
+              <Button variant="outline" size="sm" onClick={refetch}>
+                <RefreshCcw className="mr-2 h-4 w-4" /> Refresh
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Breadcrumbs */}
@@ -211,9 +282,23 @@ export default function ArchivedDocuments() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
+                  <TableHead className="w-[40px]">
+                    <Checkbox 
+                      checked={(folders.length + documents.length) > 0 && selectedList.length === (folders.length + documents.length)}
+                      onCheckedChange={toggleSelectAll}
+                    />
+                  </TableHead>
                   <TableHead className="w-[40px]"></TableHead>
                   <TableHead className="min-w-[200px]">Name</TableHead>
                   <TableHead className="min-w-[150px]">Original Path</TableHead>
+                  
+                  {/* ✅ NEW: Version Column Header */}
+                  <TableHead className="min-w-[80px]"><div className="flex items-center gap-1"><GitBranch className="w-3 h-3" /> Ver.</div></TableHead>
+
+                  {/* ✅ NEW COLUMNS */}
+                  <TableHead className="min-w-[100px]"><div className="flex items-center gap-1"><FileType className="w-3 h-3" /> Type</div></TableHead>
+                  <TableHead className="min-w-[100px]"><div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> Site</div></TableHead>
+
                   <TableHead className="min-w-[130px]">
                     <div className="flex items-center gap-1"><Calendar className="w-3 h-3" /> Archived At</div>
                   </TableHead>
@@ -227,7 +312,7 @@ export default function ArchivedDocuments() {
                   <TableHead className="min-w-[180px]">
                     <div className="flex items-center gap-1"><StickyNote className="w-3 h-3" /> Note</div>
                   </TableHead>
-                  <TableHead className="text-right w-[180px]">Actions</TableHead>
+                  <TableHead className="text-right w-[140px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -235,18 +320,33 @@ export default function ArchivedDocuments() {
                 {folders.map((folder) => (
                   <TableRow 
                     key={`f-${folder.id}`} 
-                    className="group hover:bg-muted/40 cursor-pointer transition-colors" 
+                    className={`group hover:bg-muted/40 cursor-pointer transition-colors ${selectedItems[`folder-${folder.id}`] ? "bg-muted/60" : ""}`}
+                    onClick={(e) => {
+                       if(e.ctrlKey || e.metaKey) toggleSelectItem("folder", folder);
+                    }}
                     onDoubleClick={() => handleNavigate(folder)}
                   >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox 
+                        checked={!!selectedItems[`folder-${folder.id}`]}
+                        onCheckedChange={() => toggleSelectItem("folder", folder)}
+                      />
+                    </TableCell>
                     <TableCell><Folder className="w-5 h-5 text-amber-500 fill-amber-500/20" /></TableCell>
                     <TableCell className="font-medium">
-                      <button onClick={() => handleNavigate(folder)} className="hover:underline text-left text-foreground">
+                      <button onClick={(e) => {e.stopPropagation(); handleNavigate(folder);}} className="hover:underline text-left text-foreground">
                         {folder.fol_name}
                       </button>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={folder.fol_path}>
                       {folder.fol_path || "-"}
                     </TableCell>
+                    
+                    {/* Empty cells for Version/Type/Site on folders */}
+                    <TableCell>-</TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell>-</TableCell>
+
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDateTime(folder.archived_at)}
                     </TableCell>
@@ -268,19 +368,44 @@ export default function ArchivedDocuments() {
                       <Button 
                         size="sm" 
                         variant="outline" 
-                        className="h-7 text-xs bg-green-50/50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800" 
-                        onClick={() => handleRestoreClick("folder", { id: folder.id, name: folder.fol_name })}
+                        className="h-7 w-7 p-0"
+                        title="Restore"
+                        onClick={() => {
+                           setSelectedItems({ [`folder-${folder.id}`]: { type: "folder", id: folder.id, name: folder.fol_name } });
+                           setConfirmOpen(true);
+                        }}
                         disabled={restoringFolder}
                       >
-                        <RotateCcw className="w-3 h-3 mr-1.5" /> Restore Folder
+                        <RotateCcw className="w-3.5 h-3.5 text-green-600" /> 
                       </Button>
                     </TableCell>
                   </TableRow>
                 ))}
 
                 {/* Documents */}
-                {documents.map((doc) => (
-                  <TableRow key={`d-${doc.id}`} className="hover:bg-muted/40 transition-colors">
+                {documents.map((doc) => {
+                  // ✅ Calculate version
+                  let versionNum = doc.latest_version; 
+                  if (versionNum === undefined && Array.isArray(doc.versions) && doc.versions.length > 0) {
+                      const sorted = [...doc.versions].sort((a, b) => b.version_number - a.version_number);
+                      versionNum = sorted[0].version_number; 
+                  }
+                  if (!versionNum) versionNum = 1;
+
+                  return (
+                  <TableRow 
+                    key={`d-${doc.id}`} 
+                    className={`hover:bg-muted/40 transition-colors ${selectedItems[`doc-${doc.id}`] ? "bg-muted/60" : ""}`}
+                    onClick={(e) => {
+                       if(e.ctrlKey || e.metaKey) toggleSelectItem("doc", doc);
+                    }}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox 
+                        checked={!!selectedItems[`doc-${doc.id}`]}
+                        onCheckedChange={() => toggleSelectItem("doc", doc)}
+                      />
+                    </TableCell>
                     <TableCell><FileText className="w-5 h-5 text-blue-500" /></TableCell>
                     <TableCell>
                       <div className="flex flex-col">
@@ -291,6 +416,22 @@ export default function ArchivedDocuments() {
                     <TableCell className="text-xs text-muted-foreground truncate max-w-[200px]" title={doc.doc_path}>
                       {doc.doc_path}
                     </TableCell>
+                    
+                    {/* ✅ NEW: Version Cell */}
+                    <TableCell className="text-xs">
+                        <Badge variant="outline" className="font-mono text-[10px] bg-blue-50 text-blue-700 border-blue-200">
+                            v{versionNum}
+                        </Badge>
+                    </TableCell>
+
+                    {/* ✅ NEW CELLS */}
+                    <TableCell className="text-xs text-muted-foreground">
+                        {doc.document_type_details ? (
+                           <Badge variant="secondary" className="font-normal text-[10px]">{doc.document_type_details.name}</Badge>
+                        ) : "-"}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{doc.site_details?.name || "-"}</TableCell>
+
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDateTime(doc.archived_at)}
                     </TableCell>
@@ -328,28 +469,35 @@ export default function ArchivedDocuments() {
                         >
                           <History className="w-3.5 h-3.5" />
                         </Button>
+                        
                         <Button 
                           variant="ghost" 
                           size="icon" 
                           className="h-7 w-7" 
                           onClick={() => { setEditDocId(doc.id); setEditOpen(true); }} 
-                          title="Edit"
+                          title="Edit Metadata"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
+
                         <Button 
                           size="sm" 
                           variant="outline" 
-                          className="h-7 text-xs ml-1 bg-green-50/50 text-green-700 border-green-200 hover:bg-green-100 hover:text-green-800" 
-                          onClick={() => handleRestoreClick("doc", { id: doc.id, name: doc.doc_title })}
+                          className="h-7 w-7 p-0 ml-1" 
+                          title="Restore"
+                          onClick={() => {
+                             setSelectedItems({ [`doc-${doc.id}`]: { type: "doc", id: doc.id, name: doc.doc_title } });
+                             setConfirmOpen(true);
+                          }}
                           disabled={restoringDoc}
                         >
-                          <RotateCcw className="w-3 h-3 mr-1.5" /> Restore
+                          <RotateCcw className="w-3.5 h-3.5 text-green-600" />
                         </Button>
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
@@ -383,14 +531,22 @@ export default function ArchivedDocuments() {
             <DialogTitle>Confirm Restore</DialogTitle>
           </DialogHeader>
           <div className="py-4 text-sm text-muted-foreground">
-            Are you sure you want to restore the {itemToRestore?.type} <strong className="text-foreground">"{itemToRestore?.name}"</strong>?
+            {selectedList.length === 1 ? (
+                <>
+                    Are you sure you want to restore the {selectedList[0].type === "folder" ? "folder" : "document"} <strong className="text-foreground">"{selectedList[0].name}"</strong>?
+                </>
+            ) : (
+                <>
+                    Are you sure you want to restore these <strong>{selectedList.length} items</strong>?
+                </>
+            )}
             <br />
-            It will be moved back to its original location in the active workspace.
+            They will be moved back to their original location in the active workspace.
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmOpen(false)}>Cancel</Button>
-            <Button onClick={executeRestore} disabled={restoringDoc || restoringFolder}>
-              {(restoringDoc || restoringFolder) && <Loader2 className="animate-spin mr-2 h-4 w-4" />} Confirm
+            <Button onClick={executeBulkRestore} disabled={bulkRestoreLoading || restoringDoc || restoringFolder}>
+              {(bulkRestoreLoading || restoringDoc || restoringFolder) && <Loader2 className="animate-spin mr-2 h-4 w-4" />} Confirm
             </Button>
           </div>
         </DialogContent>

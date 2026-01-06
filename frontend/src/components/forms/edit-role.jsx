@@ -1,83 +1,97 @@
-import React, { useEffect } from "react";
-import { CirclePicker } from "react-color";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CirclePicker } from "react-color";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-const EditRole = ({ role, onSubmit, onCancel, loading }) => {
-  const [form, setForm] = React.useState({
+export default function EditRoleForm({
+  initialData,
+  onSave,
+  onCancel,
+  loading,
+  error, // ✅ Added to display API errors
+}) {
+  const [form, setForm] = useState({
     role_name: "",
-    role_color: "",
+    role_color: "#2563eb",
   });
 
   useEffect(() => {
-    if (role) {
-      const rawColor = role.role_color || "";
-      const roleColor = rawColor.startsWith("#") ? rawColor : `#${rawColor}`;
+    if (initialData) {
       setForm({
-        role_name: role.role_name,
-        role_color: roleColor,
+        role_name: initialData.role_name || "",
+        role_color: initialData.role_color || "#2563eb",
       });
     }
-  }, [role]);
+  }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((p) => ({ ...p, [name]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (onSubmit) onSubmit({ ...form });
+    if (onSave) onSave({ ...form });
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-4 max-w-md w-full"
-    >
-      <div className="flex flex-col gap-1">
-        <label htmlFor="role_name" className="text-sm font-medium">
-          Role Name{" "}
-        </label>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full">
+      {/* ✅ Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {typeof error === 'string' ? error : "Failed to update role. Please try again."}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="space-y-2">
+        <Label htmlFor="edit_role_name">Role Name</Label>
         <Input
-          id="role_name"
+          id="edit_role_name"
           name="role_name"
-          placeholder="Role Name"
           value={form.role_name}
           onChange={handleChange}
           required
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="role_color" className="text-sm font-medium">
-          Couleur
-        </label>
-        <div id="role_color">
+      <div className="space-y-3">
+        <Label>Badge Color</Label>
+        <div className="p-4 border rounded-md bg-slate-50 flex justify-center">
           <CirclePicker
-            color={form.role_color || "#000000"}
+            color={form.role_color}
             onChangeComplete={(color) =>
-              setForm((p) => ({ ...p, role_color: color?.hex || p.role_color }))
+              setForm((p) => ({ ...p, role_color: color.hex }))
             }
           />
         </div>
       </div>
 
-      <div className="flex gap-2 justify-end">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
+      <div className="flex justify-end gap-3 pt-4">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onCancel} 
           disabled={loading}
         >
           Cancel
         </Button>
         <Button type="submit" disabled={loading}>
-          {loading ? "Saving..." : "Save"}
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            "Save Changes"
+          )}
         </Button>
       </div>
     </form>
   );
-};
-
-export default EditRole;
+}

@@ -27,124 +27,79 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { CloudUpload } from "lucide-react";
 import { useGetDepartementsQuery } from "../../slices/departementSlice";
-import { useGetFoldersQuery } from "../../slices/documentSlice";
+import { 
+  useGetFoldersQuery,
+  useGetSitesQuery,           // ✅ NEW
+  useGetDocumentTypesQuery    // ✅ NEW
+} from "../../slices/documentSlice";
 
 export function CreateDocumentForm({ onSubmit, loading }) {
-  const [localError, setLocalError] = useState(null);
   const { data: departements } = useGetDepartementsQuery();
   const { data: folders } = useGetFoldersQuery();
+  const { data: sites } = useGetSitesQuery();          // ✅ NEW
+  const { data: docTypes } = useGetDocumentTypesQuery(); // ✅ NEW
+
   const form = useForm({
     defaultValues: {
       file: null,
-      // doc_category: "Technical",
       doc_title: "",
-      doc_status: "",
-      doc_path: "",
-      doc_owner: "",
+      doc_status_type: "ORIGINAL",
       doc_departement: "",
+      parent_folder: "",
       doc_description: "",
+      doc_comment: "",
+      site: "",           // ✅ NEW
+      document_type: "",  // ✅ NEW
     },
   });
 
-  const handleLocalSubmit = async (values) => {
-    setLocalError(null);
-    if (!onSubmit) return;
-    try {
-      await onSubmit(values);
-      form.reset();
-    } catch (err) {
-      setLocalError(err?.message || String(err));
-      throw err;
+  const handleFileChange = (e, field) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      field.onChange(file);
+      // Auto-fill title if empty
+      if (!form.getValues("doc_title")) {
+        form.setValue("doc_title", file.name);
+      }
     }
   };
 
   return (
-    <div className={cn("flex flex-col gap-6 ")}>
-      <Card className="border-4 border-border ">
+    <div className={cn("flex flex-col gap-6")}>
+      <Card>
+        <CardHeader>
+          <CardTitle>Nouveau Document</CardTitle>
+          <CardDescription>
+            Remplissez les informations ci-dessous pour créer un document.
+          </CardDescription>
+        </CardHeader>
         <CardContent>
-          {localError && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertDescription>{localError}</AlertDescription>
-            </Alert>
-          )}
-
           <Form {...form}>
-            <form
-              className="space-y-6"
-              onSubmit={form.handleSubmit(handleLocalSubmit)}
-            >
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              
+              {/* File Upload */}
               <FormField
                 control={form.control}
                 name="file"
-                render={({ field }) => (
+                render={({ field: { value, onChange, ...fieldProps } }) => (
                   <FormItem>
-                    <label
-                      htmlFor="dropzone-file"
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const f = e.dataTransfer?.files?.[0] ?? null;
-                        if (f) field.onChange(f);
-                      }}
-                      onDragOver={(e) => e.preventDefault()}
-                      className="relative flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-muted rounded-xl cursor-pointer bg-base-200/10 hover:border-primary/60 hover:bg-base-200/20 transition-colors duration-200 ease-in-out"
-                    >
-                      <div className="flex flex-col items-center justify-center p-5 text-center">
-                        <CloudUpload className="w-10 h-10 mb-3 text-primary" />
-                        <p className="text-sm text-base-content/80">
-                          <span className="font-medium text-primary">
-                            Click to upload
-                          </span>
-                          or drag and drop
-                        </p>
-                        <p className="text-xs text-base-content/50 mt-1">
-                          PDF, DOC, XLS, or images (MAX. 10MB)
-                        </p>
-                      </div>
-
-                      <FormControl>
-                        <Input
-                          id="dropzone-file"
-                          type="file"
-                          accept="*/*"
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                          onChange={(e) =>
-                            field.onChange(e.target.files?.[0] ?? null)
-                          }
-                        />
-                      </FormControl>
-
-                      {field.value && (
-                        <div className="absolute bottom-2 left-4 right-4 flex items-center justify-between gap-2 bg-base-100/60 px-3 py-1 rounded">
-                          <div className="truncate text-sm">
-                            {field.value.name}
-                          </div>
-                          <button
-                            type="button"
-                            className="text-xs text-destructive hover:underline"
-                            onClick={(ev) => {
-                              ev.stopPropagation();
-                              field.onChange(null);
-                            }}
-                          >
-                            Supprimer
-                          </button>
-                        </div>
-                      )}
-                    </label>
-                    <FormDescription>
-                      Choisissez un fichier à importer.
-                    </FormDescription>
+                    <FormLabel>Fichier</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...fieldProps}
+                        type="file"
+                        onChange={(e) => handleFileChange(e, { onChange })}
+                      />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="doc_title"
@@ -161,33 +116,53 @@ export function CreateDocumentForm({ onSubmit, loading }) {
 
                 <FormField
                   control={form.control}
-                  name="doc_path"
+                  name="doc_status_type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Catégorie</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Sélectionnez une catégorie" />
+                      <FormLabel>Status</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choisir un statut" />
                           </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectLabel>Catégories</SelectLabel>
-                              <SelectItem value="Technical">
-                                Technique
-                              </SelectItem>
-                              <SelectItem value="Financial">
-                                Financier
-                              </SelectItem>
-                              <SelectItem value="HR">RH</SelectItem>
-                              <SelectItem value="Legal">Légal</SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ORIGINAL">Original</SelectItem>
+                          <SelectItem value="COPIE">Copie</SelectItem>
+                          <SelectItem value="PERIME">Périmé</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* ✅ NEW ROW: Site and Document Type */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="site"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Site</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Site" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {sites?.map((s) => (
+                            <SelectItem key={s.id} value={String(s.id)}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -195,64 +170,27 @@ export function CreateDocumentForm({ onSubmit, loading }) {
 
                 <FormField
                   control={form.control}
-                  name="doc_status"
+                  name="document_type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Statut</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Sélectionnez un statut" />
+                      <FormLabel>Type Document</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Type" />
                           </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectLabel>Statuts</SelectLabel>
-                              <SelectItem value="draft">Draft</SelectItem>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="approved">Approved</SelectItem>
-                              <SelectItem value="rejected">Rejected</SelectItem>
-                              <SelectItem value="archived">Archived</SelectItem>
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="doc_departement"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Département</FormLabel>
-                      <FormControl>
-                        <Select
-                          value={field.value}
-                          onValueChange={field.onChange}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Sélectionnez un département" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectLabel>Départements</SelectLabel>
-                              {departements?.map((dep) => (
-                                <SelectItem
-                                  key={String(dep.id)}
-                                  value={String(dep.id)}
-                                >
-                                  {dep.dep_name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
+                        </FormControl>
+                        <SelectContent>
+                          {docTypes?.map((t) => (
+                            <SelectItem key={t.id} value={String(t.id)}>
+                              {t.name} ({t.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Génère l'index (ex: {docTypes?.[0]?.code || "TYPE"}-01)
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -260,6 +198,64 @@ export function CreateDocumentForm({ onSubmit, loading }) {
               </div>
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="doc_departement"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Département</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choisir un département" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {departements?.map((dept) => (
+                            <SelectItem key={dept.id} value={String(dept.id)}>
+                              {dept.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="parent_folder"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dossier Parent</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choisir un dossier" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {folders?.map((fol) => (
+                            <SelectItem key={fol.id} value={String(fol.id)}>
+                              {fol.fol_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
                 <FormField
                   control={form.control}
                   name="doc_description"

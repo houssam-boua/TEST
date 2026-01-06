@@ -1,5 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import authenticate
+from django.db.models import Q 
 
 from rest_framework import viewsets, status, permissions
 from rest_framework.authtoken.models import Token
@@ -15,7 +16,14 @@ from django.core.mail import send_mail
 from django.conf import settings
 
 from .models import User, Role, Departement
-from .serializers import UserSerializer, UserActionLogSerializer, RoleSerializer, DepartementSerializer, PermissionSerializer, GroupSerializer
+from .serializers import (
+    UserSerializer, 
+    UserActionLogSerializer, 
+    RoleSerializer, 
+    DepartementSerializer, 
+    PermissionSerializer, 
+    GroupSerializer
+)
 from .models import UserActionLog
 
 import secrets
@@ -110,6 +118,7 @@ class UserViewSet(viewsets.ModelViewSet):
         "remove_group": [IsAdminUser],
         "bulk_groups": [IsAdminUser],
         "permissions": [IsAuthenticated],
+        "get_users_by_role_and_dept": [IsAuthenticated], # ✅ Allow authenticated users to fetch lists
     }
 
     def get_permissions(self):
@@ -121,11 +130,36 @@ class UserViewSet(viewsets.ModelViewSet):
         except Exception:
             return [perm() for perm in self.permission_classes]
 
+    # ✅ UPDATED ENDPOINT: Filter users by Custom Role & Department (Always include Admins)
+    @action(detail=False, methods=['get'], url_path='by-role-department')
+    def get_users_by_role_and_dept(self, request):
+        """
+        Fetch users based on Department AND Custom Role Model.
+        Admins (Superusers/Staff) are ALWAYS included regardless of department.
+        """
+        department_id = request.query_params.get('department_id')
+        role_name = request.query_params.get('role')  # e.g., 'Author', 'Reviewer'
+
+        if not department_id or not role_name:
+            return Response({'error': 'department_id and role are required'}, status=400)
+
+        # Logic: 
+        # 1. User is Superuser OR Staff (Admin) -> Include them
+        # 2. OR (User is in the Department AND User has the specific Role)
+        # Note: We filter by role__role_name__iexact to match your Role model
+        users = User.objects.filter(
+            Q(is_superuser=True) | 
+            Q(is_staff=True) |
+            (Q(departement_id=department_id) & Q(role__role_name__iexact=role_name))
+        ).distinct()
+
+        serializer = self.get_serializer(users, many=True)
+        return Response(serializer.data)
+
     def create(self, request, *args, **kwargs):
         request.data["username"] = request.data.get("username", "").replace(" ", "")
         request.data["password"] = generate_password()
-        print(f"Generated group for new user: {request.data['groups']}")  # Debug log
-
+        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -191,7 +225,7 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     # -----------------------
-    # Group management endpoints (admin-only)
+    # Group management endpoints (admin-only) - KEPT FOR COMPATIBILITY BUT UNUSED LOGICALLY
     # -----------------------
     @action(detail=True, methods=["get", "post"], url_path="groups", permission_classes=[IsAdminUser])
     def groups(self, request, pk=None):
@@ -218,9 +252,6 @@ class UserViewSet(viewsets.ModelViewSet):
             except Group.DoesNotExist:
                 return Response({"error": "Group not found"}, status=status.HTTP_404_NOT_FOUND)
         else:
-            # create group if it doesn't exist (idempotent behavior)
-            grp, _created = Group.objects.get_or_create(name__iexact=None, defaults={"name": data["name"]}) if False else (None, False)
-            # Use case-insensitive lookup then create
             try:
                 grp = Group.objects.get(name__iexact=data["name"])
             except Group.DoesNotExist:

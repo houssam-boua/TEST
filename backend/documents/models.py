@@ -1,9 +1,35 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
-from django.core.files.storage import default_storage  # kept (may be useful elsewhere)
+from django.core.files.storage import default_storage
 
 from users.models import User, Departement
+
+
+# ✅ NEW: Site Model
+class Site(models.Model):
+    """
+    Represents a physical location or site (e.g., Headquarters, Factory A).
+    """
+    name = models.CharField(max_length=255, unique=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
+
+
+# ✅ NEW: DocumentType Model
+class DocumentType(models.Model):
+    """
+    Defines the type of document (e.g., Procedure, Manual) for classification
+    and index generation logic (e.g., PROC-01, MAN-05).
+    """
+    name = models.CharField(max_length=255)
+    code = models.CharField(max_length=10, unique=True, help_text="Prefix for document index (e.g. PROC, MAN)")
+    description = models.TextField(blank=True, default="")
+
+    def __str__(self):
+        return f"{self.name} ({self.code})"
 
 
 class Folder(models.Model):
@@ -84,7 +110,7 @@ class DocumentCategory(models.Model):
 
 class DocumentNature(models.Model):
     """
-    Stores document types (IT, ET, FI).
+    Stores legacy document natures (IT, ET, FI).
     """
     code = models.CharField(max_length=2, unique=True)
     name = models.CharField(max_length=128)
@@ -133,7 +159,14 @@ class Document(models.Model):
 
     doc_code = models.CharField(max_length=20, unique=True, db_index=True)
 
-    # doc_category = models.ForeignKey(DocumentCategory, on_delete=models.PROTECT)
+    # ✅ NEW FIELDS: Site and Document Type support
+    site = models.ForeignKey(Site, on_delete=models.SET_NULL, null=True, blank=True)
+    document_type = models.ForeignKey(DocumentType, on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # Stores the incremental number specific to the DocumentType (e.g., the '5' in 'PROC-5')
+    document_type_order = models.PositiveIntegerField(null=True, blank=True)
+
+    # Legacy/Fallback fields
     doc_nature = models.ForeignKey(DocumentNature, on_delete=models.PROTECT)
     doc_nature_order = models.PositiveIntegerField(null=True, blank=True)
 
@@ -173,7 +206,8 @@ class Document(models.Model):
 
     def get_path_index(self):
         """
-        Returns the path_index based on the parent folder's hierarchy + doc_nature + doc_nature_order.
+        Returns the path_index based on the parent folder's hierarchy.
+        Logic updated to prefer DocumentType code if available, otherwise falls back to doc_nature.
         """
 
         def build_folder_part(folder):
@@ -192,7 +226,14 @@ class Document(models.Model):
 
         folder_part = folder_path_index(self.parent_folder) if self.parent_folder else ""
 
-        if self.doc_nature_order is not None:
+        # Use DocumentType logic if available
+        if self.document_type and self.document_type_order is not None:
+             formatted_order = str(self.document_type_order)
+             # Optional: pad with zero if needed, e.g. f"{self.document_type_order:02d}"
+             doc_part = f"{self.document_type.code}-{formatted_order}"
+        
+        # Fallback to old Nature logic
+        elif self.doc_nature_order is not None:
             formatted_doc_order = f"0{self.doc_nature_order}" if self.doc_nature_order < 10 else str(self.doc_nature_order)
             doc_part = f"{self.doc_nature.code}-{formatted_doc_order}"
         else:

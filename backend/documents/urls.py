@@ -18,6 +18,10 @@ from .views import (
     DocumentNatureViewSet,
     FolderViewSet,
     DocumentVersionViewSet,
+    
+    # ✅ NEW VIEWSETS
+    SiteViewSet,
+    DocumentTypeViewSet,
 
     # OnlyOffice
     onlyoffice_config,
@@ -29,6 +33,10 @@ router = DefaultRouter()
 router.register(r"document-categories", DocumentCategoryViewSet, basename="documentcategory")
 router.register(r"document-natures", DocumentNatureViewSet, basename="documentnature")
 router.register(r"folders", FolderViewSet, basename="folders")
+
+# ✅ NEW: Register Site and DocumentType ViewSets
+router.register(r"sites", SiteViewSet, basename="sites")
+router.register(r"document-types", DocumentTypeViewSet, basename="document-types")
 
 # Optional (handy for admin/debug):
 router.register(r"document-versions", DocumentVersionViewSet, basename="documentversion")
@@ -90,7 +98,7 @@ urlpatterns = [
     path("onlyoffice/script/", onlyoffice_script_proxy),
 
     # ------------------------------------------------------------------
-    # ✅ 5. Router URLs (Folders, Categories, Natures)
+    # ✅ 5. Router URLs (Folders, Categories, Natures, Sites, Types)
     # ------------------------------------------------------------------
     path("", include(router.urls)),
 ]

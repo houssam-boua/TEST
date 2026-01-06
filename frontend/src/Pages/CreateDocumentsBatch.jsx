@@ -45,17 +45,23 @@ export default function CreateDocumentsBatch() {
           fd.append("file", it.file);
           fd.append("doc_title", it.doc_title || it.file.name);
           fd.append("doc_status", it.doc_status || "draft");
-          if (it.doc_departement)
-            fd.append("doc_departement", it.doc_departement);
+          
+          if (it.doc_departement) fd.append("doc_departement", it.doc_departement);
+          if (it.parent_folder) fd.append("parent_folder", it.parent_folder);
+          
           fd.append("doc_description", it.doc_description || "");
+          
+          // ✅ NEW: Add Site and Type
+          if (it.site) fd.append("site", it.site);
+          if (it.document_type) fd.append("document_type", it.document_type);
+
           // include doc_path when provided (normalize slashes)
           if (it.doc_path) {
             const rawPath = String(it.doc_path || "").trim();
             const normalized = rawPath.replace(/^\/+|\/+$/g, "");
             if (normalized) fd.append("doc_path", normalized);
           }
-          // Optional: custom path or category if backend supports it
-          // if (it.doc_category) fd.append("doc_category", it.doc_category);
+          
           // Ensure the current authenticated user id is set as doc_owner
           if (userId) fd.set("doc_owner", String(userId));
 
@@ -68,15 +74,6 @@ export default function CreateDocumentsBatch() {
             );
 
           try {
-            // debug: log doc_path presence in FormData
-            try {
-              const entries = [];
-              fd.forEach((v, k) => entries.push([k, v]));
-              console.debug("CreateDocument FormData:", entries);
-            } catch (e) {
-              console.debug("Failed to serialize FormData for debug", e);
-            }
-
             const res = await createDocument(fd).unwrap();
             if (setItems)
               setItems((prev) =>
@@ -101,7 +98,7 @@ export default function CreateDocumentsBatch() {
           }
         }
         // final summary toast
-        toast.success("Files upload successfully");
+        toast.success("Batch process completed");
       } finally {
         setUploading(false);
       }
@@ -111,7 +108,7 @@ export default function CreateDocumentsBatch() {
 
   return (
     <div className="flex min-h-svh w-full items-start justify-center p-6 md:p-10 bg-muted/5">
-      <div className="w-full  space-y-4">
+      <div className="w-full space-y-4">
         <BatchCreateDocumentsForm
           onSubmit={handleBatchSubmit}
           disabled={uploading}

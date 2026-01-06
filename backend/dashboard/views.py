@@ -1,24 +1,91 @@
 from datetime import datetime, timedelta
 from django.core.cache import cache
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional
+import logging
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.decorators import api_view
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import status
+from django.db.models import Count, F
+from django.utils import timezone
 
+# Ensure you have these imports for your models
 from documents.models import Document
 from users.models import User, Departement
-from workflows.models import Workflow
-from django.db.models import Count, F, Prefetch
+from workflows.models import Workflow, Task
 
+logger = logging.getLogger(__name__)
 
 CACHE_TIMEOUT = 60
 
 # Trend period: compare "current" vs "snapshot taken ~24h ago"
 TREND_PERIOD_SECONDS = 60 * 60 * 24  # 24h
 
-
 class DashboardView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    # -----------------------------
+    # ✅ MAIN ENDPOINT (With Fix for Task Counts)
+    # -----------------------------
+    def get(self, request):
+        """
+        Main aggregated dashboard endpoint.
+        Handles GET /api/dashboard/
+        """
+        current_user = request.user
+
+        # ---------------------------------------------------------
+        # 1. Filter Tasks
+        # ---------------------------------------------------------
+        # We filter by:
+        # A) task_assigned_to = current_user (Your tasks)
+        # B) is_visible = True (Only tasks that have been "unlocked" by the workflow)
+        base_qs = Task.objects.filter(
+            task_assigned_to=current_user, 
+            is_visible=True
+        )
+
+        # Count total ACTIVE tasks (Pending + In Progress)
+        # We exclude 'completed' and 'rejected' to show what is still to be done.
+        pending_tasks = base_qs.exclude(
+            task_status__in=['completed', 'rejected']
+        ).count()
+        
+        # Count Overdue tasks (Visible + Past Deadline + Not Done)
+        overdue_tasks = base_qs.filter(
+            task_date_echeance__lt=timezone.now()
+        ).exclude(
+            task_status__in=['completed', 'rejected']
+        ).count()
+
+        total_tasks = base_qs.count()
+
+        # ---------------------------------------------------------
+        # 2. Get other stats (Documents, Workflows, etc.)
+        # ---------------------------------------------------------
+        # Using use_cache=True for better performance
+        doc_count_payload = self.get_documents_count(use_cache=True)
+        wf_count_payload = self.get_workflows_count(use_cache=True)
+
+        return Response({
+            "data": {
+                # Task Stats
+                "pending_tasks": pending_tasks,
+                "overdue_tasks": overdue_tasks,
+                "total_tasks": total_tasks,
+                
+                # Document Stats
+                "totalDocuments": doc_count_payload.get("count", 0),
+                "documentTrend": doc_count_payload.get("trend"),
+
+                # Workflow Stats
+                "totalWorkflows": wf_count_payload.get("count", 0),
+                "workflowTrend": wf_count_payload.get("trend"),
+            },
+            "message": "Dashboard stats retrieved successfully."
+        }, status=status.HTTP_200_OK)
+
     # -----------------------------
     # Trend helpers
     # -----------------------------
@@ -38,8 +105,6 @@ class DashboardView(APIView):
     def _maybe_rotate_previous(base_key: str, current_count: int) -> None:
         """
         Maintain a 'previous_count' snapshot roughly once per TREND_PERIOD_SECONDS.
-        - If there is no previous snapshot -> set it now.
-        - If snapshot exists but is old -> rotate it to current_count.
         """
         prev_ts = cache.get(DashboardView._prev_ts_key(base_key))
         prev_count = cache.get(DashboardView._prev_count_key(base_key))
@@ -59,17 +124,11 @@ class DashboardView(APIView):
     @staticmethod
     def _build_trend_payload(base_key: str, current_count: int) -> Dict[str, Any]:
         """
-        Return:
-          {
-            "count": <int>,
-            "previous_count": <int|null>,
-            "trend": { "percentage": <float>, "direction": "up"|"down" } | None
-          }
+        Return trend payload structure.
         """
-        # Ensure previous snapshot exists / rotates if too old
         DashboardView._maybe_rotate_previous(base_key, current_count)
-
         prev_count = cache.get(DashboardView._prev_count_key(base_key))
+        
         if prev_count is None:
             return {"count": current_count, "previous_count": None, "trend": None}
 
@@ -78,7 +137,6 @@ class DashboardView(APIView):
         except (TypeError, ValueError):
             return {"count": current_count, "previous_count": None, "trend": None}
 
-        # Avoid division by zero
         if prev_count_int <= 0:
             return {"count": current_count, "previous_count": prev_count_int, "trend": None}
 
@@ -106,15 +164,12 @@ class DashboardView(APIView):
         cache_key = "dashboard_documents_count"
         if use_cache:
             cached = cache.get(cache_key)
-            if cached is not None:
-                return cached
-
+            if cached is not None: return cached
+            
         count = Document.objects.count()
         payload = DashboardView._build_trend_payload(cache_key, count)
-
-        if use_cache:
-            cache.set(cache_key, payload, timeout)
-
+        
+        if use_cache: cache.set(cache_key, payload, timeout)
         return payload
 
     @staticmethod
@@ -124,15 +179,12 @@ class DashboardView(APIView):
         cache_key = "dashboard_users_count"
         if use_cache:
             cached = cache.get(cache_key)
-            if cached is not None:
-                return cached
-
+            if cached is not None: return cached
+            
         count = User.objects.count()
         payload = DashboardView._build_trend_payload(cache_key, count)
-
-        if use_cache:
-            cache.set(cache_key, payload, timeout)
-
+        
+        if use_cache: cache.set(cache_key, payload, timeout)
         return payload
 
     @staticmethod
@@ -142,15 +194,12 @@ class DashboardView(APIView):
         cache_key = "dashboard_departements_count"
         if use_cache:
             cached = cache.get(cache_key)
-            if cached is not None:
-                return cached
-
+            if cached is not None: return cached
+            
         count = Departement.objects.count()
         payload = DashboardView._build_trend_payload(cache_key, count)
-
-        if use_cache:
-            cache.set(cache_key, payload, timeout)
-
+        
+        if use_cache: cache.set(cache_key, payload, timeout)
         return payload
 
     @staticmethod
@@ -160,19 +209,16 @@ class DashboardView(APIView):
         cache_key = "dashboard_workflows_count"
         if use_cache:
             cached = cache.get(cache_key)
-            if cached is not None:
-                return cached
-
+            if cached is not None: return cached
+            
         count = Workflow.objects.count()
         payload = DashboardView._build_trend_payload(cache_key, count)
-
-        if use_cache:
-            cache.set(cache_key, payload, timeout)
-
+        
+        if use_cache: cache.set(cache_key, payload, timeout)
         return payload
 
     # -----------------------------
-    # Other widgets (unchanged)
+    # Other widgets
     # -----------------------------
     @staticmethod
     def get_documents_by_status_count(
@@ -180,23 +226,19 @@ class DashboardView(APIView):
     ) -> List[Dict[str, Any]]:
         """
         Return number of documents by status.
-        Uses doc_status_type field from Document model.
         """
         if use_cache:
             cached = cache.get("dashboard_documents_by_status_count")
-            if cached is not None:
-                return cached
-
+            if cached is not None: return cached
+            
         qs = (
             Document.objects.values("doc_status_type")
             .annotate(count=Count("id"))
             .order_by("doc_status_type")
         )
         data = list(qs)
-
-        if use_cache:
-            cache.set("dashboard_documents_by_status_count", data, timeout)
-
+        
+        if use_cache: cache.set("dashboard_documents_by_status_count", data, timeout)
         return data
 
     @staticmethod
@@ -208,27 +250,22 @@ class DashboardView(APIView):
         """
         if use_cache:
             cached = cache.get("dashboard_documents_by_departement_count")
-            if cached is not None:
-                return cached
-
+            if cached is not None: return cached
+            
         qs = (
             Document.objects.values(dep_name=F("doc_departement__dep_name"))
             .annotate(count=Count("id"))
             .order_by("dep_name")
         )
         data = list(qs)
-
-        if use_cache:
-            cache.set("dashboard_documents_by_departement_count", data, timeout)
-
+        
+        if use_cache: cache.set("dashboard_documents_by_departement_count", data, timeout)
         return data
 
     @staticmethod
     def get_recent_documents(limit: int = 5) -> List[Dict[str, Any]]:
         """
         Return a list of recent documents as dicts.
-        Uses -id ordering to get most recent entries.
-        Returns multiple field variants to support different frontend accessors.
         """
         qs = (
             Document.objects.select_related("doc_owner", "doc_departement", "parent_folder")
@@ -238,115 +275,74 @@ class DashboardView(APIView):
         results: List[Dict[str, Any]] = []
 
         for d in qs:
-            owner_username: Optional[str] = (
-                d.doc_owner.username if getattr(d, "doc_owner", None) else None
-            )
-
-            dept_name: Optional[str] = (
-                d.doc_departement.dep_name if getattr(d, "doc_departement", None) else None
-            )
-
-            folder_id: Optional[int] = (
-                d.parent_folder.id if getattr(d, "parent_folder", None) else None
-            )
-
-            folder_path: Optional[str] = (
-                d.parent_folder.fol_path if getattr(d, "parent_folder", None) else None
-            )
-
-            file_path: Optional[str] = getattr(getattr(d, "doc_path", None), "name", None)
-
-            # Pick a "type" value that will not be empty
-            dtype = getattr(d, "doc_type", None) or getattr(d, "doc_format", None) or ""
-
-            status_value = getattr(d, "doc_status_type", "")
-            created_value = getattr(d, "created_at", None)
-
-            results.append(
-                {
-                    "id": d.id,
-                    "name": getattr(d, "doc_title", ""),
-                    "title": getattr(d, "doc_title", ""),
-                    "type": dtype,
-                    "doc_type": getattr(d, "doc_type", ""),
-                    "doc_format": getattr(d, "doc_format", ""),
-                    "owner": owner_username,
-                    "towner": owner_username,
-                    "status": status_value,
-                    "doc_status_type": status_value,
-                    "createdAt": created_value,
-                    "created_at": created_value,
-                    "departement": dept_name,
-                    "folderId": folder_id,
-                    "folderPath": folder_path,
-                    "filePath": file_path,
-                }
-            )
-
+            results.append({
+                "id": d.id,
+                "title": d.doc_title or "",
+                "type": d.doc_type or d.doc_format or "",
+                "owner": d.doc_owner.username if d.doc_owner else None,
+                "status": d.doc_status_type or "",
+                "created_at": d.created_at,
+                "departement": d.doc_departement.dep_name if d.doc_departement else None,
+            })
         return results
 
     @staticmethod
     def get_workflows_by_state() -> List[Dict[str, Any]]:
         """
-        Return workflows grouped by state (etat) with their documents.
-        Returns: [{ etat: 'Élaboration', count: 2, workflows: [...] }]
+        Maps DB 'status' to Frontend 'etat' labels.
         """
-        state_groups = (
-            Workflow.objects.values("etat")
-            .annotate(count=Count("id"))
-            .order_by("etat")
-        )
+        STATUS_MAP = {
+            'draft': 'Élaboration',
+            'in_review': 'Vérification',
+            'pending_approval': 'Approbation',
+            'approved': 'Approbation',
+            'published': 'Diffusion',
+        }
+        
+        db_stats = Workflow.objects.values("status").annotate(count=Count("id"))
+        counts_lookup = {item['status']: item['count'] for item in db_stats}
+        frontend_states = ['Élaboration', 'Vérification', 'Approbation', 'Diffusion']
+        results = []
 
-        result: List[Dict[str, Any]] = []
-        for group in state_groups:
-            etat = group["etat"]
-            count = group["count"]
-
+        for label in frontend_states:
+            matching_db_statuses = [k for k, v in STATUS_MAP.items() if v == label]
+            total_count = sum(counts_lookup.get(s, 0) for s in matching_db_statuses)
+            
             workflows = (
-                Workflow.objects.filter(etat=etat)
-                .select_related("document")[:5]
+                Workflow.objects.filter(status__in=matching_db_statuses)
+                .select_related("document")
+                .order_by("-updated_at")[:5]
             )
 
-            workflows_data: List[Dict[str, Any]] = []
+            workflows_data = []
             for wf in workflows:
-                if wf.document:
-                    workflows_data.append(
-                        {
-                            "id": wf.id,
-                            "nom": wf.nom,
-                            "document": {
-                                "id": wf.document.id,
-                                "title": wf.document.doc_title,
-                                "code": getattr(wf.document, "doc_code", None),
-                            },
-                        }
-                    )
+                workflows_data.append({
+                    "id": wf.id,
+                    "nom": wf.nom,
+                    "etat": label,
+                    "status": wf.status,
+                    "document": {
+                        "id": wf.document.id if wf.document else None,
+                        "title": wf.document.doc_title if wf.document else "Sans titre",
+                    }
+                })
 
-            result.append(
-                {
-                    "etat": etat,
-                    "count": count,
-                    "workflows": workflows_data,
-                }
-            )
-
-        return result
+            results.append({
+                "etat": label,
+                "count": total_count,
+                "workflows": workflows_data,
+            })
+        return results
 
     @staticmethod
     def get_validators_count(use_cache: bool = True, timeout: int = CACHE_TIMEOUT) -> int:
-        """
-        Return total number of users with 'validator' role. Cached by default.
-        """
         if use_cache:
             cached = cache.get("dashboard_validators_count")
-            if cached is not None:
-                return cached
-
-        count = User.objects.filter(roles__name="validator").distinct().count()
-
-        if use_cache:
-            cache.set("dashboard_validators_count", count, timeout)
-
+            if cached is not None: return cached
+            
+        count = User.objects.filter(is_staff=True).count()
+        
+        if use_cache: cache.set("dashboard_validators_count", count, timeout)
         return count
 
 
@@ -354,27 +350,16 @@ def invalidate_dashboard_cache():
     """
     Helper to invalidate dashboard-related caches + trend snapshots.
     """
-    cache.delete_many(
-        [
-            # main cached payloads
-            "dashboard_documents_count",
-            "dashboard_users_count",
-            "dashboard_departements_count",
-            "dashboard_workflows_count",
-
-            # trend snapshot keys
-            "dashboard_documents_count:previous_count",
-            "dashboard_documents_count:previous_ts",
-            "dashboard_users_count:previous_count",
-            "dashboard_users_count:previous_ts",
-            "dashboard_departements_count:previous_count",
-            "dashboard_departements_count:previous_ts",
-            "dashboard_workflows_count:previous_count",
-            "dashboard_workflows_count:previous_ts",
-
-            # other widgets
-            "dashboard_documents_by_status_count",
-            "dashboard_documents_by_departement_count",
-            "dashboard_validators_count",
-        ]
-    )
+    cache.delete_many([
+        "dashboard_documents_count", 
+        "dashboard_users_count", 
+        "dashboard_departements_count", 
+        "dashboard_workflows_count",
+        "dashboard_documents_count:previous_count", "dashboard_documents_count:previous_ts",
+        "dashboard_users_count:previous_count", "dashboard_users_count:previous_ts",
+        "dashboard_departements_count:previous_count", "dashboard_departements_count:previous_ts",
+        "dashboard_workflows_count:previous_count", "dashboard_workflows_count:previous_ts",
+        "dashboard_documents_by_status_count", 
+        "dashboard_documents_by_departement_count",
+        "dashboard_validators_count",
+    ])

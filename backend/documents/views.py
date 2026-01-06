@@ -37,6 +37,8 @@ from .models import (
     DocumentNature,
     DocumentVersion,
     Folder,
+    Site,          # ✅ NEW
+    DocumentType,  # ✅ NEW
 )
 from .serializers import (
     DocumentArchiveSerializer,
@@ -45,6 +47,8 @@ from .serializers import (
     DocumentSerializer,
     DocumentVersionSerializer,
     FolderSerializer,
+    SiteSerializer,          # ✅ NEW
+    DocumentTypeSerializer,  # ✅ NEW
 )
 
 
@@ -565,6 +569,19 @@ class DocumentNatureViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
 
+# ✅ NEW: Site ViewSet
+class SiteViewSet(viewsets.ModelViewSet):
+    queryset = Site.objects.all()
+    serializer_class = SiteSerializer
+    permission_classes = [IsAuthenticated]
+
+# ✅ NEW: DocumentType ViewSet
+class DocumentTypeViewSet(viewsets.ModelViewSet):
+    queryset = DocumentType.objects.all()
+    serializer_class = DocumentTypeSerializer
+    permission_classes = [IsAuthenticated]
+
+
 # ------------------------ Documents ViewSet (Actions) ------------------------
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
@@ -756,26 +773,76 @@ class DocumentListCreateView(APIView):
         except Departement.DoesNotExist:
             return Response({"error": "Invalid departement ID"}, status=400)
 
-        nature_id = request.data.get("doc_nature")
-        try:
-            nature = DocumentNature.objects.get(id=nature_id)
-        except DocumentNature.DoesNotExist:
-            return Response({"error": "Invalid nature ID"}, status=400)
+        # ✅ NEW: Handle Site
+        site_id = request.data.get("site")
+        site_obj = None
+        if site_id:
+            site_obj = get_object_or_404(Site, id=site_id)
 
-        last_order = Document.objects.filter(doc_nature=nature).order_by("-doc_nature_order").first()
-        next_order = (last_order.doc_nature_order + 1) if last_order and last_order.doc_nature_order is not None else 1
+        # ✅ NEW: Handle Document Type & Index Generation
+        doc_type_id = request.data.get("document_type")
+        doc_type_obj = None
+        
+        nature_id = request.data.get("doc_nature")
+        nature_obj = None
+
+        if doc_type_id:
+            doc_type_obj = get_object_or_404(DocumentType, id=doc_type_id)
+        
+        # We might still want nature for fallback or compatibility
+        if nature_id:
+            try:
+                nature_obj = DocumentNature.objects.get(id=nature_id)
+            except DocumentNature.DoesNotExist:
+                if not doc_type_obj:
+                    return Response({"error": "Invalid nature ID and no type provided."}, status=400)
+
+        next_order = 1
+        doc_code = ""
+        used_nature_order = None
+        used_type_order = None
+
+        # Logic: If Type is present, use it for Code generation.
+        # Otherwise fall back to Nature.
+        if doc_type_obj:
+            last_doc = Document.objects.filter(document_type=doc_type_obj).order_by("-document_type_order").first()
+            if last_doc and last_doc.document_type_order is not None:
+                next_order = last_doc.document_type_order + 1
+            
+            used_type_order = next_order
+            doc_code = f"{doc_type_obj.code}-{next_order}"
+        
+        elif nature_obj:
+            last_doc = Document.objects.filter(doc_nature=nature_obj).order_by("-doc_nature_order").first()
+            if last_doc and last_doc.doc_nature_order is not None:
+                next_order = last_doc.doc_nature_order + 1
+            
+            used_nature_order = next_order
+            doc_code = f"{nature_obj.code}-{next_order}"
+        else:
+            return Response({"error": "Must provide either doc_nature or document_type."}, status=400)
+            
+        # Fallback if nature not provided but required by model (assuming nullable now or you provide a default)
+        # If your model still requires doc_nature, you must provide one or make it nullable. 
+        # Assuming you kept it required in model for now, we need a fallback nature if user only sent Type.
+        if not nature_obj:
+             # Find a default "General" nature or similar to satisfy DB constraint if needed
+             # For now, let's assume the user MUST send doc_nature as well, or you made it nullable.
+             # If strictly required:
+             try:
+                nature_obj = DocumentNature.objects.first() # Or a specific default
+             except:
+                return Response({"error": "No DocumentNature found in system to use as default."}, status=500)
 
         doc_size = file.size
         doc_format = file.name.split(".")[-1] if "." in file.name else ""
         doc_title = request.data.get("doc_title", "")
         doc_status_type = request.data.get("doc_status_type", request.data.get("doc_status", "draft"))
         doc_description_val = request.data.get("doc_description", "")
-        doc_code = f"{nature.code}-{next_order}"
 
         safe_name = os.path.basename(file.name)
 
-        # ✅ FIX: Construct LIVE path based on folder structure
-        # If custom path is provided, use it, else build from folder.fol_path
+        # Construct LIVE path
         if custom_path:
             base = _normalize_path(custom_path)
         else:
@@ -794,8 +861,16 @@ class DocumentListCreateView(APIView):
             doc_code=doc_code,
             doc_size=doc_size,
             doc_description=doc_description_val,
-            doc_nature=nature,
-            doc_nature_order=next_order,
+            
+            # Legacy/Fallback
+            doc_nature=nature_obj,
+            doc_nature_order=used_nature_order,
+            
+            # ✅ NEW
+            site=site_obj,
+            document_type=doc_type_obj,
+            document_type_order=used_type_order,
+
             parent_folder=folder,
         )
 
@@ -815,8 +890,7 @@ class DocumentListCreateView(APIView):
             change_type="AUDITABLE",
             version_comment="Initial version",
         )
-        # ✅ FIX: Save version in "documents/versions/" explicitly (via model upload_to)
-        # Note: Model definition handles the prefix, we just give the name.
+        # ✅ FIX: Save version in "documents/versions/" explicitly
         v1_name = f"{document.id}/v1_{safe_name}".replace("\\", "/")
         v1.version_path.save(v1_name, file)
 
