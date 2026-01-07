@@ -2,8 +2,10 @@ import AdminLayout from "../Layout/AdminLayout";
 import PublicLayout from "../Layout/PublicLayout";
 import UserLayout from "../Layout/UserLayout";
 import ValidatorLayout from "../Layout/ValidatorLayout";
+
+// Pages
+import DashboardPage from "../Pages/DashboardPage";
 import ActivityHistory from "../Pages/ActivityHistory";
-import AdminAccueil from "../Pages/AdminAccueil";
 import AdminDepartements from "../Pages/AdminDepartements";
 import AdminPermissions from "../Pages/AdminPermissions";
 import AdminRoles from "../Pages/AdminRoles";
@@ -21,8 +23,8 @@ import PermissionGroups from "../Pages/PermissionGroups";
 import UnauthorizedPage from "../Pages/UnauthorizedPage";
 import ArchivedDocumentsPage from "../Pages/ArchivedDocumentsPage";
 import AdminMetadata from "../Pages/AdminMetadata";
-import MyTasks from "../Pages/MyTasks"; // ✅ NEW - Add this import
-import TaskDetails from "../Pages/TaskDetails"; // ✅ ADD THIS
+import MyTasks from "../Pages/MyTasks";
+import TaskDetails from "../Pages/TaskDetails";
 
 export const routesConfig = {
   public: {
@@ -40,12 +42,13 @@ export const routesConfig = {
 
   admin: {
     layout: AdminLayout,
-    requiredRoles: ["admin", "validator", "user"],
+    // Allow all roles into the main layout
+    requiredRoles: ["admin", "author", "approver", "reviewer", "publisher", "validator"], 
     routes: [
       // ==================== DASHBOARD ====================
       {
         path: "/acceuil",
-        component: AdminAccueil,
+        component: DashboardPage,
         breadcrumb: "Dashboard",
       },
 
@@ -73,14 +76,16 @@ export const routesConfig = {
       { 
         path: "/archived-documents", 
         component: ArchivedDocumentsPage, 
-        breadcrumb: "Archived Documents" 
+        breadcrumb: "Archived Documents",
+        requiredRoles: ["admin"] // ✅ Restrict to Admin only
       },
 
       // ==================== WORKFLOW ROUTES ====================
       { 
         path: "/consulter-workflow", 
         component: ConsulteWorkflow,
-        breadcrumb: "All Workflows"
+        breadcrumb: "All Workflows",
+        requiredRoles: ["admin"]
       },
       { 
         path: "/workflows/:id",
@@ -93,12 +98,12 @@ export const routesConfig = {
         breadcrumb: "Workflow Tasks"
       },
       {
-        path: "/my-tasks", // ✅ NEW - My Tasks page
+        path: "/my-tasks", 
         component: MyTasks,
         breadcrumb: "My Tasks"
       },
        {
-        path: "/tasks/:taskId", // ✅ NEW - Task detail page
+        path: "/tasks/:taskId", 
         component: TaskDetails,
         breadcrumb: "Task Details"
       },
@@ -106,6 +111,7 @@ export const routesConfig = {
         path: "/creer-workflow",
         component: CreateWorkflow,
         breadcrumb: "Create Workflow",
+        requiredRoles: ["admin"]
       },
 
       // ==================== ADMIN SETTINGS ====================
@@ -151,6 +157,7 @@ export const routesConfig = {
         path: "/activity-history",
         component: ActivityHistory,
         breadcrumb: "Activity History",
+        requiredRoles: ["admin"]
       },
     ],
   },

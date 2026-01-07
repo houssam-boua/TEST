@@ -85,15 +85,17 @@ const data = {
         {
           title: "New",
           url: "/creer-documents",
+          // Visible to everyone
         },
         {
           title: "Consulter",
           url: "/consulter",
+          // Visible to everyone
         },
         {
           title: "Metadata",
           url: "/metadata",
-          requiredRoles: ["admin"],
+          requiredRoles: ["admin"], // ✅ Only Admin
         },
       ],
     },
@@ -105,14 +107,17 @@ const data = {
         {
           title: "New",
           url: "/creer-workflow",
+          requiredRoles: ["admin"], // ✅ Only Admin
         },
         {
           title: "All Workflows",
           url: "/consulter-workflow",
+          requiredRoles: ["admin"], // ✅ Only Admin
         },
         {
           title: "My Tasks", // ✅ Personal task view
           url: "/my-tasks",
+          // Visible to everyone
         },
       ],
     },
@@ -120,6 +125,7 @@ const data = {
       title: "History",
       url: "#",
       icon: History,
+      requiredRoles: ["admin"], // ✅ Only Admin can see History
       items: [
         {
           title: "Activity Log",
@@ -131,7 +137,7 @@ const data = {
       title: "Settings",
       url: "#",
       icon: Cog,
-      requiredRoles: ["admin"],
+      requiredRoles: ["admin"], // ✅ Only Admin can see Settings
       items: [
         {
           title: "Users",
@@ -169,6 +175,8 @@ const AppSidebar = ({ ...props }) => {
   // helper to check requiredRoles/requiredPermissions
   const allowed = (entry) => {
     if (!entry) return false;
+    
+    // Check Roles
     if (entry.requiredRoles && typeof hasRole === "function") {
       const req = Array.isArray(entry.requiredRoles)
         ? entry.requiredRoles
@@ -176,12 +184,15 @@ const AppSidebar = ({ ...props }) => {
       // allow if any role matches
       if (!req.some((r) => hasRole(r))) return false;
     }
+    
+    // Check Permissions
     if (entry.requiredPermissions && typeof hasPermission === "function") {
       const req = Array.isArray(entry.requiredPermissions)
         ? entry.requiredPermissions
         : [entry.requiredPermissions];
       if (!req.some((p) => hasPermission(p))) return false;
     }
+    
     return true;
   };
 

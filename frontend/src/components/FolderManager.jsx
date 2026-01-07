@@ -15,6 +15,9 @@ import {
   useSyncFoldersMutation
 } from "@/slices/documentSlice";
 
+// ✅ Import Auth Hook
+import { useAuth } from "@/Hooks/useAuth";
+
 import { Button } from "@/components/ui/button";
 import CreateFolder from "@/components/forms/create-folder";
 import {
@@ -139,7 +142,7 @@ function getFolderPathFromPayload({ payload, currentPath, folderName }) {
   return normalizePath(currentPath ? `${currentPath}/${folderName}` : folderName);
 }
 
-// Get status icon and color
+// ✅ REVERTED: Status design restored to original (Blue default for "Original")
 function getStatusInfo(status) {
   const statusLower = (status || "").toLowerCase();
   switch(statusLower) {
@@ -151,6 +154,7 @@ function getStatusInfo(status) {
       return { icon: XCircle, color: "text-red-600", bgColor: "bg-red-50", borderColor: "border-red-200" };
     case "draft":
       return { icon: AlertCircle, color: "text-gray-600", bgColor: "bg-gray-50", borderColor: "border-gray-200" };
+    // "ORIGINAL" and "PUBLIC" fall to default (Blue), matching your original design.
     default:
       return { icon: Circle, color: "text-blue-600", bgColor: "bg-blue-50", borderColor: "border-blue-200" };
   }
@@ -343,6 +347,11 @@ function BulkArchiveDialog({ open, onOpenChange, selectedItems, onArchiveSuccess
 
 export default function FolderManager({ initialPath = "/", className = "" }) {
   const navigate = useNavigate();
+  
+  // ✅ 1. Get User Details
+  const { user, roleName, departmentName } = useAuth();
+  const isAdmin = roleName === "admin";
+
   const [currentPath, setCurrentPath] = useState(normalizePath(initialPath));
   const [selectedItems, setSelectedItems] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
@@ -436,6 +445,30 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
     let rows = [];
 
     documents.forEach(f => {
+      // ✅ 2. Filter Logic for Non-Admins (Fixed Property Access)
+      if (!isAdmin) {
+        // A. Filter by Department
+        // The serializer uses 'doc_departement_details' which has 'dep_name'
+        const docDeptName = f.doc_departement_details?.dep_name || ""; 
+        
+        // Only skip if department is strictly different (allows nulls for broader access if needed)
+        // Ensure to handle case where departmentName might be undefined in AuthContext
+        if (departmentName && docDeptName.trim() !== departmentName.trim()) {
+            return; // Skip this document (Different Dept)
+        }
+
+        // B. Filter by Status/Ownership
+        const status = (f.doc_status_type || "").toUpperCase();
+        // Check for specific statuses allowed for everyone
+        const isPublicOrOriginal = status === "PUBLIC" || status === "ORIGINAL";
+        // Check if current user is the owner
+        const isOwner = f.doc_owner?.username === user?.username;
+
+        if (!isPublicOrOriginal && !isOwner) {
+            return; // Skip if not public/original AND not my document
+        }
+      }
+
       let displayPath = normalizePath(f.doc_path || "");
       if (displayPath.toLowerCase().startsWith("documents/")) {
          displayPath = displayPath.substring("documents/".length);
@@ -510,7 +543,7 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
     });
 
     return rows;
-  }, [documents, searchQuery, statusFilter, typeFilter, sortField, sortDirection]);
+  }, [documents, searchQuery, statusFilter, typeFilter, sortField, sortDirection, isAdmin, user, departmentName]);
 
   // --- Handlers ---
 
@@ -714,22 +747,29 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
                 <span className="font-bold">{selectedList.length} selected</span>
               </div>
               <div className="h-8 w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setBulkMoveOpen(true)}
-                className="border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md hover:scale-105 transition-all duration-300"
-              >
-                <Move size={14} className="mr-2" /> Move To...
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setBulkArchiveOpen(true)}
-                className="border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50 hover:shadow-md hover:scale-105 transition-all duration-300"
-              >
-                <Archive size={14} className="mr-2" /> Archive
-              </Button>
+              
+              {/* ✅ 3. Hide Bulk Actions from Non-Admins */}
+              {isAdmin && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setBulkMoveOpen(true)}
+                    className="border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 hover:shadow-md hover:scale-105 transition-all duration-300"
+                  >
+                    <Move size={14} className="mr-2" /> Move To...
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setBulkArchiveOpen(true)}
+                    className="border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50 hover:shadow-md hover:scale-105 transition-all duration-300"
+                  >
+                    <Archive size={14} className="mr-2" /> Archive
+                  </Button>
+                </>
+              )}
+
               <div className="flex-1" />
               <Button 
                 variant="ghost" 
@@ -770,25 +810,30 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
                 </Button>
               </div>
               <div className="flex items-center gap-3">
-                {/* NEW: Create Folder Button - Styled like Archives */}
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setCreateOpen(true)}
-                  className="border-2 border-green-200 hover:border-green-400 hover:bg-green-50 hover:shadow-lg hover:scale-105 transition-all duration-300"
-                >
-                  <FolderPlus className="mr-2" size={14} /> New Folder
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  asChild
-                  className="border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50 hover:shadow-lg hover:scale-105 transition-all duration-300"
-                >
-                  <Link to="/archived-documents">
-                    <Archive className="mr-2" size={14} /> Archives
-                  </Link>
-                </Button>
+                {/* ✅ 4. Hide New Folder/Archive buttons from Non-Admins */}
+                {isAdmin && (
+                  <>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setCreateOpen(true)}
+                      className="border-2 border-green-200 hover:border-green-400 hover:bg-green-50 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                    >
+                      <FolderPlus className="mr-2" size={14} /> New Folder
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      asChild
+                      className="border-2 border-orange-200 hover:border-orange-400 hover:bg-orange-50 hover:shadow-lg hover:scale-105 transition-all duration-300"
+                    >
+                      <Link to="/archived-documents">
+                        <Archive className="mr-2" size={14} /> Archives
+                      </Link>
+                    </Button>
+                  </>
+                )}
+                
                 <Button 
                   size="sm" 
                   onClick={() => navigate('/creer-documents')}
@@ -1191,12 +1236,16 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
                                 >
                                   <Pencil className="w-3.5 h-3.5 mr-2 text-purple-600" /> Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 cursor-pointer transition-colors" 
-                                  onClick={() => { setArchiveDocId(row.id); setArchiveDocOpen(true); }}
-                                >
-                                  <Archive className="w-3.5 h-3.5 mr-2" /> Archive
-                                </DropdownMenuItem>
+                                
+                                {/* ✅ 5. Hide Archive Action for Non-Admins */}
+                                {isAdmin && (
+                                  <DropdownMenuItem 
+                                    className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 cursor-pointer transition-colors" 
+                                    onClick={() => { setArchiveDocId(row.id); setArchiveDocOpen(true); }}
+                                  >
+                                    <Archive className="w-3.5 h-3.5 mr-2" /> Archive
+                                  </DropdownMenuItem>
+                                )}
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </div>
@@ -1211,22 +1260,26 @@ export default function FolderManager({ initialPath = "/", className = "" }) {
         </div>
       </div>
 
-      {/* Bulk Dialogs */}
-      <BulkMoveDialog 
-        open={bulkMoveOpen} 
-        onOpenChange={setBulkMoveOpen} 
-        selectedItems={selectedList} 
-        allFolders={folderPaths} 
-        currentFolderId={currentFolderObj?.id}
-        onMoveSuccess={() => { setSelectedItems({}); refetchFolders(); refetchDocuments(); }} 
-      />
+      {/* Bulk Dialogs - Only rendered/accessible if admin, but logic handled above via button visibility too */}
+      {isAdmin && (
+        <>
+          <BulkMoveDialog 
+            open={bulkMoveOpen} 
+            onOpenChange={setBulkMoveOpen} 
+            selectedItems={selectedList} 
+            allFolders={folderPaths} 
+            currentFolderId={currentFolderObj?.id}
+            onMoveSuccess={() => { setSelectedItems({}); refetchFolders(); refetchDocuments(); }} 
+          />
 
-      <BulkArchiveDialog 
-        open={bulkArchiveOpen} 
-        onOpenChange={setBulkArchiveOpen} 
-        selectedItems={selectedList}
-        onArchiveSuccess={() => { setSelectedItems({}); refetchFolders(); refetchDocuments(); }} 
-      />
+          <BulkArchiveDialog 
+            open={bulkArchiveOpen} 
+            onOpenChange={setBulkArchiveOpen} 
+            selectedItems={selectedList}
+            onArchiveSuccess={() => { setSelectedItems({}); refetchFolders(); refetchDocuments(); }} 
+          />
+        </>
+      )}
 
       {/* Standard Dialogs */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

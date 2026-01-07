@@ -135,7 +135,6 @@ class WorkflowViewSet(viewsets.ModelViewSet):
         """Admin creates workflow and assigns specific users to each stage"""
         
         # 1. Validation: Segregation of Duties
-        # Retrieve the user objects from the validated data
         author = serializer.validated_data.get('author')
         approver = serializer.validated_data.get('approver')
         
@@ -156,7 +155,6 @@ class WorkflowViewSet(viewsets.ModelViewSet):
         self._create_stage_tasks(workflow)
         
         # 4. Update Document Status to 'pending' immediately
-        # This overrides 'public' or 'original' status from the document
         self._update_doc_status(workflow, 'pending')
         
         # 5. Notify the Author
@@ -242,8 +240,6 @@ class WorkflowViewSet(viewsets.ModelViewSet):
             workflow.status = 'in_review'
             workflow.submitted_at = timezone.now()
             workflow.save(update_fields=['status', 'submitted_at'])
-            
-            # NOTE: Document status stays 'pending' until review outcome
             
             # Mark author's task as completed
             Task.objects.filter(
@@ -414,20 +410,20 @@ class WorkflowViewSet(viewsets.ModelViewSet):
             ).first()
             
             if approver_task:
-                # Validation: Check if the assigned APPROVER is an Admin if they are the same as author
+               # Check if Author and Approver are same (only allowed for Admin)
                if workflow.author == workflow.approver:
-                if not (workflow.approver.is_superuser or workflow.approver.is_staff):
-                  return Response({
-            "error": "Segregation of Duties: Author and Approver cannot be the same unless Admin.",
-            "author_id": workflow.author.id,
-            "approver_id": workflow.approver.id
-        }, status=status.HTTP_400_BAD_REQUEST)
+                    if not (workflow.approver.is_superuser or workflow.approver.is_staff):
+                        return Response({
+                            "error": "Segregation of Duties: Author and Approver cannot be the same unless Admin.",
+                            "author_id": workflow.author.id,
+                            "approver_id": workflow.approver.id
+                        }, status=status.HTTP_400_BAD_REQUEST)
                 
-                approver_task.is_visible = True
-                approver_task.unlocked_at = timezone.now()
-                approver_task.save(update_fields=['is_visible', 'unlocked_at'])
+               approver_task.is_visible = True
+               approver_task.unlocked_at = timezone.now()
+               approver_task.save(update_fields=['is_visible', 'unlocked_at'])
                 
-                try:
+               try:
                     if workflow.approver:
                         recipient_name = workflow.approver.get_full_name() or workflow.approver.username
                         self._send_notification(
@@ -441,7 +437,7 @@ class WorkflowViewSet(viewsets.ModelViewSet):
                                 recipient_name=recipient_name
                             )
                         )
-                except Exception as e:
+               except Exception as e:
                     logger.error(f"Failed to send approval ready notification for workflow {workflow.id}: {str(e)}")
             
             UserActionLog.objects.create(
@@ -479,7 +475,6 @@ class WorkflowViewSet(viewsets.ModelViewSet):
             )
         
         # Validation: Segregation of duties
-        # If Author is Approver (Current Request User), check if they are Admin
         if workflow.author == request.user:
             if not (request.user.is_superuser or request.user.is_staff):
                 return Response(
@@ -745,7 +740,9 @@ class WorkflowViewSet(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'])
     def assign_users(self, request, pk=None):
-        """Admin: reassign workflow users"""
+        """
+        Admin: reassign workflow users AND update corresponding pending tasks.
+        """
         if not (request.user.is_superuser or request.user.is_staff):
             return Response(
                 {'error': 'Admin only'},
@@ -755,19 +752,36 @@ class WorkflowViewSet(viewsets.ModelViewSet):
         workflow = self.get_object()
         updated_fields = []
         
-        # Update assigned users
+        # Helper to update Task if workflow user changes
+        def update_task_assignment(stage_name, new_user_id):
+            # Only update tasks that are NOT completed or rejected
+            Task.objects.filter(
+                task_workflow=workflow,
+                task_stage=stage_name
+            ).exclude(
+                task_status__in=['completed', 'rejected']
+            ).update(task_assigned_to_id=new_user_id)
+
+        # Update assigned users and sync active tasks
         if 'author' in request.data:
             workflow.author_id = request.data['author']
             updated_fields.append('author')
+            update_task_assignment('draft', request.data['author'])
+            
         if 'reviewer' in request.data:
             workflow.reviewer_id = request.data['reviewer']
             updated_fields.append('reviewer')
+            update_task_assignment('review', request.data['reviewer'])
+            
         if 'approver' in request.data:
             workflow.approver_id = request.data['approver']
             updated_fields.append('approver')
+            update_task_assignment('approval', request.data['approver'])
+            
         if 'publisher' in request.data:
             workflow.publisher_id = request.data['publisher']
             updated_fields.append('publisher')
+            update_task_assignment('publication', request.data['publisher'])
         
         if updated_fields:
             workflow.save(update_fields=updated_fields)
