@@ -3,20 +3,8 @@ from django.conf import settings
 from django.utils import timezone
 from django.core.files.storage import default_storage
 
-from users.models import User, Departement
-
-
-# ✅ NEW: Site Model
-class Site(models.Model):
-    """
-    Represents a physical location or site (e.g., Headquarters, Factory A).
-    """
-    name = models.CharField(max_length=255, unique=True)
-    location = models.CharField(max_length=255, blank=True, null=True)
-
-    def __str__(self):
-        return self.name
-
+# ✅ IMPORT SITE FROM USERS (Correct location for Organizational Units)
+from users.models import User, Departement, Site
 
 # ✅ NEW: DocumentType Model
 class DocumentType(models.Model):
@@ -132,10 +120,16 @@ class Document(models.Model):
     """
     Represents a document in the system (current/latest file + metadata).
     """
+    # ✅ UPDATED: Added new workflow status choices
     DOC_STATUS_TYPE_CHOICES = [
-        ("ORIGINAL", "Original"),
-        ("COPIE", "Copie"),
-        ("PERIME", "Périmé"),
+        ("DRAFT", "Draft"),
+        ("PENDING", "Pending"),
+        ("APPROVED", "Approved"),
+        ("REJECTED", "Rejected"),
+        ("PUBLIC", "Public"),
+        ("ORIGINAL", "Original"), # Legacy support
+        ("COPIE", "Copie"),       # Legacy support
+        ("PERIME", "Périmé"),     # Legacy support
     ]
 
     # mLean linkage (optional)
@@ -159,7 +153,8 @@ class Document(models.Model):
 
     doc_code = models.CharField(max_length=20, unique=True, db_index=True)
 
-    # ✅ NEW FIELDS: Site and Document Type support
+    # ✅ UPDATED FIELDS: Site and Document Type support
+    # Using 'Site' imported from users.models
     site = models.ForeignKey(Site, on_delete=models.SET_NULL, null=True, blank=True)
     document_type = models.ForeignKey(DocumentType, on_delete=models.SET_NULL, null=True, blank=True)
     
@@ -171,9 +166,9 @@ class Document(models.Model):
     doc_nature_order = models.PositiveIntegerField(null=True, blank=True)
 
     doc_status_type = models.CharField(
-        max_length=10,
+        max_length=20, # Increased max_length to safely fit 'APPROVED'
         choices=DOC_STATUS_TYPE_CHOICES,
-        default="ORIGINAL",
+        default="DRAFT", # Changed default to safer 'DRAFT'
     )
 
     parent_document = models.ForeignKey("self", null=True, blank=True, on_delete=models.CASCADE)

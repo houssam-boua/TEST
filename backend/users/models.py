@@ -19,19 +19,42 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# ✅ ADDED: Site Model
+class Site(models.Model):
+    """
+    Represents a physical location or site (e.g., Headquarters, Factory A).
+    """
+    name = models.CharField(max_length=255, unique=True)
+    location = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return self.name
 
 class Departement(models.Model):
     """
-    Represents a department within the organization.
+    Represents a department within the organization, associated with a specific Site.
     """
-    dep_name = models.CharField(max_length=100, unique=True)
+    # ✅ UPDATED: Link to Site
+    site = models.ForeignKey(
+        Site, 
+        on_delete=models.CASCADE, 
+        related_name='departements',
+        null=True, 
+        blank=True
+    )
+    dep_name = models.CharField(max_length=100) # Removed unique=True to allow duplicate names across sites
     dep_color = models.CharField(max_length=100)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        # Ensures uniqueness per site (e.g. Site A can have HR, Site B can have HR)
+        unique_together = ('dep_name', 'site')
+
     def __str__(self) -> str:
-        return f"{self.dep_name} - {self.dep_color}"
+        site_name = self.site.name if self.site else "No Site"
+        return f"{self.dep_name} ({site_name}) - {self.dep_color}"
 
 
 class Role(models.Model):

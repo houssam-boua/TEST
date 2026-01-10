@@ -36,15 +36,6 @@ function extractId(obj) {
   );
 }
 
-/**
- * standardRootId is the ID used in:
- *   /standards/{standardRootId}/active_and_draft_version/
- *
- * Depending on mLean response shape:
- * - root often appears as paper.standard / paper.standard_id
- * - paper.parent may be previous version or root (ambiguous)
- * So we prioritize standard first.
- */
 function resolveStandardRootIdFromPaperStandard(paper) {
   const fromStandard =
     extractId(paper?.standard) ??
@@ -88,6 +79,7 @@ function getStoredToken() {
   return localStorage.getItem(STORAGE_KEY) || null;
 }
 
+// ✅ FIXED: Handle 403 Token Expiration
 async function fetchWithAuth(url, opts = {}, retry = true) {
   let token = getStoredToken();
   if (!token) token = await login();
@@ -98,12 +90,20 @@ async function fetchWithAuth(url, opts = {}, retry = true) {
 
   const res = await fetch(url, Object.assign({}, opts, { headers }));
 
-  if (res.status === 401 && retry) {
-    const newToken = await login();
-    const headers2 = Object.assign({}, opts.headers || {}, {
-      Authorization: `Bearer ${newToken}`,
-    });
-    return fetch(url, Object.assign({}, opts, { headers: headers2 }));
+  // Check for 401 OR 403 (mLean returns 403 for expired tokens)
+  if ((res.status === 401 || res.status === 403) && retry) {
+    try {
+      console.log("mLean Token expired (401/403), refreshing...");
+      const newToken = await login();
+      const headers2 = Object.assign({}, opts.headers || {}, {
+        Authorization: `Bearer ${newToken}`,
+      });
+      return await fetch(url, Object.assign({}, opts, { headers: headers2 }));
+    } catch (err) {
+      console.error("Failed to refresh mLean token:", err);
+      // Throw original response if refresh fails so caller handles it
+      return res; 
+    }
   }
 
   return res;
@@ -233,7 +233,7 @@ export async function syncDocumentToMlean({
 export async function auditableUpdateViaPaperStandards({
   standardRootId,
   currentDocumentId,
-  previousPaperStandardId, // <--- Add this parameter
+  previousPaperStandardId,
   name,
   description = "",
   perimeters = [],
@@ -242,14 +242,13 @@ export async function auditableUpdateViaPaperStandards({
   if (!standardRootId) throw new Error("auditableUpdateViaPaperStandards requires standardRootId");
   if (!currentDocumentId) throw new Error("auditableUpdateViaPaperStandards requires currentDocumentId");
 
-  // LOGIC FIX: If we have a previous ID, use it as parent. Otherwise fallback to root.
   const parentId = previousPaperStandardId ? Number(previousPaperStandardId) : Number(standardRootId);
 
   const paper = await createOrEvolvePaperStandard({
     name,
     description,
     paper_standard: Number(currentDocumentId),
-    parent: parentId, // <--- Use the calculated parentId here
+    parent: parentId,
     perimeters,
     is_auditable: true,
     is_minor_version,
@@ -264,7 +263,7 @@ export async function auditableUpdateViaPaperStandards({
 
 export async function minorChangesUpdateViaPaperStandards({
   standardRootId,
-  previousPaperStandardId, // <--- Add this parameter
+  previousPaperStandardId,
   name,
   file,
   description = "",
@@ -277,14 +276,13 @@ export async function minorChangesUpdateViaPaperStandards({
   const remoteDocId = extractId(remoteDoc);
   if (!remoteDocId) throw new Error("mLean /documents/ did not return an id");
 
-  // LOGIC FIX: Use the previous version as parent to create a chain
   const parentId = previousPaperStandardId ? Number(previousPaperStandardId) : Number(standardRootId);
 
   const paper = await createOrEvolvePaperStandard({
     name: name || file.name,
     description,
     paper_standard: Number(remoteDocId),
-    parent: parentId, // <--- Use the calculated parentId here
+    parent: parentId,
     perimeters,
     is_auditable: false,
     is_minor_version: true,

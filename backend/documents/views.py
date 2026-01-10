@@ -29,7 +29,10 @@ from rest_framework.views import APIView
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 
-from users.models import Departement, UserActionLog
+# Users and Organization models
+from users.models import Departement, UserActionLog, Site
+
+# Document models
 from .models import (
     Document,
     DocumentArchive,
@@ -37,9 +40,10 @@ from .models import (
     DocumentNature,
     DocumentVersion,
     Folder,
-    Site,          # ✅ NEW
-    DocumentType,  # ✅ NEW
+    DocumentType,
 )
+
+# Serializers
 from .serializers import (
     DocumentArchiveSerializer,
     DocumentCategorySerializer,
@@ -47,10 +51,9 @@ from .serializers import (
     DocumentSerializer,
     DocumentVersionSerializer,
     FolderSerializer,
-    SiteSerializer,          # ✅ NEW
-    DocumentTypeSerializer,  # ✅ NEW
+    DocumentTypeSerializer,
 )
-
+from users.serializers import SiteSerializer 
 
 # ------------------------ Helpers ------------------------
 
@@ -381,7 +384,7 @@ class FolderViewSet(viewsets.ModelViewSet):
             sub.save(update_fields=["fol_path"])
             
             # Recurse
-            self._recursive_move(old_sub, new_sub, sub)
+            self._recursive_move(old_sub_path, new_sub_path, sub)
 
     @action(detail=False, methods=["get"], url_path="roots")
     def roots(self, request):
@@ -588,8 +591,42 @@ class DocumentViewSet(viewsets.ModelViewSet):
     serializer_class = DocumentSerializer
     permission_classes = [IsAuthenticated]
 
+    # Find the DocumentViewSet class and update this method:
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        
+        # ✅ FORCE DRAFT FOR EVERYONE (Admins included)
+        # We ignore any status sent from the frontend and hardcode 'DRAFT'
+        status_value = 'DRAFT'
+
+        serializer.save(
+            doc_owner=user,
+            doc_status_type=status_value
+        )
+
+    def perform_update(self, serializer):
+        # ✅ UPDATED: Force DRAFT status on ANY edit
+        # This ensures edited documents need re-approval
+        serializer.save(
+            doc_status_type="DRAFT",  # Changed from PENDING to DRAFT
+            updated_at=timezone.now()
+        )
+
     def get_queryset(self):
-        return Document.objects.filter(is_archived=False)
+        user = self.request.user
+        
+        # Base query: non-archived docs
+        qs = Document.objects.filter(is_archived=False)
+
+        # Admin sees all non-archived
+        if user.is_superuser or user.is_staff:
+            return qs
+        
+        # Normal users see: Public docs, Original docs, OR docs they own
+        return qs.filter(
+            Q(doc_status_type__in=['PUBLIC', 'ORIGINAL']) | Q(doc_owner=user)
+        )
 
     @action(
         detail=True,
@@ -823,12 +860,7 @@ class DocumentListCreateView(APIView):
             return Response({"error": "Must provide either doc_nature or document_type."}, status=400)
             
         # Fallback if nature not provided but required by model (assuming nullable now or you provide a default)
-        # If your model still requires doc_nature, you must provide one or make it nullable. 
-        # Assuming you kept it required in model for now, we need a fallback nature if user only sent Type.
         if not nature_obj:
-             # Find a default "General" nature or similar to satisfy DB constraint if needed
-             # For now, let's assume the user MUST send doc_nature as well, or you made it nullable.
-             # If strictly required:
              try:
                 nature_obj = DocumentNature.objects.first() # Or a specific default
              except:
@@ -837,7 +869,13 @@ class DocumentListCreateView(APIView):
         doc_size = file.size
         doc_format = file.name.split(".")[-1] if "." in file.name else ""
         doc_title = request.data.get("doc_title", "")
-        doc_status_type = request.data.get("doc_status_type", request.data.get("doc_status", "draft"))
+        
+       
+        doc_status_type = "DRAFT" # <--- FIXED CASING
+            
+        # Allow override ONLY if provided in request AND user is admin (optional safety)
+        # For strict enforcement, we stick to the if/else logic above.
+        
         doc_description_val = request.data.get("doc_description", "")
 
         safe_name = os.path.basename(file.name)
@@ -915,10 +953,28 @@ class DocumentListCreateView(APIView):
         if folder:
             folder = _normalize_path(folder)
             prefix = f"{folder}/" if not folder.endswith("/") else folder
-            docs = Document.objects.filter(doc_path__startswith=prefix, is_archived=False)
+            
+            # Filter query based on user role
+            base_qs = Document.objects.filter(doc_path__startswith=prefix, is_archived=False)
+            
+            if request.user.is_superuser or request.user.is_staff:
+                docs = base_qs
+            else:
+                docs = base_qs.filter(
+                    Q(doc_status_type__in=['PUBLIC', 'ORIGINAL']) | Q(doc_owner=request.user)
+                )
+
             return Response(DocumentSerializer(docs, many=True).data)
 
-        documents = Document.objects.filter(is_archived=False)
+        # Filter all documents based on user role
+        base_qs = Document.objects.filter(is_archived=False)
+        if request.user.is_superuser or request.user.is_staff:
+            documents = base_qs
+        else:
+            documents = base_qs.filter(
+                 Q(doc_status_type__in=['PUBLIC', 'ORIGINAL']) | Q(doc_owner=request.user)
+            )
+
         serializer = DocumentSerializer(documents, many=True)
         return Response(serializer.data)
 
@@ -1045,6 +1101,9 @@ class DocumentDetailView(APIView):
             data.pop("update_type", None)
             data.pop("version_comment", None)
 
+            # Force status to DRAFT on any update
+            data['docstatustype'] = "DRAFT" # <--- FIXED CASING
+
             serializer = DocumentSerializer(document, data=data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -1116,7 +1175,15 @@ class FolderDocumentsView(APIView):
         folder = _normalize_path(folder)
         prefix = f"{folder}/" if not folder.endswith("/") else folder
 
-        documents = Document.objects.filter(doc_path__startswith=prefix, is_archived=False)
+        # Filter by role
+        base_qs = Document.objects.filter(doc_path__startswith=prefix, is_archived=False)
+        if request.user.is_superuser or request.user.is_staff:
+             documents = base_qs
+        else:
+             documents = base_qs.filter(
+                 Q(doc_status_type__in=['PUBLIC', 'ORIGINAL']) | Q(doc_owner=request.user)
+             )
+
         serializer = DocumentSerializer(documents, many=True)
         return Response({"folder": folder, "documents": serializer.data}, status=status.HTTP_200_OK)
 
@@ -1126,7 +1193,16 @@ class DocumentByFolderView(APIView):
 
     def get(self, request, folder_id):
         folder = get_object_or_404(Folder, id=folder_id)
-        documents = Document.objects.filter(parent_folder=folder, is_archived=False)
+        
+        # Filter by role
+        base_qs = Document.objects.filter(parent_folder=folder, is_archived=False)
+        if request.user.is_superuser or request.user.is_staff:
+             documents = base_qs
+        else:
+             documents = base_qs.filter(
+                 Q(doc_status_type__in=['PUBLIC', 'ORIGINAL']) | Q(doc_owner=request.user)
+             )
+
         serializer = DocumentSerializer(documents, many=True)
         return Response({"folder": folder.fol_name, "documents": serializer.data}, status=status.HTTP_200_OK)
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,10 +19,10 @@ import {
   useGetDocumentNatureQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
-  useGetSitesQuery,        // ✅ NEW
-  useGetDocumentTypesQuery // ✅ NEW
+  useGetSitesQuery,         // ✅ NEW
+  useGetDocumentTypesQuery  // ✅ NEW
 } from "@/slices/documentSlice";
-import { Trash2, ChevronDown, ChevronUp, FileUp } from "lucide-react";
+import { Trash2, ChevronDown, ChevronUp, FileUp, Loader2 } from "lucide-react";
 import mlean from "@/lib/mlean";
 import { toast } from "sonner";
 
@@ -32,11 +32,11 @@ export default function BatchCreateDocumentsForm({
   currentUser,
   currentUserId,
 }) {
-  const { data: departements } = useGetDepartementsQuery();
-  const { data: folders } = useGetFoldersQuery();
-  const { data: natures } = useGetDocumentNatureQuery();
-  const { data: sites } = useGetSitesQuery();          // ✅ NEW
-  const { data: docTypes } = useGetDocumentTypesQuery(); // ✅ NEW
+  const { data: departements = [] } = useGetDepartementsQuery();
+  const { data: folders = [] } = useGetFoldersQuery();
+  const { data: natures = [] } = useGetDocumentNatureQuery();
+  const { data: sites = [] } = useGetSitesQuery();          // ✅ NEW
+  const { data: docTypes = [] } = useGetDocumentTypesQuery(); // ✅ NEW
 
   const [items, setItems] = useState([]);
   const [error, setError] = useState(null);
@@ -70,15 +70,11 @@ export default function BatchCreateDocumentsForm({
       doc_title: "",
       doc_path: "/",
       parent_folder: "",
-      doc_status: "pending",
-      doc_departement: departements?.[0]?.id ? String(departements[0].id) : "",
+      doc_departement: "",
       doc_nature: natures?.[0]?.id ? String(natures[0].id) : "",
-      
-      // ✅ NEW FIELDS
-      site: "",
-      document_type: "",
-
-      doc_perimeters: "", // REQUIRED for mLean
+      site: "",             // ✅ NEW
+      document_type: "",    // ✅ NEW
+      doc_perimeters: "",   // Required for mLean
       doc_description: "",
 
       expanded: true,
@@ -89,6 +85,7 @@ export default function BatchCreateDocumentsForm({
     setItems((s) => [...s, ...newItems]);
   };
 
+  // Fetch mLean Perimeters
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -98,7 +95,11 @@ export default function BatchCreateDocumentsForm({
         const list = Array.isArray(p) ? p : p?.results || [];
         setPerimetersOptions(list);
       } catch (e) {
-        console.debug("Mlean perimeters fetch failed:", e);
+        console.error("Mlean perimeters fetch failed:", e);
+        if(mounted) {
+            toast.error("Failed to load mLean Perimeters. Please check your connection.");
+            setPerimetersOptions([]);
+        }
       }
     })();
     return () => {
@@ -133,7 +134,7 @@ export default function BatchCreateDocumentsForm({
       let mleanOk = false;
 
       try {
-        // 1) create local document
+        // 1. Create Local Document
         const fd = new FormData();
         fd.append("file", it.file, safeFileName(it.file));
 
@@ -146,19 +147,19 @@ export default function BatchCreateDocumentsForm({
         if (it.doc_status) fd.append("doc_status", String(it.doc_status));
         if (it.doc_description) fd.append("doc_description", String(it.doc_description));
         
-        // ✅ NEW: Append Site and Type
+        // New Fields
         if (it.site) fd.append("site", String(it.site));
         if (it.document_type) fd.append("document_type", String(it.document_type));
 
         const resp = await createDocument(fd).unwrap();
         localDocId = extractLocalDocumentId(resp);
 
-        // 2) sync to mLean + persist IDs into Django
+        // 2. Sync to mLean
         try {
           const perims = asPerimeters(it.doc_perimeters);
 
           if (!perims.length) {
-            toast.error(`Select at least one perimeter for ${safeFileName(it.file)} (required by mLean).`);
+            toast.error(`Warning: No perimeter selected for ${safeFileName(it.file)}. Skipping mLean sync.`);
           } else {
             const m = await mlean.syncDocumentToMlean({
               name: it.doc_title || safeFileName(it.file),
@@ -167,6 +168,7 @@ export default function BatchCreateDocumentsForm({
               description: it.doc_description || "",
             });
 
+            // 3. Update Local Document with mLean IDs
             if (localDocId) {
               await updateDocument({
                 id: localDocId,
@@ -174,11 +176,10 @@ export default function BatchCreateDocumentsForm({
                   mlean_document_id: m.mlean_document_id ?? null,
                   mlean_paper_standard_id: m.mlean_paper_standard_id ?? null,
                   mlean_standard_id: m.mlean_standard_id ?? null,
-                  update_type: "SILENT", // <--- FIX: prevent version 2 creation
+                  update_type: "SILENT",
                 },
               }).unwrap();
             }
-
             mleanOk = true;
           }
         } catch (me) {
@@ -188,7 +189,6 @@ export default function BatchCreateDocumentsForm({
 
         updateItem(it.id, { uploading: false, result: { local: resp, mleanOk } });
 
-        // IMPORTANT: include `file` so parent code can do result.file.name safely
         results.push({
           id: it.id,
           ok: true,
@@ -200,9 +200,7 @@ export default function BatchCreateDocumentsForm({
         });
       } catch (err) {
         console.error("upload failed for", safeFileName(it.file), err);
-
         updateItem(it.id, { uploading: false, result: err });
-
         results.push({
           id: it.id,
           ok: false,
@@ -215,7 +213,6 @@ export default function BatchCreateDocumentsForm({
       }
     }
 
-    // keep only failed
     const failedIds = results.filter((r) => !r.ok).map((r) => r.id);
     setItems((prev) => prev.filter((it) => failedIds.includes(it.id)));
 
@@ -270,256 +267,271 @@ export default function BatchCreateDocumentsForm({
 
             <div className="flex flex-col gap-3">
               {items.map((it) => (
-                <Card key={it.id} className="border-[0.1px] border-muted py-4">
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center justify-between px-3">
-                      <div className="flex gap-3 items-center">
-                        <div className="text-xs text-muted-foreground uppercase bg-secondary p-2 rounded-xs">
-                          {getFileExt(it.file)}
-                        </div>
-                        <div className="font-medium truncate max-w-[40ch]">{safeFileName(it.file)}</div>
-                        <div className="text-sm text-muted-foreground/60">
-                          {Math.round((it.file?.size || 0) / 1024)} KB
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="text-sm"
-                          onClick={() => updateItem(it.id, { expanded: !it.expanded })}
-                        >
-                          {it.expanded ? (
-                            <ChevronUp className="text-muted-foreground/80" strokeWidth={1.25} size={16} />
-                          ) : (
-                            <ChevronDown className="text-muted-foreground/70" strokeWidth={1.25} size={16} />
-                          )}
-                        </button>
-
-                        <button
-                          type="button"
-                          className="text-destructive"
-                          onClick={() => removeItem(it.id)}
-                        >
-                          <Trash2 size={16} strokeWidth={1.25} />
-                        </button>
-                      </div>
-                    </div>
-
-                    {it.expanded && (
-                      <div className="grid grid-cols-1 gap-3 md:grid-cols-4 p-5 bg-muted/25">
-                        
-                        {/* Title */}
-                        <div className="col-span-1 md:col-span-1">
-                          <label className="block text-sm mb-1">Title</label>
-                          <Input
-                            value={it.doc_title}
-                            onChange={(e) => updateItem(it.id, { doc_title: e.target.value })}
-                          />
-                        </div>
-
-                        {/* ✅ NEW: Site */}
-                        <div className="col-span-1 md:col-span-1">
-                          <label className="block text-sm mb-1">Site</label>
-                          <Select
-                            value={String(it.site || "")}
-                            onValueChange={(v) => updateItem(it.id, { site: v })}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select Site" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectLabel>Sites</SelectLabel>
-                                {sites?.map((s) => (
-                                  <SelectItem key={s.id} value={String(s.id)}>
-                                    {s.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                         {/* ✅ NEW: Document Type */}
-                         <div className="col-span-1 md:col-span-1">
-                          <label className="block text-sm mb-1">Type</label>
-                          <Select
-                            value={String(it.document_type || "")}
-                            onValueChange={(v) => updateItem(it.id, { document_type: v })}
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select Type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectLabel>Types</SelectLabel>
-                                {docTypes?.map((t) => (
-                                  <SelectItem key={t.id} value={String(t.id)}>
-                                    {t.name} ({t.code})
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Status */}
-                        <div className="col-span-1 md:col-span-1">
-                          <label className="block text-sm mb-1">Status</label>
-                          <Select
-                            value={it.doc_status}
-                            onValueChange={(v) => updateItem(it.id, { doc_status: v })}
-                          >
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectLabel>Statuts</SelectLabel>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="approved">Approved</SelectItem>
-                                <SelectItem value="rejected">Rejected</SelectItem>
-                                <SelectItem value="archived">Archived</SelectItem>
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Department */}
-                        <div className="md:col-span-1">
-                          <label className="block text-sm mb-1">Departement</label>
-                          <Select
-                            value={String(it.doc_departement || "")}
-                            onValueChange={(v) => updateItem(it.id, { doc_departement: v })}
-                          >
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectLabel>Départements</SelectLabel>
-                                {departements?.map((dep) => (
-                                  <SelectItem key={dep.id} value={String(dep.id)}>
-                                    {dep.dep_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Perimeters */}
-                        <div className="md:col-span-1">
-                          <label className="block text-sm mb-1">Perimeters (required)</label>
-                          <Select
-                            value={String(it.doc_perimeters || "")}
-                            onValueChange={(v) => updateItem(it.id, { doc_perimeters: v })}
-                          >
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectLabel>Perimeters</SelectLabel>
-                                {(perimetersOptions || []).map((p) => (
-                                  <SelectItem key={p.id} value={String(p.id)}>
-                                    {p?.name || p?.title || p?.label || `#${p.id}`}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Nature */}
-                        <div className="md:col-span-1">
-                          <label className="block text-sm mb-1">Nature</label>
-                          <Select
-                            value={String(it.doc_nature || "")}
-                            onValueChange={(v) => updateItem(it.id, { doc_nature: v })}
-                          >
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectLabel>Natures</SelectLabel>
-                                {natures?.map((n) => (
-                                  <SelectItem key={n.id} value={String(n.id)}>
-                                    {n.nat_name || n.name || `${n.id}`}
-                                  </SelectItem>
-                                ))}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Folder */}
-                        <div className="md:col-span-1">
-                          <label className="block text-sm mb-1">Folder</label>
-                          <Select
-                            value={String(it.parent_folder || it.doc_path || "")}
-                            onValueChange={(v) => {
-                              const asId = String(v);
-                              const found = (folders || []).find(
-                                (ff) => ff && typeof ff === "object" && String(ff.id) === asId
-                              );
-
-                              if (found) {
-                                updateItem(it.id, {
-                                  parent_folder: String(found.id),
-                                  doc_path: String(found.fol_path || found.folpath || ""),
-                                });
-                              } else if (v === "/") {
-                                updateItem(it.id, { parent_folder: "", doc_path: "/" });
-                              } else {
-                                updateItem(it.id, { parent_folder: "", doc_path: String(v) });
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectLabel>Folders</SelectLabel>
-                                <SelectItem value="/">Root</SelectItem>
-                                {(folders || []).map((f) => {
-                                  if (!f) return null;
-                                  const label = `${f.fol_index || ""} ${f.fol_name || f.fol_path || ""}`.trim();
-                                  return (
-                                    <SelectItem key={String(f.id)} value={String(f.id)}>
-                                      {label}
-                                    </SelectItem>
-                                  );
-                                })}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Description */}
-                        <div className="md:col-span-4">
-                          <label className="block text-sm mb-1">Description</label>
-                          <Textarea
-                            value={it.doc_description}
-                            onChange={(e) => updateItem(it.id, { doc_description: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {it.uploading && (
-                      <div className="px-3 text-sm text-muted-foreground">Uploading…</div>
-                    )}
-                  </div>
-                </Card>
+                <BatchItem 
+                  key={it.id} 
+                  item={it} 
+                  updateItem={updateItem} 
+                  removeItem={removeItem}
+                  sites={sites}
+                  docTypes={docTypes}
+                  departements={departements}
+                  folders={folders}
+                  natures={natures}
+                  perimetersOptions={perimetersOptions}
+                  getFileExt={getFileExt}
+                  safeFileName={safeFileName}
+                />
               ))}
             </div>
 
             <div className="flex gap-3">
-              <Button type="submit" disabled={disabled}>
-                {disabled ? "Uploading..." : "Submit"}
+              <Button type="submit" disabled={disabled || items.length === 0}>
+                {disabled ? "Uploading..." : "Submit All"}
               </Button>
               <Button type="button" variant="outline" onClick={() => setItems([])}>
-                Clear
+                Clear All
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function BatchItem({ 
+  item: it, 
+  updateItem, 
+  removeItem, 
+  sites, 
+  docTypes, 
+  departements, 
+  folders, 
+  natures, 
+  perimetersOptions,
+  getFileExt,
+  safeFileName 
+}) {
+  
+  // Filter departments based on selected site
+  const filteredDepartments = useMemo(() => {
+    if (!it.site) return [];
+    return departements.filter((d) => {
+      const dSiteId = (d.site && typeof d.site === 'object') ? d.site.id : d.site;
+      return String(dSiteId) === String(it.site);
+    });
+  }, [departements, it.site]);
+
+  return (
+    <Card className="border-[0.1px] border-muted py-4">
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between px-3">
+          <div className="flex gap-3 items-center">
+            <div className="text-xs text-muted-foreground uppercase bg-secondary p-2 rounded-xs">
+              {getFileExt(it.file)}
+            </div>
+            <div className="font-medium truncate max-w-[40ch]">{safeFileName(it.file)}</div>
+            <div className="text-sm text-muted-foreground/60">
+              {Math.round((it.file?.size || 0) / 1024)} KB
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="text-sm"
+              onClick={() => updateItem(it.id, { expanded: !it.expanded })}
+            >
+              {it.expanded ? (
+                <ChevronUp className="text-muted-foreground/80" strokeWidth={1.25} size={16} />
+              ) : (
+                <ChevronDown className="text-muted-foreground/70" strokeWidth={1.25} size={16} />
+              )}
+            </button>
+
+            <button
+              type="button"
+              className="text-destructive"
+              onClick={() => removeItem(it.id)}
+            >
+              <Trash2 size={16} strokeWidth={1.25} />
+            </button>
+          </div>
+        </div>
+
+        {it.expanded && (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-4 p-5 bg-muted/25">
+            
+            <div className="col-span-1 md:col-span-1">
+              <label className="block text-sm mb-1">Title</label>
+              <Input
+                value={it.doc_title}
+                onChange={(e) => updateItem(it.id, { doc_title: e.target.value })}
+              />
+            </div>
+
+            {/* Site */}
+            <div className="col-span-1 md:col-span-1">
+              <label className="block text-sm mb-1">Site</label>
+              <Select
+                value={String(it.site || "")}
+                onValueChange={(v) => {
+                    updateItem(it.id, { 
+                        site: v,
+                        doc_departement: "" 
+                    });
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Site" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Sites</SelectLabel>
+                    {sites?.map((s) => (
+                      <SelectItem key={s.id} value={String(s.id)}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Type */}
+            <div className="col-span-1 md:col-span-1">
+              <label className="block text-sm mb-1">Type</label>
+              <Select
+                value={String(it.document_type || "")}
+                onValueChange={(v) => updateItem(it.id, { document_type: v })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Types</SelectLabel>
+                    {docTypes?.map((t) => (
+                      <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name} ({t.code})
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+           
+
+            {/* Department (Filtered by Site) */}
+            <div className="md:col-span-1">
+              <label className="block text-sm mb-1">Departement</label>
+              <Select
+                value={String(it.doc_departement || "")}
+                onValueChange={(v) => updateItem(it.id, { doc_departement: v })}
+                disabled={!it.site}
+              >
+                <SelectTrigger className="w-full">
+                    <SelectValue placeholder={!it.site ? "Select Site First" : "Select Dept"} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Départements</SelectLabel>
+                    {filteredDepartments.map((dep) => (
+                      <SelectItem key={dep.id} value={String(dep.id)}>
+                        {dep.dep_name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* mLean Perimeter */}
+            <div className="md:col-span-1">
+              <label className="block text-sm mb-1">Perimeters (required)</label>
+              <Select
+                value={String(it.doc_perimeters || "")}
+                onValueChange={(v) => updateItem(it.id, { doc_perimeters: v })}
+              >
+                <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Perimeter" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Perimeters</SelectLabel>
+                    {(perimetersOptions || []).map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p?.name || p?.title || p?.label || `#${p.id}`}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+           
+
+            <div className="md:col-span-1">
+              <label className="block text-sm mb-1">Folder</label>
+              <Select
+                value={String(it.parent_folder || it.doc_path || "")}
+                onValueChange={(v) => {
+                  const asId = String(v);
+                  const found = (folders || []).find(
+                    (ff) => ff && typeof ff === "object" && String(ff.id) === asId
+                  );
+
+                  if (found) {
+                    updateItem(it.id, {
+                      parent_folder: String(found.id),
+                      doc_path: String(found.fol_path || found.folpath || ""),
+                    });
+                  } else if (v === "/") {
+                    updateItem(it.id, { parent_folder: "", doc_path: "/" });
+                  } else {
+                    updateItem(it.id, { parent_folder: "", doc_path: String(v) });
+                  }
+                }}
+              >
+                <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Folder" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Folders</SelectLabel>
+                    <SelectItem value="/">Root</SelectItem>
+                    {(folders || []).map((f) => {
+                      if (!f) return null;
+                      const label = `${f.fol_index || ""} ${f.fol_name || f.fol_path || ""}`.trim();
+                      return (
+                        <SelectItem key={String(f.id)} value={String(f.id)}>
+                          {label}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="md:col-span-4">
+              <label className="block text-sm mb-1">Description</label>
+              <Textarea
+                value={it.doc_description}
+                onChange={(e) => updateItem(it.id, { doc_description: e.target.value })}
+                placeholder="Description of the document"
+              />
+            </div>
+          </div>
+        )}
+
+        {it.uploading && (
+          <div className="px-3 text-sm text-muted-foreground flex items-center gap-2">
+            <Loader2 className="h-3 w-3 animate-spin" /> Uploading…
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }

@@ -27,20 +27,42 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import mlean from "@/lib/mlean"; // ✅ NEW: Import mLean
 import { useGetDepartementsQuery } from "../../slices/departementSlice";
 import { 
   useGetFoldersQuery,
-  useGetSitesQuery,           // ✅ NEW
-  useGetDocumentTypesQuery    // ✅ NEW
+  useGetSitesQuery,           
+  useGetDocumentTypesQuery    
 } from "../../slices/documentSlice";
 
 export function CreateDocumentForm({ onSubmit, loading }) {
   const { data: departements } = useGetDepartementsQuery();
   const { data: folders } = useGetFoldersQuery();
-  const { data: sites } = useGetSitesQuery();          // ✅ NEW
-  const { data: docTypes } = useGetDocumentTypesQuery(); // ✅ NEW
+  const { data: sites } = useGetSitesQuery();          
+  const { data: docTypes } = useGetDocumentTypesQuery(); 
+
+  // ✅ NEW: State for perimeters
+  const [perimetersOptions, setPerimetersOptions] = useState([]);
+
+  // ✅ NEW: Fetch mLean Perimeters on mount
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const p = await mlean.fetchPerimeters();
+        if (!mounted) return;
+        const list = Array.isArray(p) ? p : p?.results || [];
+        setPerimetersOptions(list);
+      } catch (e) {
+        console.error("Failed to fetch mLean perimeters", e);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const form = useForm({
     defaultValues: {
@@ -51,8 +73,9 @@ export function CreateDocumentForm({ onSubmit, loading }) {
       parent_folder: "",
       doc_description: "",
       doc_comment: "",
-      site: "",           // ✅ NEW
-      document_type: "",  // ✅ NEW
+      site: "",           
+      document_type: "",  
+      doc_perimeters: "", // ✅ NEW: Added default value
     },
   });
 
@@ -114,35 +137,38 @@ export function CreateDocumentForm({ onSubmit, loading }) {
                   )}
                 />
 
+              
+              </div>
+
+              {/* ✅ UPDATED ROW: mLean Perimeter and Site */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                
+                {/* mLean Perimeter Field */}
                 <FormField
                   control={form.control}
-                  name="doc_status_type"
+                  name="doc_perimeters"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                      <FormLabel>mLean Perimeter (Required)</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Choisir un statut" />
+                            <SelectValue placeholder="Select Perimeter" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="ORIGINAL">Original</SelectItem>
-                          <SelectItem value="COPIE">Copie</SelectItem>
-                          <SelectItem value="PERIME">Périmé</SelectItem>
+                          {perimetersOptions.map((p) => (
+                            <SelectItem key={p.id} value={String(p.id)}>
+                              {p.name || p.title || p.label || `#${p.id}`}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
 
-              {/* ✅ NEW ROW: Site and Document Type */}
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="site"
@@ -167,8 +193,11 @@ export function CreateDocumentForm({ onSubmit, loading }) {
                     </FormItem>
                   )}
                 />
+              </div>
 
-                <FormField
+              {/* ✅ UPDATED ROW: Document Type and Department */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                 <FormField
                   control={form.control}
                   name="document_type"
                   render={({ field }) => (
@@ -195,9 +224,7 @@ export function CreateDocumentForm({ onSubmit, loading }) {
                     </FormItem>
                   )}
                 />
-              </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="doc_departement"
@@ -225,7 +252,10 @@ export function CreateDocumentForm({ onSubmit, loading }) {
                     </FormItem>
                   )}
                 />
+              </div>
 
+              {/* Parent Folder */}
+              <div className="grid grid-cols-1 gap-4">
                 <FormField
                   control={form.control}
                   name="parent_folder"

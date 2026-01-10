@@ -4,15 +4,13 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { useGetRolesQuery } from "@/slices/rolesSlices";
-import { useGetDepartementsQuery } from "@/slices/departementSlice";
+import { useGetDepartementsQuery, useGetSitesQuery } from "@/slices/departementSlice";
 
 const CreateUserForm = ({
   onSubmit,
@@ -24,14 +22,22 @@ const CreateUserForm = ({
 
   const { data: roles = [], isLoading: loadingRoles } = useGetRolesQuery();
   const { data: departements = [], isLoading: loadingDepts } = useGetDepartementsQuery();
+  const { data: sites = [], isLoading: loadingSites } = useGetSitesQuery();
 
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     role: "",
+    site: "", // Filter departments by site
     departement: "",
   });
+
+  // Filter departments based on selected site
+  const filteredDepartments = useMemo(() => {
+    if (!form.site) return [];
+    return departements.filter(d => String(d.site) === String(form.site));
+  }, [departements, form.site]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -39,7 +45,13 @@ const CreateUserForm = ({
   };
 
   const handleSelect = (name, value) => {
-    setForm((p) => ({ ...p, [name]: value }));
+    setForm((p) => {
+      // If site changes, reset department
+      if (name === "site") {
+        return { ...p, site: value, departement: "" };
+      }
+      return { ...p, [name]: value };
+    });
   };
 
   const handleSubmit = (e) => {
@@ -119,25 +131,58 @@ const CreateUserForm = ({
           </Select>
         </div>
 
+        {/* Site Filter (Optional but recommended for large orgs) */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Department</label>
+          <label className="text-sm font-medium">Site</label>
           <Select
-            value={form.departement}
-            onValueChange={(v) => handleSelect("departement", v)}
+            value={form.site}
+            onValueChange={(v) => handleSelect("site", v)}
             required
           >
             <SelectTrigger>
-              <SelectValue placeholder={loadingDepts ? "Loading..." : "Select Dept"} />
+              <SelectValue placeholder={loadingSites ? "Loading..." : "Select Site"} />
             </SelectTrigger>
             <SelectContent>
-              {departements.map((d) => (
-                <SelectItem key={d.id} value={String(d.id)}>
-                  {d.dep_name}
+              {sites.map((s) => (
+                <SelectItem key={s.id} value={String(s.id)}>
+                  {s.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      {/* Filtered Department Selection */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium">Department</label>
+        <Select
+          value={form.departement}
+          onValueChange={(v) => handleSelect("departement", v)}
+          required
+          disabled={!form.site} // Disable until site is picked
+        >
+          <SelectTrigger>
+            <SelectValue 
+              placeholder={
+                !form.site 
+                  ? "Select a Site first" 
+                  : loadingDepts 
+                    ? "Loading..." 
+                    : filteredDepartments.length === 0 
+                      ? "No departments found" 
+                      : "Select Dept"
+              } 
+            />
+          </SelectTrigger>
+          <SelectContent>
+            {filteredDepartments.map((d) => (
+              <SelectItem key={d.id} value={String(d.id)}>
+                {d.dep_name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">

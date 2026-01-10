@@ -1,8 +1,10 @@
-# serializers.py
 from django.utils import timezone
 from rest_framework import serializers
 
-from users.models import User, Departement  # ✅ Updated import to include Departement
+# ✅ Updated import to include Departement and Site
+from users.models import User, Departement
+from users.serializers import SiteSerializer # Import existing Site serializer if available or redefine here
+
 from .models import (
     Document,
     DocumentCategory,
@@ -26,13 +28,6 @@ class DepartementMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Departement
         fields = ["id", "dep_name", "dep_color"]
-
-
-# ✅ NEW: Site Serializer
-class SiteSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Site
-        fields = "__all__"
 
 
 # ✅ NEW: DocumentType Serializer
@@ -76,8 +71,7 @@ class DocumentVersionSerializer(serializers.ModelSerializer):
 
 class DocumentSerializer(serializers.ModelSerializer):
     """
-    Main Document serializer (current/latest file + metadata).
-    Includes versions read-only for history.
+    Main Document serializer (READ operations).
     """
 
     # Keep key only (so folder browsing doc_path__startswith keeps working)
@@ -108,23 +102,6 @@ class DocumentSerializer(serializers.ModelSerializer):
     # ✅ NEW: Explicitly nest department details so frontend can display name
     doc_departement_details = DepartementMiniSerializer(source='doc_departement', read_only=True)
 
-    def validate_doc_code(self, value):
-        # Only validate if doc_code provided (PUT/PATCH may omit it)
-        if value is None:
-            return value
-
-        if not value or value.strip() == "":
-            raise serializers.ValidationError("doc_code cannot be empty.")
-
-        qs = Document.objects.filter(doc_code=value)
-        if self.instance:
-            qs = qs.exclude(pk=self.instance.pk)
-
-        if qs.exists():
-            raise serializers.ValidationError("doc_code must be unique.")
-
-        return value
-
     def get_path_index(self, obj):
         return obj.get_path_index()
 
@@ -146,8 +123,37 @@ class DocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = "__all__"
-        # Ensure new system fields are read-only
         read_only_fields = ("doc_path", "doc_owner", "doc_code", "document_type_order")
+
+
+class DocumentCreateUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer specifically for CREATE and UPDATE operations.
+    Allows writable fields that are read-only in the main serializer.
+    """
+    doc_path = serializers.FileField(required=False) # Optional on update
+    
+    class Meta:
+        model = Document
+        fields = "__all__"
+        read_only_fields = ("doc_owner", "doc_code", "document_type_order")
+
+    def validate_doc_code(self, value):
+        # Only validate if doc_code provided (PUT/PATCH may omit it)
+        if value is None:
+            return value
+
+        if not value or value.strip() == "":
+            raise serializers.ValidationError("doc_code cannot be empty.")
+
+        qs = Document.objects.filter(doc_code=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+
+        if qs.exists():
+            raise serializers.ValidationError("doc_code must be unique.")
+
+        return value
 
 
 class DocumentMiniSerializer(serializers.ModelSerializer):
@@ -180,11 +186,6 @@ class DocumentMiniSerializer(serializers.ModelSerializer):
 class DocumentArchiveSerializer(serializers.ModelSerializer):
     """
     Used for the admin Archivage page.
-    Shows:
-    - document info
-    - restoration date
-    - remaining time
-    - versions history (so admin can inspect before restore)
     """
     document = DocumentMiniSerializer(read_only=True)
     archived_by = UserMiniSerializer(read_only=True)

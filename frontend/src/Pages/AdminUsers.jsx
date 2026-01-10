@@ -5,26 +5,31 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@/components/ui/dialog";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, MapPin } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
+// Forms
 import CreateUserForm from "../components/forms/create-user";
 import DeleteUser from "../components/forms/delete-user";
 import EditUser from "../components/forms/edit-user";
+
+// Badges
 import useRoleBadge from "../Hooks/useRoleBage";
 import useDepartmentBadge from "../Hooks/useDepartmentBadge";
+import { Avatarr } from "../components/blocks/avatarr";
+
+// API Hooks
 import { 
   useGetUsersQuery, 
   useCreateUserMutation, 
   useDeleteUserMutation, 
   useUpdateUserMutation 
 } from "@/slices/userSlice";
-
 import { useGetRolesQuery } from "@/slices/rolesSlices";
 import { useGetDepartementsQuery } from "@/slices/departementSlice";
-import { Avatarr } from "../components/blocks/avatarr";
 
-// Badge Helpers
+// --- Badge Helpers ---
 function RoleBadge({ role }) {
   const badge = useRoleBadge({ role });
   return <>{badge}</>;
@@ -36,10 +41,12 @@ function DepartmentBadge({ color, name }) {
 }
 
 const AdminUsers = () => {
+  // Fetch Data
   const { data: users = [], refetch, isLoading } = useGetUsersQuery();
   const { data: rolesList = [] } = useGetRolesQuery();
   const { data: deptsList = [] } = useGetDepartementsQuery();
 
+  // Modal State
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -47,10 +54,45 @@ const AdminUsers = () => {
   const [formError, setFormError] = useState(null);
   const [selectedUser, setSelectedUser] = useState(null);
   
+  // Mutations
   const [createUser, { isLoading: createLoading }] = useCreateUserMutation();
   const [deleteUser, { isLoading: deleteLoading }] = useDeleteUserMutation();
   const [editUser, { isLoading: editLoading }] = useUpdateUserMutation();
 
+  // --- Helper to resolve Site Name (FIXED) ---
+  const getSiteName = (user, deptList) => {
+    // 1. Check if user object already has site info (e.g., from Department nested serializer)
+    if (user.departement && typeof user.departement === 'object') {
+      if (user.departement.site_details?.name) return user.departement.site_details.name;
+      // Safety check: verify site is truthy before checking type or properties
+      if (user.departement.site && typeof user.departement.site === 'object' && user.departement.site.name) {
+        return user.departement.site.name;
+      }
+      if (user.departement.site_name) return user.departement.site_name;
+    }
+
+    // 2. Fallback: Lookup dept ID in deptList
+    const deptId = (user.departement && typeof user.departement === 'object') ? user.departement.id : user.departement;
+    
+    if (!deptId) return "No Site";
+
+    const foundDept = deptList.find(d => String(d.id) === String(deptId));
+    if (foundDept) {
+        // Handle both nested site object or flat site ID/Name
+        // ✅ FIX: Check if foundDept.site exists (is not null) AND is an object
+        if (foundDept.site && typeof foundDept.site === 'object' && foundDept.site.name) {
+            return foundDept.site.name;
+        }
+        if (foundDept.site_details?.name) return foundDept.site_details.name;
+        if (foundDept.site_name) return foundDept.site_name;
+        
+        // If site is null/undefined on the department
+        if (!foundDept.site) return "No Site";
+    }
+    return "Unknown Site";
+  };
+
+  // --- Columns Definition ---
   const columns = useMemo(() => [
     {
       id: "id",
@@ -66,19 +108,31 @@ const AdminUsers = () => {
     },
     { id: "username", accessorKey: "username", header: "Username" },
     { id: "email", accessorKey: "email", header: "Email" },
+    
+    // ✅ Site Column (Safe)
+    {
+      id: "site",
+      header: "Site",
+      cell: ({ row }) => {
+        const siteName = getSiteName(row.original, deptsList);
+        return (
+          <Badge variant="outline" className="flex w-fit items-center gap-1 text-xs font-normal text-muted-foreground">
+            <MapPin className="h-3 w-3" /> {siteName}
+          </Badge>
+        );
+      },
+    },
+
     {
       id: "role",
       header: "Role",
       cell: ({ row }) => {
-        // According to your JSON, "role" is an object
         const roleData = row.original.role; 
         let roleDisplayName = "Unknown";
 
-        // 1. Check if it's the nested object structure from your JSON
         if (roleData && typeof roleData === 'object' && roleData.role_name) {
           roleDisplayName = roleData.role_name;
         } 
-        // 2. Fallback: If it's an ID, look it up in rolesList
         else if (roleData !== null && roleData !== undefined) {
           const found = rolesList.find(item => String(item.id) === String(roleData));
           if (found) roleDisplayName = found.role_name;
@@ -91,7 +145,6 @@ const AdminUsers = () => {
       id: "departement",
       header: "Department",
       cell: ({ row }) => {
-        // According to your JSON, "departement" is also an object
         const deptData = row.original.departement;
         let deptName = "Unknown";
         let deptColor = "#cbd5e1";
@@ -115,7 +168,7 @@ const AdminUsers = () => {
       id: "date_joined", 
       header: "Created",
       cell: ({ row }) => {
-        const dateVal = row.original.date_joined; // Matches "2025-12-30T15:23:38..."
+        const dateVal = row.original.date_joined; 
         return dateVal ? new Date(dateVal).toLocaleDateString("en-GB") : "-";
       },
     },
@@ -140,10 +193,18 @@ const AdminUsers = () => {
     }
   };
 
-  if (isLoading) return <div className="p-8 text-center">Loading users...</div>;
+  if (isLoading) return <div className="p-8 text-center text-muted-foreground">Loading users...</div>;
 
   return (
-    <div className="flex flex-1 flex-col p-4">
+    <div className="flex flex-1 flex-col h-full bg-slate-50/50 p-6">
+      
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">User Management</h1>
+          <p className="text-muted-foreground">Manage user access, roles, and sites.</p>
+        </div>
+      </div>
+
       <DataTable
         columns={combinedColumns}
         data={users}
@@ -162,32 +223,39 @@ const AdminUsers = () => {
             onClick: () => { setFormError(null); setSelectedUser(row.original); setDeleteOpen(true); },
           },
         ]}
-        pageSize={20}
-        title="Users"
+        pageSize={10}
+        title="All Users"
+        searchKey="username" // Search by username
       />
 
-      {/* Dialogs for Create/Edit/Delete remain the same as your original file */}
+      {/* --- Create User Dialog --- */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Create User</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+          </DialogHeader>
           <CreateUserForm
             onSubmit={async (data) => {
               try {
                 await createUser(data).unwrap();
                 refetch();
                 setCreateOpen(false);
-              } catch (e) { setFormError(e?.data?.error || "Error"); }
+              } catch (e) { 
+                setFormError(e?.data?.error || "Failed to create user"); 
+              }
             }}
             onCancel={() => setCreateOpen(false)}
             loading={createLoading}
-            error={formError}
           />
         </DialogContent>
       </Dialog>
 
+      {/* --- Edit User Dialog --- */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Edit User</DialogTitle></DialogHeader>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+          </DialogHeader>
           {selectedUser && (
             <EditUser
               user={selectedUser}
@@ -200,9 +268,12 @@ const AdminUsers = () => {
         </DialogContent>
       </Dialog>
 
+      {/* --- Delete User Dialog --- */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Delete User</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Delete User</DialogTitle>
+          </DialogHeader>
           <DeleteUser
             user={selectedUser}
             onDelete={async (user) => {
@@ -210,7 +281,9 @@ const AdminUsers = () => {
                 await deleteUser(user.id).unwrap();
                 refetch();
                 setDeleteOpen(false);
-              } catch (e) { setFormError("Error"); }
+              } catch (e) { 
+                setFormError("Failed to delete user"); 
+              }
             }}
             onCancel={() => setDeleteOpen(false)}
             loading={deleteLoading}
@@ -218,6 +291,7 @@ const AdminUsers = () => {
           />
         </DialogContent>
       </Dialog>
+
     </div>
   );
 };

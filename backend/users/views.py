@@ -15,16 +15,17 @@ from django.contrib.auth.models import Permission, Group
 from django.core.mail import send_mail
 from django.conf import settings
 
-from .models import User, Role, Departement
+# ✅ Added Site model import
+from .models import User, Role, Departement, UserActionLog, Site 
 from .serializers import (
     UserSerializer, 
     UserActionLogSerializer, 
     RoleSerializer, 
     DepartementSerializer, 
     PermissionSerializer, 
-    GroupSerializer
+    GroupSerializer,
+    SiteSerializer # ✅ Added SiteSerializer
 )
-from .models import UserActionLog
 
 import secrets
 import string
@@ -146,7 +147,6 @@ class UserViewSet(viewsets.ModelViewSet):
         # Logic: 
         # 1. User is Superuser OR Staff (Admin) -> Include them
         # 2. OR (User is in the Department AND User has the specific Role)
-        # Note: We filter by role__role_name__iexact to match your Role model
         users = User.objects.filter(
             Q(is_superuser=True) | 
             Q(is_staff=True) |
@@ -454,21 +454,37 @@ class RoleViewSet(viewsets.ModelViewSet):
     #  GET /roles/?role_name=John
     #  GET /roles/?role_color=test
 
+# ✅ ADDED: SiteViewSet
+class SiteViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing Sites.
+    """
+    queryset = Site.objects.all()
+    serializer_class = SiteSerializer
+    permission_classes = [IsAuthenticated, IsAdminUser] # Restrict if needed
+
+# ✅ UPDATED: DepartementViewSet
 class DepartementViewSet(viewsets.ModelViewSet):
     '''Departement viewset for CRUD operations'''
     queryset = Departement.objects.all()
     serializer_class = DepartementSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["dep_name", "dep_color", "site"] # Added filtering by site
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         dep = serializer.save()
+        
+        # Log Site Info
+        site_name = dep.site.name if dep.site else "None"
+        
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="create",
             content_type=ContentType.objects.get_for_model(dep),
             object_id=dep.id,
-            extra_info={"dep_name": dep.dep_name}
+            extra_info={"dep_name": dep.dep_name, "site": site_name}
         )
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -479,12 +495,16 @@ class DepartementViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         dep = serializer.save()
+        
+        # Log Site Info
+        site_name = dep.site.name if dep.site else "None"
+
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="update",
             content_type=ContentType.objects.get_for_model(dep),
             object_id=dep.id,
-            extra_info={"dep_name": dep.dep_name}
+            extra_info={"dep_name": dep.dep_name, "site": site_name}
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -492,20 +512,18 @@ class DepartementViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         dep_id = instance.id
         dep_name = instance.dep_name
+        # Capture site name before deletion
+        site_name = instance.site.name if instance.site else "None"
+        
         self.perform_destroy(instance)
         UserActionLog.objects.create(
             user=self.request.user if self.request.user.is_authenticated else None,
             action="delete",
             content_type=ContentType.objects.get_for_model(Departement),
             object_id=dep_id,
-            extra_info={"dep_name": dep_name}
+            extra_info={"dep_name": dep_name, "site": site_name}
         )
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["dep_name", "dep_color"]
-    #  GET /departements/?dep_name=test
-    #  GET /departements/?dep_color=test
 
 class PermissionViewSet(viewsets.ViewSet):
     """

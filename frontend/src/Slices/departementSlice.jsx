@@ -7,6 +7,12 @@ export const departementSlice = apiSlice.injectEndpoints({
       providesTags: ["Departement"],
     }),
 
+    // ✅ ADDED: Endpoint to fetch Sites
+    getSites: builder.query({
+      query: () => ({ url: "/api/sites/", method: "GET" }),
+      providesTags: ["Sites"],
+    }),
+
     createDepartement: builder.mutation({
       query: (body) => ({ url: "/api/departements/", method: "POST", body }),
       invalidatesTags: ["Departement"],
@@ -31,6 +37,7 @@ export const departementSlice = apiSlice.injectEndpoints({
 
 export const {
   useGetDepartementsQuery,
+  useGetSitesQuery, // ✅ Export the new hook
   useCreateDepartementMutation,
   useUpdateDepartementMutation,
   useDeleteDepartementMutation,

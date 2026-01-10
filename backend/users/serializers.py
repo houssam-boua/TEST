@@ -1,15 +1,25 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import User, UserActionLog, Role, Departement
+from .models import User, UserActionLog, Role, Departement, Site
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import Group, Permission
 
-
 User = get_user_model()
-
 
 # --- 1. PRE-DEFINED SERIALIZERS (Must be above UserSerializer) ---
 
+# ✅ NEW: Site Serializer
+class SiteSerializer(serializers.ModelSerializer):
+    """Serializer for the Site model."""
+    class Meta:
+        model = Site
+        fields = ['id', 'name', 'location']
+    
+    def validate_name(self, value):
+        """Ensure site name is unique (case-insensitive)."""
+        if Site.objects.filter(name__iexact=value).exists():
+            raise serializers.ValidationError(f"A site with the name '{value}' already exists.")
+        return value
 
 class RoleSerializer(serializers.ModelSerializer):
     """Serializer for the custom Role model."""
@@ -17,13 +27,45 @@ class RoleSerializer(serializers.ModelSerializer):
         model = Role
         fields = "__all__"
 
-
 class DepartementSerializer(serializers.ModelSerializer):
-    """Serializer for the custom Departement model."""
+    """
+    Serializer for the custom Departement model.
+    Supports reading nested site details and writing via site_id.
+    """
+    # Read: Full site object
+    site_details = SiteSerializer(source='site', read_only=True)
+    # Write: ID of the site (Required)
+    site = serializers.PrimaryKeyRelatedField(queryset=Site.objects.all(), required=True)
+
     class Meta:
         model = Departement
-        fields = "__all__"
+        fields = ['id', 'dep_name', 'dep_color', 'site', 'site_details', 'created_at', 'updated_at']
+        # ✅ FIX: Disable default validators so our custom validate() method controls the error message
+        validators = []
 
+    def validate(self, data):
+        """
+        Check that the department name is unique within the selected site.
+        """
+        # Get values from data or instance (if updating)
+        dep_name = data.get('dep_name') or (self.instance.dep_name if self.instance else None)
+        site = data.get('site') or (self.instance.site if self.instance else None)
+
+        if dep_name and site:
+            # Case-insensitive check for uniqueness
+            qs = Departement.objects.filter(dep_name__iexact=dep_name, site=site)
+            
+            # Exclude current instance if updating
+            if self.instance:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if qs.exists():
+                # ✅ Specific Error Key: "dep_name" matches frontend expectation
+                raise serializers.ValidationError({
+                    "dep_name": f"The department '{dep_name}' already exists in site '{site.name}'."
+                })
+
+        return data
 
 class PermissionSerializer(serializers.ModelSerializer):
     """
@@ -129,7 +171,6 @@ class GroupSerializer(serializers.ModelSerializer):
 
 # --- 2. MAIN USER SERIALIZER ---
 
-
 class UserSerializer(serializers.ModelSerializer):
     """
     Main User serializer with support for both CREATE and UPDATE operations.
@@ -163,7 +204,7 @@ class UserSerializer(serializers.ModelSerializer):
             'role': {'required': False},
             'departement': {'required': False},
         }
- 
+
     def validate(self, data):
         """
         Validation that differentiates between CREATE and UPDATE operations.
@@ -179,13 +220,9 @@ class UserSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"role": "This field is required for new users."})
             if not data.get("departement"):
                 raise serializers.ValidationError({"departement": "This field is required for new users."})
-        else:
-            # For UPDATE: validation is optional
-            # If role/departement are provided, they'll be validated by PrimaryKeyRelatedField
-            pass
         
         return data
- 
+
     def create(self, validated_data):
         """
         Create a new user with proper password hashing.

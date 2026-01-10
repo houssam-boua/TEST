@@ -84,8 +84,15 @@ export default function EditDocumentForm({ documentId, onClose }) {
 
     try {
       const standardRootId = document?.mlean_standard_id || null;
+      
+      // ✅ Fix Status Casing: Ensure backend receives valid choice keys (UPPERCASE)
+      const statusToSend = document?.doc_status_type
+        ? document.doc_status_type.toUpperCase()
+        : undefined;
 
-      // Not linked to mLean => local-only update is allowed
+      // ---------------------------------------------------------
+      // SCENARIO 1: Not linked to mLean => Local-only update
+      // ---------------------------------------------------------
       if (!standardRootId) {
         if (isMinor) {
           if (!file) {
@@ -94,10 +101,13 @@ export default function EditDocumentForm({ documentId, onClose }) {
           }
           const fd = new FormData();
           fd.append("update_type", "MINOR");
-          // FIX: Use the user's description as the version comment
           fd.append("version_comment", description || "Minor changes");
           fd.append("doc_description", description || "");
           fd.append("file", file);
+          
+          if (statusToSend) {
+             fd.append("doc_status_type", statusToSend);
+          }
 
           await updateDocument({ id: documentId, data: fd }).unwrap();
         } else {
@@ -105,9 +115,9 @@ export default function EditDocumentForm({ documentId, onClose }) {
             id: documentId,
             data: {
               update_type: "AUDITABLE",
-              // FIX: Use the user's description as the version comment
               version_comment: description || "Auditable update",
               doc_description: description || "",
+              ...(statusToSend && { doc_status_type: statusToSend }),
             },
           }).unwrap();
         }
@@ -117,7 +127,9 @@ export default function EditDocumentForm({ documentId, onClose }) {
         return;
       }
 
-      // Linked to mLean => perimeter required
+      // ---------------------------------------------------------
+      // SCENARIO 2: Linked to mLean => Remote + Local update
+      // ---------------------------------------------------------
       if (!perimeters.length) {
         toast.error(
           "mLean requires at least one perimeter. Select a perimeter then retry."
@@ -125,8 +137,12 @@ export default function EditDocumentForm({ documentId, onClose }) {
         return;
       }
 
-      // CRITICAL FIX: Identify the ID of the node we are evolving FROM (the current version)
+      // ✅ CRITICAL: Identify the ID of the node we are evolving FROM (the current version)
       const previousPaperStandardId = document?.mlean_paper_standard_id;
+
+      let newPaperId = null;
+      let newRootId = null;
+      let remoteDocId = null;
 
       if (isMinor) {
         if (!file) {
@@ -137,29 +153,40 @@ export default function EditDocumentForm({ documentId, onClose }) {
         // 1) mLean minor update
         const r = await mlean.minorChangesUpdateViaPaperStandards({
           standardRootId,
-          previousPaperStandardId,
+          previousPaperStandardId, // ✅ Pass previous ID for history chain
           name: document?.doc_title || document?.doctitle || file.name,
           file,
           description: description || "",
           perimeters,
         });
 
-        const newRootId = r?.standardRootId ?? standardRootId;
-        const newPaperId = r?.newPaperStandardId ?? document?.mlean_paper_standard_id;
+        // ✅ Validation: Check if mLean returned an ID
+        if (!r?.newPaperStandardId) {
+            throw new Error("mLean update failed: No new Paper Standard ID returned.");
+        }
+
+        newRootId = r.standardRootId ?? standardRootId;
+        newPaperId = r.newPaperStandardId;
+        remoteDocId = r.remoteDocId;
 
         // 2) Local update WITH FILE
         const fd = new FormData();
         fd.append("update_type", "MINOR");
-        // FIX: Use description for history comment
         fd.append("version_comment", description || "Minor changes");
         fd.append("doc_description", description || "");
         fd.append("file", file);
 
-        if (r?.remoteDocId != null) fd.append("mlean_document_id", String(r.remoteDocId));
+        // ✅ Save NEW IDs to maintain link
+        if (remoteDocId != null) fd.append("mlean_document_id", String(remoteDocId));
         if (newPaperId != null) fd.append("mlean_paper_standard_id", String(newPaperId));
         fd.append("mlean_standard_id", String(newRootId));
+        
+        if (statusToSend) {
+            fd.append("doc_status_type", statusToSend);
+        }
 
         await updateDocument({ id: documentId, data: fd }).unwrap();
+
       } else {
         // AUDITABLE
         const currentDocumentId = document?.mlean_document_id;
@@ -174,35 +201,49 @@ export default function EditDocumentForm({ documentId, onClose }) {
         const r = await mlean.auditableUpdateViaPaperStandards({
           standardRootId,
           currentDocumentId,
-          previousPaperStandardId,
+          previousPaperStandardId, // ✅ Pass previous ID for history chain
           name: document?.doc_title || document?.doctitle || "Standard",
           description: description || "",
           perimeters,
           is_minor_version: false,
         });
 
-        const newRootId = r?.standardRootId ?? standardRootId;
-        const newPaperId = r?.newPaperStandardId ?? document?.mlean_paper_standard_id;
+        // ✅ Validation
+        if (!r?.newPaperStandardId) {
+            throw new Error("mLean update failed: No new Paper Standard ID returned.");
+        }
+
+        newRootId = r.standardRootId ?? standardRootId;
+        newPaperId = r.newPaperStandardId;
 
         // 2) Local metadata-only update (no file)
         await updateDocument({
           id: documentId,
           data: {
             update_type: "AUDITABLE",
-            // FIX: Use description for history comment
             version_comment: description || "Auditable update",
             doc_description: description || "",
+            // ✅ Save NEW IDs
             mlean_paper_standard_id: newPaperId,
             mlean_standard_id: newRootId,
+            ...(statusToSend && { doc_status_type: statusToSend }),
           },
         }).unwrap();
       }
 
       await refetch?.();
       resetAndClose();
+      toast.success("Document updated successfully.");
+
     } catch (err) {
       console.error("Failed to update document", err);
-      toast.error(err?.data?.detail || err?.message || "Failed to update document");
+      // Better error extraction
+      let errorMsg = "Failed to update document";
+      if (err?.data?.detail) errorMsg = err.data.detail;
+      else if (err?.data?.doc_status_type) errorMsg = `Status Error: ${err.data.doc_status_type}`;
+      else if (err?.message) errorMsg = err.message;
+      
+      toast.error(errorMsg);
     }
   }
 
