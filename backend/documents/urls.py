@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     # APIViews
+    DocumentCodeViewSet,
     DocumentListCreateView,
     DocumentDetailView,
     FolderDocumentsView,
@@ -37,7 +38,7 @@ router.register(r"folders", FolderViewSet, basename="folders")
 # ✅ NEW: Register Site and DocumentType ViewSets
 router.register(r"sites", SiteViewSet, basename="sites")
 router.register(r"document-types", DocumentTypeViewSet, basename="document-types")
-
+router.register(r'document-codes', DocumentCodeViewSet, basename='document-code')
 # Optional (handy for admin/debug):
 router.register(r"document-versions", DocumentVersionViewSet, basename="documentversion")
 

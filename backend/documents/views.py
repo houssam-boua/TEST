@@ -37,6 +37,7 @@ from .models import (
     Document,
     DocumentArchive,
     DocumentCategory,
+    DocumentCode,
     DocumentNature,
     DocumentVersion,
     Folder,
@@ -47,6 +48,7 @@ from .models import (
 from .serializers import (
     DocumentArchiveSerializer,
     DocumentCategorySerializer,
+    DocumentCodeSerializer,
     DocumentNatureSerializer,
     DocumentSerializer,
     DocumentVersionSerializer,
@@ -583,6 +585,25 @@ class DocumentTypeViewSet(viewsets.ModelViewSet):
     queryset = DocumentType.objects.all()
     serializer_class = DocumentTypeSerializer
     permission_classes = [IsAuthenticated]
+    
+# ✅ ADD: DocumentCode ViewSet
+class DocumentCodeViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing document codes.
+    Only active codes are shown to regular users.
+    """
+    serializer_class = DocumentCodeSerializer
+    permission_classes = [IsAuthenticated]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['code', 'name', 'description']
+    ordering_fields = ['code', 'name', 'created_at']
+    ordering = ['code']
+
+    def get_queryset(self):
+        # Admins see all codes; regular users see only active ones
+        if self.request.user.is_superuser or self.request.user.is_staff:
+            return DocumentCode.objects.all()
+        return DocumentCode.objects.filter(is_active=True)
 
 
 # ------------------------ Documents ViewSet (Actions) ------------------------
@@ -792,6 +813,7 @@ class DocumentListCreateView(APIView):
         if _folder_is_archived_anywhere(folder):
             return Response({"error": "This folder (or a parent folder) is archived."}, status=400)
 
+        # Handle Document Owner
         owner_id = request.data.get("doc_owner")
         owner = None
         if owner_id:
@@ -804,19 +826,63 @@ class DocumentListCreateView(APIView):
             if not owner:
                 return Response({"error": "Missing field: doc_owner"}, status=400)
 
-        departement_id = request.data.get("doc_departement")
-        try:
-            departement = Departement.objects.get(id=departement_id)
-        except Departement.DoesNotExist:
-            return Response({"error": "Invalid departement ID"}, status=400)
-
-        # ✅ NEW: Handle Site
-        site_id = request.data.get("site")
+        # ✅ ADD: Handle Document Code
+        doc_code_id = request.data.get("document_code")
+        doc_code_obj = None
+        if doc_code_id:
+            try:
+                doc_code_obj = DocumentCode.objects.get(id=doc_code_id, is_active=True)
+            except DocumentCode.DoesNotExist:
+                return Response({"error": "Invalid or inactive document code ID"}, status=400)
+        # ---------------------------------------------------------------------
+        # ✅ UPDATED LOGIC: Permission-Based Site & Department Selection
+        # ---------------------------------------------------------------------
+        
+        departement = None
         site_obj = None
-        if site_id:
-            site_obj = get_object_or_404(Site, id=site_id)
 
-        # ✅ NEW: Handle Document Type & Index Generation
+        # Check if user is Admin OR has cross-department permission
+        can_select_dept_site = (
+            request.user.is_superuser or 
+            request.user.is_staff or 
+            request.user.has_perm('documents.can_create_cross_department')
+        )
+
+        if can_select_dept_site:
+            # 1. Admin OR Permitted User Logic
+            departement_id = request.data.get("doc_departement")
+            if not departement_id:
+                return Response({
+                    "error": "Users with cross-department permission must explicitly select a 'doc_departement'."
+                }, status=400)
+            
+            try:
+                departement = Departement.objects.get(id=departement_id)
+            except Departement.DoesNotExist:
+                return Response({"error": "Invalid departement ID"}, status=400)
+
+            # Can select a site, or fallback to the department's site
+            site_id = request.data.get("site")
+            if site_id:
+                site_obj = get_object_or_404(Site, id=site_id)
+            else:
+                site_obj = departement.site
+
+        else:
+            # 2. Regular User Logic
+            # Ignore request data; use the User's profile data
+            if not request.user.departement:
+                return Response(
+                    {"error": "Your profile is not assigned to a Department. Cannot create document."}, 
+                    status=403
+                )
+            
+            departement = request.user.departement
+            site_obj = departement.site  # Automatically link the site associated with their department
+
+        # ---------------------------------------------------------------------
+
+        # ✅ Handle Document Type & Index Generation
         doc_type_id = request.data.get("document_type")
         doc_type_obj = None
         
@@ -826,7 +892,7 @@ class DocumentListCreateView(APIView):
         if doc_type_id:
             doc_type_obj = get_object_or_404(DocumentType, id=doc_type_id)
         
-        # We might still want nature for fallback or compatibility
+        # Check nature for fallback
         if nature_id:
             try:
                 nature_obj = DocumentNature.objects.get(id=nature_id)
@@ -859,25 +925,21 @@ class DocumentListCreateView(APIView):
         else:
             return Response({"error": "Must provide either doc_nature or document_type."}, status=400)
             
-        # Fallback if nature not provided but required by model (assuming nullable now or you provide a default)
+        # Fallback if nature not provided but required by model
         if not nature_obj:
-             try:
-                nature_obj = DocumentNature.objects.first() # Or a specific default
-             except:
+            try:
+                nature_obj = DocumentNature.objects.first()
+            except:
                 return Response({"error": "No DocumentNature found in system to use as default."}, status=500)
 
         doc_size = file.size
         doc_format = file.name.split(".")[-1] if "." in file.name else ""
         doc_title = request.data.get("doc_title", "")
         
-       
-        doc_status_type = "DRAFT" # <--- FIXED CASING
-            
-        # Allow override ONLY if provided in request AND user is admin (optional safety)
-        # For strict enforcement, we stick to the if/else logic above.
+        # Force DRAFT status
+        doc_status_type = "DRAFT"
         
         doc_description_val = request.data.get("doc_description", "")
-
         safe_name = os.path.basename(file.name)
 
         # Construct LIVE path
@@ -894,18 +956,19 @@ class DocumentListCreateView(APIView):
             doc_type=format_and_types.get(doc_format.lower(), "Unknown"),
             doc_status_type=doc_status_type,
             doc_owner=owner,
-            doc_departement=departement,
+            doc_departement=departement,  # Uses the logic calculated above
             doc_format=doc_format,
             doc_code=doc_code,
             doc_size=doc_size,
             doc_description=doc_description_val,
-            
+            document_code=doc_code_obj,  # ✅ ADD THIS LINE
+
             # Legacy/Fallback
             doc_nature=nature_obj,
             doc_nature_order=used_nature_order,
             
             # ✅ NEW
-            site=site_obj,
+            site=site_obj,  # Uses the logic calculated above
             document_type=doc_type_obj,
             document_type_order=used_type_order,
 
@@ -928,7 +991,8 @@ class DocumentListCreateView(APIView):
             change_type="AUDITABLE",
             version_comment="Initial version",
         )
-        # ✅ FIX: Save version in "documents/versions/" explicitly
+        
+        # Save version in "documents/versions/" explicitly
         v1_name = f"{document.id}/v1_{safe_name}".replace("\\", "/")
         v1.version_path.save(v1_name, file)
 
@@ -945,7 +1009,7 @@ class DocumentListCreateView(APIView):
             {"message": "Document uploaded successfully", "document": serializer.data},
             status=201,
         )
-
+    
     def get(self, request):
         _restore_expired_entities()
 

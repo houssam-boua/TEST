@@ -19,8 +19,9 @@ import {
   useGetDocumentNatureQuery,
   useCreateDocumentMutation,
   useUpdateDocumentMutation,
-  useGetSitesQuery,         // ✅ NEW
-  useGetDocumentTypesQuery  // ✅ NEW
+  useGetSitesQuery,
+  useGetDocumentTypesQuery,
+  useGetDocumentCodesQuery
 } from "@/slices/documentSlice";
 import { Trash2, ChevronDown, ChevronUp, FileUp, Loader2 } from "lucide-react";
 import mlean from "@/lib/mlean";
@@ -35,8 +36,14 @@ export default function BatchCreateDocumentsForm({
   const { data: departements = [] } = useGetDepartementsQuery();
   const { data: folders = [] } = useGetFoldersQuery();
   const { data: natures = [] } = useGetDocumentNatureQuery();
-  const { data: sites = [] } = useGetSitesQuery();          // ✅ NEW
-  const { data: docTypes = [] } = useGetDocumentTypesQuery(); // ✅ NEW
+  const { data: sites = [] } = useGetSitesQuery();
+  const { data: docTypes = [] } = useGetDocumentTypesQuery();
+  const { data: docCodes = [] } = useGetDocumentCodesQuery();
+
+  // ✅ Check if user can select department/site (Admin OR has permission)
+  const canSelectDeptSite = 
+    currentUser?.role?.role_name === 'admin' || 
+    currentUser?.permissions?.includes('documents.can_create_cross_department');
 
   const [items, setItems] = useState([]);
   const [error, setError] = useState(null);
@@ -72,10 +79,11 @@ export default function BatchCreateDocumentsForm({
       parent_folder: "",
       doc_departement: "",
       doc_nature: natures?.[0]?.id ? String(natures[0].id) : "",
-      site: "",             // ✅ NEW
-      document_type: "",    // ✅ NEW
-      doc_perimeters: "",   // Required for mLean
+      site: "",
+      document_type: "",
+      doc_perimeters: "",
       doc_description: "",
+      document_code: "",
 
       expanded: true,
       uploading: false,
@@ -150,6 +158,7 @@ export default function BatchCreateDocumentsForm({
         // New Fields
         if (it.site) fd.append("site", String(it.site));
         if (it.document_type) fd.append("document_type", String(it.document_type));
+        if (it.document_code) fd.append("document_code", String(it.document_code)); // ✅ FIXED: Moved here
 
         const resp = await createDocument(fd).unwrap();
         localDocId = extractLocalDocumentId(resp);
@@ -272,6 +281,7 @@ export default function BatchCreateDocumentsForm({
                   item={it} 
                   updateItem={updateItem} 
                   removeItem={removeItem}
+                  docCodes={docCodes}
                   sites={sites}
                   docTypes={docTypes}
                   departements={departements}
@@ -280,6 +290,7 @@ export default function BatchCreateDocumentsForm({
                   perimetersOptions={perimetersOptions}
                   getFileExt={getFileExt}
                   safeFileName={safeFileName}
+                  canSelectDeptSite={canSelectDeptSite}
                 />
               ))}
             </div>
@@ -310,7 +321,9 @@ function BatchItem({
   natures, 
   perimetersOptions,
   getFileExt,
-  safeFileName 
+  safeFileName,
+  docCodes,
+  canSelectDeptSite
 }) {
   
   // Filter departments based on selected site
@@ -370,33 +383,35 @@ function BatchItem({
               />
             </div>
 
-            {/* Site */}
-            <div className="col-span-1 md:col-span-1">
-              <label className="block text-sm mb-1">Site</label>
-              <Select
-                value={String(it.site || "")}
-                onValueChange={(v) => {
-                    updateItem(it.id, { 
-                        site: v,
-                        doc_departement: "" 
-                    });
-                }}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select Site" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>Sites</SelectLabel>
-                    {sites?.map((s) => (
-                      <SelectItem key={s.id} value={String(s.id)}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* ✅ Site - Only visible for users with permission */}
+            {canSelectDeptSite && (
+              <div className="col-span-1 md:col-span-1">
+                <label className="block text-sm mb-1">Site</label>
+                <Select
+                  value={String(it.site || "")}
+                  onValueChange={(v) => {
+                      updateItem(it.id, { 
+                          site: v,
+                          doc_departement: "" 
+                      });
+                  }}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Site" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Sites</SelectLabel>
+                      {sites?.map((s) => (
+                        <SelectItem key={s.id} value={String(s.id)}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Type */}
             <div className="col-span-1 md:col-span-1">
@@ -421,31 +436,31 @@ function BatchItem({
               </Select>
             </div>
 
-           
-
-            {/* Department (Filtered by Site) */}
-            <div className="md:col-span-1">
-              <label className="block text-sm mb-1">Departement</label>
-              <Select
-                value={String(it.doc_departement || "")}
-                onValueChange={(v) => updateItem(it.id, { doc_departement: v })}
-                disabled={!it.site}
-              >
-                <SelectTrigger className="w-full">
-                    <SelectValue placeholder={!it.site ? "Select Site First" : "Select Dept"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    <SelectLabel>Départements</SelectLabel>
-                    {filteredDepartments.map((dep) => (
-                      <SelectItem key={dep.id} value={String(dep.id)}>
-                        {dep.dep_name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* ✅ Department - Only visible for users with permission (Filtered by Site) */}
+            {canSelectDeptSite && (
+              <div className="md:col-span-1">
+                <label className="block text-sm mb-1">Departement</label>
+                <Select
+                  value={String(it.doc_departement || "")}
+                  onValueChange={(v) => updateItem(it.id, { doc_departement: v })}
+                  disabled={!it.site}
+                >
+                  <SelectTrigger className="w-full">
+                      <SelectValue placeholder={!it.site ? "Select Site First" : "Select Dept"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectLabel>Départements</SelectLabel>
+                      {filteredDepartments.map((dep) => (
+                        <SelectItem key={dep.id} value={String(dep.id)}>
+                          {dep.dep_name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* mLean Perimeter */}
             <div className="md:col-span-1">
@@ -470,7 +485,28 @@ function BatchItem({
               </Select>
             </div>
 
-           
+            {/* ✅ Document Code Field */}
+            <div className="md:col-span-1">
+              <label className="block text-sm mb-1">Code de Document</label>
+              <Select
+                value={String(it.document_code || "")}
+                onValueChange={(v) => updateItem(it.id, { document_code: v })}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Sélectionner" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectLabel>Codes</SelectLabel>
+                    {docCodes?.map((dc) => (
+                      <SelectItem key={dc.id} value={String(dc.id)}>
+                        {dc.code} - {dc.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="md:col-span-1">
               <label className="block text-sm mb-1">Folder</label>

@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from "react";
 import {
-  useGetSitesQuery,
-  useCreateSiteMutation,
-  useUpdateSiteMutation,
-  useDeleteSiteMutation,
+  useGetDocumentCodesQuery,
+  useCreateDocumentCodeMutation,
+  useUpdateDocumentCodeMutation,
+  useDeleteDocumentCodeMutation,
   useGetDocumentTypesQuery,
   useCreateDocumentTypeMutation,
   useUpdateDocumentTypeMutation,
@@ -41,14 +41,16 @@ import {
   Plus, 
   Loader2, 
   Search, 
-  Building, 
   FileType2, 
   Settings2,
-  MapPin
+  Hash,
+  CheckCircle2,
+  XCircle
 } from "lucide-react";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 // --- Generic CRUD Component ---
 const DictionaryManager = ({
@@ -60,7 +62,7 @@ const DictionaryManager = ({
   createHook,
   updateHook,
   deleteHook,
-  fields = [], // [{ name: "name", label: "Name", isCode: boolean }, ...]
+  fields = [], // [{ name: "name", label: "Name", type: "text", isCode: boolean, isBool: boolean }, ...]
 }) => {
   const [create, { isLoading: isCreating }] = createHook();
   const [update, { isLoading: isUpdating }] = updateHook();
@@ -83,7 +85,13 @@ const DictionaryManager = ({
 
   const handleOpenCreate = () => {
     setEditingItem(null);
-    setFormData({});
+    // Set default values for new items
+    const defaults = {};
+    fields.forEach((f) => {
+      if (f.isBool) defaults[f.name] = f.defaultValue ?? true;
+      else defaults[f.name] = "";
+    });
+    setFormData(defaults);
     setIsDialogOpen(true);
   };
 
@@ -94,7 +102,7 @@ const DictionaryManager = ({
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this item? This action usually cannot be undone if documents are linked.")) return;
+    if (!window.confirm("Are you sure you want to delete this item? This action cannot be undone if documents are linked.")) return;
     try {
       await remove(id).unwrap();
       toast.success("Item deleted successfully");
@@ -186,7 +194,19 @@ const DictionaryManager = ({
                     <TableRow key={item.id} className="hover:bg-muted/50">
                       {fields.map((f) => (
                         <TableCell key={f.name} className="py-3">
-                          {f.isCode ? (
+                          {f.isBool ? (
+                            item[f.name] ? (
+                              <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 hover:bg-green-500/20">
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Active
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                                <XCircle className="h-3 w-3 mr-1" />
+                                Inactive
+                              </Badge>
+                            )
+                          ) : f.isCode ? (
                             <Badge variant="outline" className="font-mono bg-muted/50">
                               {item[f.name]}
                             </Badge>
@@ -247,16 +267,31 @@ const DictionaryManager = ({
                 <Label htmlFor={f.name} className="text-sm font-medium">
                   {f.label} {f.required && <span className="text-destructive">*</span>}
                 </Label>
-                <Input
-                  id={f.name}
-                  value={formData[f.name] || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, [f.name]: e.target.value })
-                  }
-                  placeholder={f.placeholder || ""}
-                  required={f.required}
-                  className="h-10"
-                />
+                {f.isBool ? (
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      id={f.name}
+                      checked={formData[f.name] ?? true}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, [f.name]: checked })
+                      }
+                    />
+                    <Label htmlFor={f.name} className="text-sm text-muted-foreground font-normal">
+                      {formData[f.name] ? "Active (visible to users)" : "Inactive (hidden from users)"}
+                    </Label>
+                  </div>
+                ) : (
+                  <Input
+                    id={f.name}
+                    value={formData[f.name] || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, [f.name]: e.target.value })
+                    }
+                    placeholder={f.placeholder || ""}
+                    required={f.required}
+                    className="h-10"
+                  />
+                )}
                 {f.description && (
                   <p className="text-[0.8rem] text-muted-foreground">
                     {f.description}
@@ -288,7 +323,7 @@ const DictionaryManager = ({
 
 // --- Main Page Component ---
 export default function AdminMetadata() {
-  const { data: sites, isLoading: sitesLoading } = useGetSitesQuery();
+  const { data: docCodes, isLoading: codesLoading } = useGetDocumentCodesQuery();
   const { data: types, isLoading: typesLoading } = useGetDocumentTypesQuery();
 
   return (
@@ -302,44 +337,59 @@ export default function AdminMetadata() {
             System Metadata
           </h1>
           <p className="text-muted-foreground text-lg">
-            Configure system-wide classifications and locations used for document indexing.
+            Configure system-wide classifications and codes used for document management.
           </p>
         </div>
 
-        <Tabs defaultValue="sites" className="w-full space-y-6">
+        <Tabs defaultValue="codes" className="w-full space-y-6">
           <TabsList className="grid w-full grid-cols-2 md:w-[400px] h-11 p-1 bg-muted">
-            <TabsTrigger value="sites" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-sm">
-              <Building className="mr-2 h-4 w-4" /> Sites
+            <TabsTrigger value="codes" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-sm">
+              <Hash className="mr-2 h-4 w-4" /> Document Codes
             </TabsTrigger>
             <TabsTrigger value="types" className="data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-sm">
               <FileType2 className="mr-2 h-4 w-4" /> Document Types
             </TabsTrigger>
           </TabsList>
 
-          {/* --- SITES TAB --- */}
-          <TabsContent value="sites" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          {/* --- DOCUMENT CODES TAB --- */}
+          <TabsContent value="codes" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <DictionaryManager
-              title="Sites"
-              icon={MapPin}
-              description="Manage physical locations (e.g., Factories, HQs) assigned to documents."
-              data={sites}
-              isLoading={sitesLoading}
-              createHook={useCreateSiteMutation}
-              updateHook={useUpdateSiteMutation}
-              deleteHook={useDeleteSiteMutation}
+              title="Document Codes"
+              icon={Hash}
+              description="Manage predefined document codes that users can select when creating documents."
+              data={docCodes}
+              isLoading={codesLoading}
+              createHook={useCreateDocumentCodeMutation}
+              updateHook={useUpdateDocumentCodeMutation}
+              deleteHook={useDeleteDocumentCodeMutation}
               fields={[
                 {
-                  name: "name",
-                  label: "Site Name",
+                  name: "code",
+                  label: "Code",
                   required: true,
-                  placeholder: "e.g. Factory A, Headquarters",
+                  placeholder: "e.g. QUA-001, SEC-002",
+                  isCode: true,
+                  description: "Unique identifier for this document code."
                 },
                 {
-                  name: "location",
-                  label: "Location / Address",
+                  name: "name",
+                  label: "Display Name",
+                  required: true,
+                  placeholder: "e.g. Quality Assurance Standard",
+                  description: "User-friendly name shown in document creation forms."
+                },
+                {
+                  name: "description",
+                  label: "Description",
                   required: false,
-                  placeholder: "e.g. 123 Industrial Ave, Paris",
-                  description: "Optional physical address for reference."
+                  placeholder: "Brief description of when to use this code...",
+                },
+                {
+                  name: "is_active",
+                  label: "Status",
+                  isBool: true,
+                  defaultValue: true,
+                  description: "Only active codes are visible to users during document creation."
                 },
               ]}
             />
@@ -350,7 +400,7 @@ export default function AdminMetadata() {
             <DictionaryManager
               title="Document Types"
               icon={FileType2}
-              description="Define document classifications and their index prefixes (e.g., Procedure -> PROC)."
+              description="Define document classifications and their index prefixes (e.g., Procedure → PROC)."
               data={types}
               isLoading={typesLoading}
               createHook={useCreateDocumentTypeMutation}

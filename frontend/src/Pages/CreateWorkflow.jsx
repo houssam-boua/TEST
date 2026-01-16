@@ -65,7 +65,10 @@ export default function CreateWorkflowPage() {
   const [success, setSuccess] = useState(false);
   const [selectedDeptId, setSelectedDeptId] = useState(null);
   const [selectedDeptName, setSelectedDeptName] = useState(""); 
+  const [selectedSiteId, setSelectedSiteId] = useState(null); // ✅ ADD THIS
+  const [selectedSiteName, setSelectedSiteName] = useState(""); // ✅ ADD THIS
   const [documentHasNoDept, setDocumentHasNoDept] = useState(false);
+  const [documentHasNoSite, setDocumentHasNoSite] = useState(false); // ✅ ADD THIS
 
   const form = useForm({
     resolver: zodResolver(workflowSchema),
@@ -88,80 +91,103 @@ export default function CreateWorkflowPage() {
       const doc = documents.find((d) => String(d.id) === String(selectedDocId));
 
       if (doc) {
-        // Priority 1: Check if details were pre-fetched by backend serializer (doc_departement_details)
+        // ✅ Extract Department
         let deptId = null;
-        let deptName = null; // Start null so we can detect if missing
+        let deptName = null;
 
-        // Checking various potential field names from API response
         const deptSource = 
           doc.doc_departement_details || 
           doc.doc_departement ||         
           doc.departement ||             
-          doc.department;                
+          doc.department;
 
         if (deptSource) {
           if (typeof deptSource === 'object') {
-            // Best case: We have the full object
             deptId = deptSource.id;
             deptName = deptSource.dep_name || deptSource.name; 
           } else {
-            // Fallback: We only have the ID (integer)
             deptId = deptSource; 
-            // We won't set a "Department #3" name here, we'll leave it null
-            // so the UI can show a generic "Document's Department" message instead of an ugly ID.
           }
         }
 
+        // ✅ Extract Site
+        let siteId = null;
+        let siteName = null;
+
+        const siteSource = 
+          doc.site_details || 
+          doc.site;
+
+        if (siteSource) {
+          if (typeof siteSource === 'object') {
+            siteId = siteSource.id;
+            siteName = siteSource.name; 
+          } else {
+            siteId = siteSource; 
+          }
+        }
+
+        // ✅ Update state for both department and site
         if (deptId) {
           setSelectedDeptId(deptId);
-          setSelectedDeptName(deptName); // Can be null if we only have ID
+          setSelectedDeptName(deptName);
           setDocumentHasNoDept(false);
-          
-          // Reset user fields when department changes to ensure validity
-          form.setValue("authorId", "");
-          form.setValue("reviewerId", "");
-          form.setValue("approverId", "");
-          form.setValue("publisherId", "");
         } else {
           setSelectedDeptId(null);
           setSelectedDeptName("");
-          setDocumentHasNoDept(true); 
+          setDocumentHasNoDept(true);
         }
+
+        if (siteId) {
+          setSelectedSiteId(siteId);
+          setSelectedSiteName(siteName);
+          setDocumentHasNoSite(false);
+        } else {
+          setSelectedSiteId(null);
+          setSelectedSiteName("");
+          setDocumentHasNoSite(true);
+        }
+        
+        // Reset user fields when department/site changes
+        form.setValue("authorId", "");
+        form.setValue("reviewerId", "");
+        form.setValue("approverId", "");
+        form.setValue("publisherId", "");
       }
     } else {
-        setSelectedDeptId(null);
-        setSelectedDeptName("");
-        setDocumentHasNoDept(false);
+      setSelectedDeptId(null);
+      setSelectedDeptName("");
+      setSelectedSiteId(null);
+      setSelectedSiteName("");
+      setDocumentHasNoDept(false);
+      setDocumentHasNoSite(false);
     }
   }, [selectedDocId, documents, form]);
 
-  // 2. Fetch Users filtered by Department AND Role
+  // ✅ 2. Fetch Users filtered by Department AND Site AND Role
   const { data: authors = [], isFetching: loadingAuthors } = useGetUsersByRoleAndDeptQuery(
-    { departmentId: selectedDeptId, role: 'Author' },
-    { skip: !selectedDeptId }
+    { departmentId: selectedDeptId, siteId: selectedSiteId, role: 'Author' },
+    { skip: !selectedDeptId || !selectedSiteId }
   );
 
   const { data: reviewers = [], isFetching: loadingReviewers } = useGetUsersByRoleAndDeptQuery(
-    { departmentId: selectedDeptId, role: 'Reviewer' },
-    { skip: !selectedDeptId }
+    { departmentId: selectedDeptId, siteId: selectedSiteId, role: 'Reviewer' },
+    { skip: !selectedDeptId || !selectedSiteId }
   );
 
   const { data: approvers = [], isFetching: loadingApprovers } = useGetUsersByRoleAndDeptQuery(
-    { departmentId: selectedDeptId, role: 'Approver' },
-    { skip: !selectedDeptId }
+    { departmentId: selectedDeptId, siteId: selectedSiteId, role: 'Approver' },
+    { skip: !selectedDeptId || !selectedSiteId }
   );
 
   const { data: publishers = [], isFetching: loadingPublishers } = useGetUsersByRoleAndDeptQuery(
-    { departmentId: selectedDeptId, role: 'Publisher' },
-    { skip: !selectedDeptId }
+    { departmentId: selectedDeptId, siteId: selectedSiteId, role: 'Publisher' },
+    { skip: !selectedDeptId || !selectedSiteId }
   );
 
   const handleSubmit = async (values) => {
     setError(null);
     setSuccess(false);
-
-    // NOTE: Frontend segregation check removed to rely on backend validation.
-    // The backend has access to the full User model to correctly verify Admin status.
 
     try {
       const payload = {
@@ -182,7 +208,6 @@ export default function CreateWorkflowPage() {
       }, 1500);
     } catch (err) {
       console.error("Failed to create workflow:", err);
-      // Backend error will be displayed here if validation fails
       const errorMsg = err?.data?.error || err?.data?.detail || 
                        (err?.data?.approver ? err.data.approver[0] : "Failed to create workflow");
       setError(errorMsg);
@@ -196,6 +221,10 @@ export default function CreateWorkflowPage() {
       </div>
     );
   }
+
+  // ✅ Check if both department AND site are available
+  const canLoadUsers = selectedDeptId && selectedSiteId;
+  const hasMissingData = documentHasNoDept || documentHasNoSite;
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4">
@@ -280,7 +309,7 @@ export default function CreateWorkflowPage() {
                       </SelectContent>
                     </Select>
                     <FormDescription>
-                      Selecting a document will automatically filter available users based on its department.
+                      Selecting a document will automatically filter available users based on its department and site.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -288,9 +317,9 @@ export default function CreateWorkflowPage() {
               />
 
               {/* --- User Assignments Area --- */}
-              {selectedDeptId ? (
+              {canLoadUsers ? (
                 <div className="space-y-6 border-t pt-6">
-                  {/* ✅ Professional Message Badge */}
+                  {/* ✅ Professional Message Badge - Updated */}
                   <div className="flex items-center gap-3 mb-2 bg-slate-50 p-3 rounded-md border border-slate-100">
                     <ShieldCheck className="h-5 w-5 text-indigo-500" />
                     <div className="flex flex-col">
@@ -298,7 +327,8 @@ export default function CreateWorkflowPage() {
                         Restricted Selection Mode
                       </span>
                       <span className="text-xs text-slate-500">
-                        You are viewing users from the <strong>{selectedDeptName || "Document's Department"}</strong> + Administrators.
+                        Viewing users from <strong>{selectedDeptName || "Document's Department"}</strong> 
+                        {selectedSiteName && <> at <strong>{selectedSiteName}</strong></>} + Administrators.
                       </span>
                     </div>
                   </div>
@@ -413,17 +443,23 @@ export default function CreateWorkflowPage() {
                   />
                 </div>
               ) : (
-                <div className={`rounded-md p-4 border ${documentHasNoDept ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
+                <div className={`rounded-md p-4 border ${hasMissingData ? 'bg-red-50 border-red-200' : 'bg-blue-50 border-blue-200'}`}>
                   <div className="flex">
-                    {documentHasNoDept ? <Ban className="h-5 w-5 text-red-400" /> : <Info className="h-5 w-5 text-blue-400" />}
+                    {hasMissingData ? <Ban className="h-5 w-5 text-red-400" /> : <Info className="h-5 w-5 text-blue-400" />}
                     <div className="ml-3">
-                      <h3 className={`text-sm font-medium ${documentHasNoDept ? 'text-red-800' : 'text-blue-800'}`}>
-                        {documentHasNoDept ? "Missing Department Data" : "No Document Selected"}
+                      <h3 className={`text-sm font-medium ${hasMissingData ? 'text-red-800' : 'text-blue-800'}`}>
+                        {hasMissingData ? "Missing Required Data" : "No Document Selected"}
                       </h3>
-                      <div className={`mt-2 text-sm ${documentHasNoDept ? 'text-red-700' : 'text-blue-700'}`}>
-                        {documentHasNoDept 
-                          ? "This document is not assigned to any department. Please check document settings." 
-                          : "Please select a document above to load the eligible users."}
+                      <div className={`mt-2 text-sm ${hasMissingData ? 'text-red-700' : 'text-blue-700'}`}>
+                        {hasMissingData ? (
+                          <>
+                            {documentHasNoDept && <div>• This document is not assigned to any department.</div>}
+                            {documentHasNoSite && <div>• This document is not assigned to any site.</div>}
+                            <div className="mt-1">Please check document settings.</div>
+                          </>
+                        ) : (
+                          "Please select a document above to load the eligible users."
+                        )}
                       </div>
                     </div>
                   </div>
@@ -431,7 +467,7 @@ export default function CreateWorkflowPage() {
               )}
 
               <div className="flex gap-4 pt-6">
-                <Button type="submit" disabled={isSubmitting || !selectedDeptId} className="w-1/3">
+                <Button type="submit" disabled={isSubmitting || !canLoadUsers} className="w-1/3">
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

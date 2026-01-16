@@ -1,15 +1,15 @@
-import React, { useCallback, useState, useContext } from "react";
+import React, { useCallback, useState } from "react";
 import BatchCreateDocumentsForm from "@/components/forms/batch-create-documents-form";
 import { useCreateDocumentMutation } from "@/slices/documentSlice";
 import { toast } from "sonner";
-import { AuthContext } from "@/Context/AuthContextDefinition";
+import { useAuth } from "@/Hooks/useAuth"; // ✅ Use the custom Auth Hook
 
 export default function CreateDocumentsBatch() {
   const [createDocument] = useCreateDocumentMutation();
   const [uploading, setUploading] = useState(false);
 
-  const auth = useContext(AuthContext);
-  const userId = auth?.userId ?? auth?.user?.id ?? null;
+  // ✅ Fetch the full user object (contains is_superuser/is_staff) and userId
+  const { user, userId } = useAuth();
 
   const parseApiError = (err) => {
     try {
@@ -112,6 +112,9 @@ export default function CreateDocumentsBatch() {
         <BatchCreateDocumentsForm
           onSubmit={handleBatchSubmit}
           disabled={uploading}
+          // ✅ CRITICAL FIX: Pass the user object so the form knows you are Admin
+          currentUser={user}
+          currentUserId={userId}
         />
       </div>
     </div>

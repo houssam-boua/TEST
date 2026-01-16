@@ -8,6 +8,7 @@ from users.serializers import SiteSerializer # Import existing Site serializer i
 from .models import (
     Document,
     DocumentCategory,
+    DocumentCode,
     DocumentNature,
     DocumentVersion,
     DocumentArchive,
@@ -35,7 +36,11 @@ class DocumentTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = DocumentType
         fields = "__all__"
-
+        
+class DocumentCodeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DocumentCode
+        fields = '__all__'
 
 class DocumentCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -94,7 +99,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     
     # Optional: show who archived it
     archived_by = UserMiniSerializer(read_only=True)
-
+    document_code_details = DocumentCodeSerializer(source='document_code', read_only=True)
     # ✅ NEW: Nested details for Site and Type (Read-Only)
     site_details = SiteSerializer(source='site', read_only=True)
     document_type_details = DocumentTypeSerializer(source='document_type', read_only=True)

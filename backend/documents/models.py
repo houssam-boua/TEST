@@ -19,6 +19,26 @@ class DocumentType(models.Model):
     def __str__(self):
         return f"{self.name} ({self.code})"
 
+class DocumentCode(models.Model):
+    """
+    Stores predefined document codes that users can select when creating documents.
+    Example: QUA-001, SEC-002, ENV-003
+    """
+    code = models.CharField(max_length=50, unique=True, help_text="Unique code identifier (e.g., QUA-001)")
+    name = models.CharField(max_length=255, help_text="Display name for the code")
+    description = models.TextField(blank=True, default="")
+    is_active = models.BooleanField(default=True, help_text="Only active codes appear in selection")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['code']
+        verbose_name = "Document Code"
+        verbose_name_plural = "Document Codes"
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
 
 class Folder(models.Model):
     """
@@ -176,7 +196,14 @@ class Document(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    document_code = models.ForeignKey(
+        DocumentCode, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='documents',
+        help_text="Predefined document code selected by user"
+    )
     # ✅ ARCHIVING (document)
     is_archived = models.BooleanField(default=False, db_index=True)
     archived_at = models.DateTimeField(null=True, blank=True)
@@ -191,6 +218,9 @@ class Document(models.Model):
     archive_note = models.TextField(blank=True, default="")  # helpful for UI/search
 
     class Meta:
+        permissions = [
+            ("can_create_cross_department", "Can create documents in any department"),
+        ]
         indexes = [
             models.Index(fields=["is_archived"]),
             models.Index(fields=["archived_until"]),

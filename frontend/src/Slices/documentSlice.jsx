@@ -239,7 +239,7 @@ export const documentSlice = apiSlice.injectEndpoints({
       providesTags: [{ type: "DocumentCategory", id: "LIST" }],
     }),
 
-    // ✅ NEW: SITES (CRUD)
+    // ✅ SITES (CRUD)
     getSites: builder.query({
       query: () => ({ url: "/api/sites/", method: "GET" }),
       providesTags: (result) =>
@@ -273,7 +273,41 @@ export const documentSlice = apiSlice.injectEndpoints({
       invalidatesTags: [{ type: "Site", id: "LIST" }],
     }),
 
-    // ✅ NEW: DOCUMENT TYPES (CRUD)
+    // ✅ DOCUMENT CODES (CRUD)
+    getDocumentCodes: builder.query({
+      query: () => ({ url: "/api/document-codes/", method: "GET" }),
+      providesTags: (result) =>
+        result
+          ? [
+              { type: "DocumentCode", id: "LIST" },
+              ...(Array.isArray(result) ? result.map(({ id }) => ({ type: "DocumentCode", id })) : []),
+            ]
+          : [{ type: "DocumentCode", id: "LIST" }],
+    }),
+
+    createDocumentCode: builder.mutation({
+      query: (body) => ({ url: "/api/document-codes/", method: "POST", body }),
+      invalidatesTags: [{ type: "DocumentCode", id: "LIST" }],
+    }),
+
+    updateDocumentCode: builder.mutation({
+      query: ({ id, ...patch }) => ({
+        url: `/api/document-codes/${id}/`,
+        method: "PATCH",
+        body: patch,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: "DocumentCode", id },
+        { type: "DocumentCode", id: "LIST" },
+      ],
+    }),
+
+    deleteDocumentCode: builder.mutation({
+      query: (id) => ({ url: `/api/document-codes/${id}/`, method: "DELETE" }),
+      invalidatesTags: [{ type: "DocumentCode", id: "LIST" }],
+    }),
+
+    // ✅ DOCUMENT TYPES (CRUD)
     getDocumentTypes: builder.query({
       query: () => ({ url: "/api/document-types/", method: "GET" }),
       providesTags: (result) =>
@@ -340,12 +374,19 @@ export const {
   useGetDocumentNatureQuery,
   useGetDocumentCategoriesQuery,
 
-  // ✅ New Dictionaries Hooks
+  // Sites
   useGetSitesQuery,
   useCreateSiteMutation,
   useUpdateSiteMutation,
   useDeleteSiteMutation,
 
+  // ✅ Document Codes (Complete CRUD)
+  useGetDocumentCodesQuery,
+  useCreateDocumentCodeMutation,
+  useUpdateDocumentCodeMutation,
+  useDeleteDocumentCodeMutation,
+  
+  // Document Types
   useGetDocumentTypesQuery,
   useCreateDocumentTypeMutation,
   useUpdateDocumentTypeMutation,

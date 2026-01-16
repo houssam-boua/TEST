@@ -29,24 +29,35 @@ import {
 } from "@/components/ui/form";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import mlean from "@/lib/mlean"; // ✅ NEW: Import mLean
+import mlean from "@/lib/mlean"; // ✅ Import mLean
 import { useGetDepartementsQuery } from "../../slices/departementSlice";
 import { 
   useGetFoldersQuery,
-  useGetSitesQuery,           
-  useGetDocumentTypesQuery    
+  useGetSitesQuery,
+  useGetDocumentTypesQuery,
+  useGetDocumentCodesQuery
 } from "../../slices/documentSlice";
+import { useAuth } from "@/Hooks/useAuth"; // ✅ NEW: Import Auth Hook
 
 export function CreateDocumentForm({ onSubmit, loading }) {
   const { data: departements } = useGetDepartementsQuery();
   const { data: folders } = useGetFoldersQuery();
   const { data: sites } = useGetSitesQuery();          
   const { data: docTypes } = useGetDocumentTypesQuery(); 
+  const { data: docCodes } = useGetDocumentCodesQuery();  // ✅ ADD THIS
 
-  // ✅ NEW: State for perimeters
+  // ✅ Get current user and check permissions
+  const { user } = useAuth();
+  
+  // ✅ Check if user can select department/site (Admin OR has permission)
+  const canSelectDeptSite = 
+    user?.role?.role_name === 'admin' || 
+    user?.permissions?.includes('documents.can_create_cross_department');
+
+  // ✅ State for perimeters
   const [perimetersOptions, setPerimetersOptions] = useState([]);
 
-  // ✅ NEW: Fetch mLean Perimeters on mount
+  // ✅ Fetch mLean Perimeters on mount
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -75,7 +86,8 @@ export function CreateDocumentForm({ onSubmit, loading }) {
       doc_comment: "",
       site: "",           
       document_type: "",  
-      doc_perimeters: "", // ✅ NEW: Added default value
+      doc_perimeters: "",
+      document_code: "",
     },
   });
 
@@ -136,11 +148,9 @@ export function CreateDocumentForm({ onSubmit, loading }) {
                     </FormItem>
                   )}
                 />
-
-              
               </div>
 
-              {/* ✅ UPDATED ROW: mLean Perimeter and Site */}
+              {/* ✅ UPDATED ROW: mLean Perimeter (Always) and Site (Permission-based) */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 
                 {/* mLean Perimeter Field */}
@@ -169,33 +179,36 @@ export function CreateDocumentForm({ onSubmit, loading }) {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="site"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Site</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select Site" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {sites?.map((s) => (
-                            <SelectItem key={s.id} value={String(s.id)}>
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* ✅ Site: Only visible for users with permission */}
+                {canSelectDeptSite && (
+                  <FormField
+                    control={form.control}
+                    name="site"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Site</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select Site" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {sites?.map((s) => (
+                              <SelectItem key={s.id} value={String(s.id)}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
 
-              {/* ✅ UPDATED ROW: Document Type and Department */}
+              {/* ✅ UPDATED ROW: Document Type (Always) and Department (Permission-based) */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                  <FormField
                   control={form.control}
@@ -225,33 +238,66 @@ export function CreateDocumentForm({ onSubmit, loading }) {
                   )}
                 />
 
+                {/* ✅ Document Code Field (Always) */}
                 <FormField
                   control={form.control}
-                  name="doc_departement"
+                  name="document_code"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Département</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
+                      <FormLabel>Code de Document</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Choisir un département" />
+                            <SelectValue placeholder="Sélectionner un code" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {departements?.map((dept) => (
-                            <SelectItem key={dept.id} value={String(dept.id)}>
-                              {dept.name}
+                          {docCodes?.map((dc) => (
+                            <SelectItem key={dc.id} value={String(dc.id)}>
+                              {dc.code} - {dc.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormDescription>
+                        Sélectionnez le code approprié pour ce document
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+
+                {/* ✅ Department: Only visible for users with permission */}
+                {canSelectDeptSite && (
+                  <FormField
+                    control={form.control}
+                    name="doc_departement"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Département</FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choisir un département" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {departements?.map((dept) => (
+                              <SelectItem key={dept.id} value={String(dept.id)}>
+                                {dept.dep_name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
 
               {/* Parent Folder */}
